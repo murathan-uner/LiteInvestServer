@@ -1,0 +1,30 @@
+﻿.top-menu {
+    justify-content: space-between;
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    background-color: #3b3d4b;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.top-menu__section {
+    display: flex;
+    align-items: center;
+}
+
+.top-menu__login {
+    padding: 12px;
+}
+
+.top-menu__login span {
+    cursor: pointer;
+    color: #FFFFFF;
+}
+
+.brand {
+    margin: 12px;
+    font: 24px/120% Roboto;
+    text-decoration: none;
+    color: #FFFFFF;
+}

@@ -689,12 +689,18 @@ common.MapPost("/Login", async(string login, string pass, HttpContext httpContex
 
     var user = UsersContext[login];
 
+    var cookieOptions = new CookieOptions
+    {
+        HttpOnly = true,
+        Expires = DateTime.UtcNow.AddDays(1)
+    };
+
     if (user.Password != pass)
     {
         return Results.Problem("Pass incorrect");
     }
     var authResponse = jwtprovider.GenerateToken(user);
-    httpContext.Response.Cookies.Append(authkeyname, authResponse.Token);
+    httpContext.Response.Cookies.Append(authkeyname, authResponse.Token, cookieOptions);
 
     return Results.Json(authResponse);
 }).Produces<AuthResponse>();

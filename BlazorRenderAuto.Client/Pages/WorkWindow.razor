@@ -23,254 +23,262 @@
 @rendermode InteractiveServer
 
 <style>
-	.cardnew {
-	height: 800px;
-	}
-	/* Общие стили для WorkWindow */
-	.workwindow-container {
-	background-color: #f5f5f5;
-	border: 1px solid #ddd;
-	border-radius: 5px;
-	min-height: 250px;
-	}
+    .cardnew {
+    height: 800px;
+    }
+    /* Общие стили для WorkWindow */
+    .workwindow-container {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    min-height: 250px;
+    }
 
-	.k-table-row{
-	font-size:10px;
-	line-height:10px;
-	}
+    .k-table-row {
+    font-size: 10px;
+    line-height: 10px;
+    }
 
-	.telerik-table {
-	padding: 0px;
-	}
+    .telerik-table {
+    padding: 0px;
+    }
 
-	.k-grid-md td, .k-grid-md .k-table-td {
-	padding-block: 0px !important;
-	padding-inline: 0px !important;
-	}
+    .k-grid-md td, .k-grid-md .k-table-td {
+    padding-block: 0px !important;
+    padding-inline: 0px !important;
+    }
 
-	.small-row-height .k-placeholder-line {
-	display: none;
-	}
+    .small-row-height .k-placeholder-line {
+    display: none;
+    }
 
-	.small-row-height.k-grid td {
-	margin: 0;
-	padding: 0;
-	}
-
-
-	/* Стили для контейнера с таблицей */
-	.table-container {
-	height: 90vh;
-	scrollbar-width: thin;
-	overflow-y: auto; /* Включаем вертикальный скроллинг */
-	}
-
-	/* Стили для самой таблицы */
-	.telerik-grid {
-	width: 100%;
-	height: 100%;
-	}
-
-	/* Стили для контента таблицы */
-	.telerik-grid .k-grid-content {
-	overflow-y: auto; /* Включаем вертикальный скроллинг в таблице */
-	}
-
-	/* Заголовок WorkWindow */
-	.workwindow-container h3 {
-	margin-top: 0;
-	font-size: 18px;
-	color: #333;
-	font-weight: bold;
-	}
-
-	/* Стили для TileLayout (если нужно стилизовать плитки) */
-	.telerik-tilelayout-item {
-	min-width: 285px;
-	min-height: 285px;
-	margin-bottom: 15px;
-	}
-
-	.tile-content {
-	background-color: #fff;
-	border-radius: 5px;
-	}
-
-	.k-grid-footer {
-	padding-inline-end: 0px !important;
-	}
-
-	.dxbl-chart-root .dxbl-chart {
-	padding: 0px !important;
-	}
+    .small-row-height.k-grid td {
+    margin: 0;
+    padding: 0;
+    }
 
 
-	.k-grid-content {
-	scrollbar-width: none;
-	}
+    /* Стили для контейнера с таблицей */
+    .table-container {
+    height: 90vh;
+    scrollbar-width: thin;
+    overflow-y: auto; /* Включаем вертикальный скроллинг */
+    }
 
-	.k-grid-header {
-	padding-inline-end: 0px !important;
-	}
-	/* Дополнительные улучшения для внешнего вида */
-	.telerik-grid .k-header {
-	background-color: #f0f0f0;
-	color: #333;
-	text-align: center;
-	font-weight: bold;
-	}
+    /* Стили для самой таблицы */
+    .telerik-grid {
+    width: 100%;
+    height: 100%;
+    }
 
-	.telerik-grid .k-grid-header {
-	border-bottom: 1px solid #ddd;
-	}
+    /* Стили для контента таблицы */
+    .telerik-grid .k-grid-content {
+    overflow-y: auto; /* Включаем вертикальный скроллинг в таблице */
+    }
 
-	.telerik-grid .k-grid-table {
-	border-spacing: 0;
-	border-collapse: collapse;
-	}
+    /* Заголовок WorkWindow */
+    .workwindow-container h3 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #333;
+    font-weight: bold;
+    }
 
-	.telerik-grid .k-grid-table td,
-	.telerik-grid .k-grid-table th {
-	text-align: center;
-	border: 1px solid #ddd;
-	}
+    /* Стили для TileLayout (если нужно стилизовать плитки) */
+    .telerik-tilelayout-item {
+    min-width: 285px;
+    min-height: 285px;
+    margin-bottom: 15px;
+    }
 
-	.k-card-body {
-	padding: 0px;
-	padding-block: 0 !important;
-	padding-inline: 0 !important;
-	}
-	/*.k-tilelayout-item-header{
-	display: none;
-	}*/
-	.k-grid-content {
-	padding: 0px;
-	}
+    .tile-content {
+    background-color: #fff;
+    border-radius: 5px;
+    }
 
-	.k-tilelayout-item-body k-card-body {
-	padding: 0px;
-	}
-	/* Убираем паддинги для всего TileLayout */
-	.telerik-tilelayout {
-	padding: 0;
-	}
+    .k-grid-footer {
+    padding-inline-end: 0px !important;
+    }
 
-	.gridlayout-item {
-	font-size: 1.2em;
-	font-weight: 500;
-	text-align: center;
-	width: 100%;
-	height: 800px;
-	text-align: center;
-	position: relative;
-	z-index: 0;
-	display: flex;
-	align-items: start;
-	justify-content: start;
-	}
-
-	.gridlayout-item:before {
-	content: " ";
-	position: absolute;
-	z-index: -1;
-	width: 100%;
-	height: 100%;
-	left: 0;
-	top: 0;
-	opacity: 0.4;
-	}
-
-	.gridlayout-header:before {
-	background-color: var(--bs-red);
-	}
-
-	.gridlayout-content:before {
-	background-color: var(--bs-yellow);
-	}
-
-	.gridlayout-left-side-bar:before {
-	background-color: var(--bs-green);
-	}
-
-	.gridlayout-right-side-bar:before {
-	}
-
-	.gridlayout-footer:before {
-	background-color: var(--bs-blue);
-	opacity: 0.5;
-	}
-
-	.dxgrid {
-	height: 100%;
-	}
+    .dxbl-chart-root .dxbl-chart {
+    padding: 0px !important;
+    }
 
 
-	.dxbl-grid {
-	--dxbl-grid-font-size: 10px;
-	}
+    .k-grid-content {
+    scrollbar-width: none;
+    }
 
-	.chart {
-	height: 90vh;
-	}
+    .k-grid-header {
+    padding-inline-end: 0px !important;
+    }
+    /* Дополнительные улучшения для внешнего вида */
+    .telerik-grid .k-header {
+    background-color: #f0f0f0;
+    color: #333;
+    text-align: center;
+    font-weight: bold;
+    }
 
-	.highlighted-item {
-	background-color: #edc6c6
-	}
+    .telerik-grid .k-grid-header {
+    border-bottom: 1px solid #ddd;
+    }
 
-	.highlighted-item2 {
-	background-color: #a0dbc6
-	}
+    .telerik-grid .k-grid-table {
+    border-spacing: 0;
+    border-collapse: collapse;
+    }
 
-	.transparent-item {
-	background-color: transparent
-	}
+    .telerik-grid .k-grid-table td,
+    .telerik-grid .k-grid-table th {
+    text-align: center;
+    border: 1px solid #ddd;
+    }
 
-	.card-body {
-	padding: 0;
-	}
+    .k-card-body {
+    padding: 0px;
+    padding-block: 0 !important;
+    padding-inline: 0 !important;
+    }
+    /*.k-tilelayout-item-header{
+    display: none;
+    }*/
+    .k-grid-content {
+    padding: 0px;
+    }
 
-	.removeOrder {
-	z-index: 201;
-	flex-shrink: 0;
-	cursor: pointer;
-	float: right;
-	}
+    .k-tilelayout-item-body k-card-body {
+    padding: 0px;
+    }
+    /* Убираем паддинги для всего TileLayout */
+    .telerik-tilelayout {
+    padding: 0;
+    }
 
-	.restVolume {
-	display: flex;
-	}
+    .gridlayout-item {
+    font-size: 1.2em;
+    font-weight: 500;
+    text-align: center;
+    width: 100%;
+    height: 800px;
+    text-align: center;
+    position: relative;
+    z-index: 0;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    }
 
-	.restVolumeSpan {
-	flex-shrink: 1;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis
-	}
+    .gridlayout-item:before {
+    content: " ";
+    position: absolute;
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    opacity: 0.4;
+    }
 
-	.k-resize-handle{
-	width: 4px !important;
-	}
+    .gridlayout-header:before {
+    background-color: var(--bs-red);
+    }
 
-</style> 
+    .gridlayout-content:before {
+    background-color: var(--bs-yellow);
+    }
+
+    .gridlayout-left-side-bar:before {
+    background-color: var(--bs-green);
+    }
+
+    .gridlayout-right-side-bar:before {
+    }
+
+    .gridlayout-footer:before {
+    background-color: var(--bs-blue);
+    opacity: 0.5;
+    }
+
+    .dxgrid {
+    height: 100%;
+    }
+
+
+    .dxbl-grid {
+    --dxbl-grid-font-size: 10px;
+    }
+
+    .chart {
+    height: 90vh;
+    }
+
+    .cell-text{
+    font-weight: 750 !important;
+    }
+
+    .highlighted-item {
+    background-color: #edc6c6
+    }
+
+    .highlighted-item2 {
+    background-color: #a0dbc6
+    }
+
+    .transparent-item {
+    background-color: transparent
+    }
+
+    .card-body {
+    padding: 0;
+    }
+
+    .removeOrder {
+    z-index: 201;
+    flex-shrink: 0;
+    cursor: pointer;
+    float: right;
+    }
+
+    .restVolume {
+    display: flex;
+    }
+
+    .restVolumeSpan {
+    flex-shrink: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis
+    }
+
+    .k-resize-handle {
+    width: 4px !important;
+    }
+
+    .grid-header{
+    display: none;
+    }
+
+</style>
 
 
 <div id="@secutityMain.SpecialHash" tabindex="0">
 
-	<TelerikGridLayout>
-		<GridLayoutColumns>
-			<Telerik.Blazor.Components.GridLayoutColumn Width="33.33%"/>
-			<Telerik.Blazor.Components.GridLayoutColumn Width="33.33%"/>
-			<Telerik.Blazor.Components.GridLayoutColumn Width="33.33%" />
-		</GridLayoutColumns>
+    <TelerikGridLayout>
+        <GridLayoutColumns>
+            <Telerik.Blazor.Components.GridLayoutColumn Width="33.33%" />
+            <Telerik.Blazor.Components.GridLayoutColumn Width="33.33%" />
+            <Telerik.Blazor.Components.GridLayoutColumn Width="33.33%" />
+        </GridLayoutColumns>
 
-		<GridLayoutRows>
-			<Telerik.Blazor.Components.GridLayoutRow />
-		</GridLayoutRows>
+        <GridLayoutRows>
+            <Telerik.Blazor.Components.GridLayoutRow />
+        </GridLayoutRows>
 
-		<GridLayoutItems>
-			<Telerik.Blazor.Components.GridLayoutItem Row="1" Column="1">
+        <GridLayoutItems>
+            <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="1">
 
-				@*  
+                @*  
                 <TelerikGrid 
                     @ref="QuotesGrid" Id="@GridTableId" 
                     OnRowClick="@OnRowClickHandler" 
@@ -288,45 +296,44 @@
 
                 </TelerikGrid> *@
 
+                <TelerikGrid @ref="ClustersGrid"
+                EnableLoaderContainer="true"
+                RowHeight="15"
+                Height="99vh"
+                Data="@ClusterDatas"
+                TItem="@ClusterLevel"
+                OnRowClick="@OnRowClickHandler"
+                ScrollMode="@GridScrollMode.Virtual"
+                PageSize="@pagesize">
 
-				<TelerikGrid 
-				@ref="ClustersGrid" 
-				EnableLoaderContainer="true"
-				RowHeight="15"
-				Height="90vh"
-				Data="@ClusterDatas"
-				TItem="@ClusterLevel"
-				OnRowClick="@OnRowClickHandler" 
-				ScrollMode="@GridScrollMode.Virtual"
-				PageSize="@pagesize">
+                    <GridColumns>
+                        <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Price)" HeaderClass="grid-header" />
+                        <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header" />
+                    </GridColumns>
 
-					<GridColumns>
-						<GridColumn Width="1fr" Field="@nameof(ClusterLevel.Price)" HeaderClass="d-none" />
-						<GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="d-none"/>
-					</GridColumns>
+                    <RowTemplate Context="ClusterDatas">
+                        <td class="@GetClassForClusters(ClusterDatas) price cell-text">
+                            @ClusterDatas.Price.ToString("G29")
+                        </td>
+                        <td class="@GetClassForClusters(ClusterDatas) cell-text">
+                            @if (ClusterDatas.Volume != 0)
+                            {
+                                @ClusterDatas.Volume.KiloFormat()
+                                ;
+                            }
+                        </td>
+                    </RowTemplate>
 
-					<RowTemplate Context="ClusterDatas">
-						<td class="@GetClassForClusters(ClusterDatas) price">
-							@ClusterDatas.Price.ToString("G29")
-						</td>
-						<td class="@GetClassForClusters(ClusterDatas)">
-							@if (ClusterDatas.Volume != 0)
-							{
-								@ClusterDatas.Volume
-							}
-						</td>
-					</RowTemplate>
-
-				</TelerikGrid> 
-
+                </TelerikGrid>
 
 
-			</Telerik.Blazor.Components.GridLayoutItem>
-			<Telerik.Blazor.Components.GridLayoutItem Row="1" Column="2">
 
-				<Chart @key="secutityMain.SpecialHash" @ref="ChartComponent" secutityMain="secutityMain"> </Chart>
+            </Telerik.Blazor.Components.GridLayoutItem>
+            <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="2">
 
-				@* <TelerikChart Class="chart" @ref="Chart2" Transitions="false" RenderAs="@RenderingMode.Canvas"  Width="100%">
+                <Chart @key="secutityMain.SpecialHash" @ref="ChartComponent" secutityMain="secutityMain"> </Chart>
+
+                @* <TelerikChart Class="chart" @ref="Chart2" Transitions="false" RenderAs="@RenderingMode.Canvas"  Width="100%">
 					<ChartLegend Visible="false"></ChartLegend>
 
 					<ChartSeriesItems>
@@ -349,7 +356,7 @@
 
 				</TelerikChart>   *@
 
-				@* 
+                @* 
 				<DxChart CssClass="chart"
 				CustomizeSeriesPoint="@PrepareSeriesPoint"
 				@ref="Chart"
@@ -399,54 +406,53 @@
 
 				</DxChart>  *@
 
-			</Telerik.Blazor.Components.GridLayoutItem>
-			<Telerik.Blazor.Components.GridLayoutItem Row="1" Column="3">
+            </Telerik.Blazor.Components.GridLayoutItem>
+            <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="3">
 
-				<TelerikGrid 
-				@ref="QuotesGrid" Id="@GridTableId" 
-                OnRowClick="@OnRowClickHandler" 
+                <TelerikGrid @ref="QuotesGrid" Id="@GridTableId"
+                OnRowClick="@OnRowClickHandler"
                 EnableLoaderContainer="true"
-				RowHeight="15"
-				Height="90vh"
-				Data="@Quotes"
-				TItem="@MarketDepthLevel"
-				ScrollMode="@GridScrollMode.Virtual"
-				Pageable="false"
-				Sortable="false"
-				PageSize="@pagesize">
-					<GridColumns>
-						<GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Volume)" HeaderClass="d-none" />
-						<GridColumn Width="1fr"  Field="@nameof(MarketDepthLevel.Price)" HeaderClass="d-none" />
-						<GridColumn Width="50px"  Field="@nameof(MarketDepthLevel.RestVolume)" HeaderClass="d-none" />
-					</GridColumns>
-					<RowTemplate Context="Quotes">
-						<td class="@GetClassForQuote(Quotes)">
-							@if (Quotes.Volume != 0)
-							{
-								@Quotes.Volume
-							}
-						</td>
-						<td class="@GetClassForQuote(Quotes) price">
-							@Quotes.Price.ToString("G29")
-						</td>
-						<td class="@GetClassForQuote(Quotes) restVolume">
-							<span class="restVolumeSpan">
-								@Quotes.RestVolume
-							</span>
-							@if (Quotes.RestVolume.ToString() != string.Empty)
-							{
-								<svg class="removeOrder" @onclick="() => RemoveOrderClick(Quotes)" xmlns="http://www.w3.org/2000/svg" width="22" height="15" viewBox="-2 -2 15 15">
-									<line x1="0" y1="0" x2="10" y2="10" stroke="red" stroke-width="2"/>
-									<line x1="0" y1="10" x2="10" y2="0" stroke="red" stroke-width="2"/>
-								</svg>
-							}
-						</td>
-					</RowTemplate>
-				</TelerikGrid>
+                RowHeight="15"
+                Height="99vh"
+                Data="@Quotes"
+                TItem="@MarketDepthLevel"
+                ScrollMode="@GridScrollMode.Virtual"
+                Pageable="false"
+                Sortable="false"
+                PageSize="@pagesize">
+                    <GridColumns>
+                        <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Volume)" HeaderClass="grid-header" />
+                        <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Price)" HeaderClass="grid-header" />
+                        <GridColumn Width="50px" Field="@nameof(MarketDepthLevel.RestVolume)" HeaderClass="grid-header" />
+                    </GridColumns>
+                    <RowTemplate Context="Quotes">
+                        <td style="@GetStyleForQuote(Quotes)" class="cell-text ">
+                            @if (Quotes.Volume != 0)
+                            {
+                                @Quotes.Volume
+                            }
+                        </td>
+                        <td class="@GetClassForQuote(Quotes) price cell-text">
+                            @Quotes.Price.ToString("G29")
+                        </td>
+                        <td class="@GetClassForQuote(Quotes) restVolume cell-text">
+                            <span class="restVolumeSpan">
+                                @Quotes.RestVolume
+                            </span>
+                            @if (Quotes.RestVolume.ToString() != string.Empty)
+                            {
+                                <svg class="removeOrder" @onclick="() => RemoveOrderClick(Quotes)" xmlns="http://www.w3.org/2000/svg" width="22" height="15" viewBox="-2 -2 15 15">
+                                    <line x1="0" y1="0" x2="10" y2="10" stroke="red" stroke-width="2" />
+                                    <line x1="0" y1="10" x2="10" y2="0" stroke="red" stroke-width="2" />
+                                </svg>
+                            }
+                        </td>
+                    </RowTemplate>
+                </TelerikGrid>
 
-			</Telerik.Blazor.Components.GridLayoutItem>
-		</GridLayoutItems>
-	</TelerikGridLayout>
+            </Telerik.Blazor.Components.GridLayoutItem>
+        </GridLayoutItems>
+    </TelerikGridLayout>
 
 </div>
 
@@ -455,926 +461,965 @@
 @code {
 
 
-	TelerikGrid<ClusterLevel> clustersgrid;
-	List<ClusterLevel> ClusterDatas { get; set; } = new ();
+    TelerikGrid<ClusterLevel> clustersgrid;
+    List<ClusterLevel> ClusterDatas { get; set; } = new();
 
-	// public class ClusterData
-	// {
-	// 	public decimal Volume;
-	// 	public DateTime DateTime;
+    // public class ClusterData
+    // {
+    // 	public decimal Volume;
+    // 	public DateTime DateTime;
 
-	// 	public ClusterData(decimal volume, DateTime dateTime)
-	// 	{
-	// 		Volume = volume;
-	// 		DateTime = dateTime;
-	// 	}
-	// }
+    // 	public ClusterData(decimal volume, DateTime dateTime)
+    // 	{
+    // 		Volume = volume;
+    // 		DateTime = dateTime;
+    // 	}
+    // }
 
-	// private void UpdateClusterData(decimal volumeSumm)
-	// {
-	// 	if (ClusterDatas != null && ClusterDatas.Count > 5)
-	// 	{
-	// 		ClusterDatas.RemoveAt(0);
-	// 	}
+    // private void UpdateClusterData(decimal volumeSumm)
+    // {
+    // 	if (ClusterDatas != null && ClusterDatas.Count > 5)
+    // 	{
+    // 		ClusterDatas.RemoveAt(0);
+    // 	}
 
-	// 	ClusterDatas.Add(new ClusterData(volumeSumm, DateTime.Now));
-	// 	clustersgrid.Rebind();
-	// }
+    // 	ClusterDatas.Add(new ClusterData(volumeSumm, DateTime.Now));
+    // 	clustersgrid.Rebind();
+    // }
 
-	TelerikChart chart;
+    TelerikChart chart;
 
-	static string plusHotKey = "Equal";
-	static string minusHotKey = "Minus";
-	static string cancelHotKey = "KeyC";
+    static string plusHotKey = "Equal";
+    static string minusHotKey = "Minus";
+    static string cancelHotKey = "KeyC";
 
-	[Parameter] public string secHash { get; set; }
-	[Parameter] public SecurityApi secutityMain { get; set; }
-	[Parameter] public string lastsecHashOpened { get; set; }
-
-
-	/// <summary>
-	/// Последний собранный масштаб
-	/// </summary>
-	private int prevbuildScale { get; set; } = 0;
-
-	private int _oldScale ;//для первой отрисовки
-	public int Scale
-	{
-		get => _oldScale;
-		set
-		{
-			if (_oldScale != value)
-				OnScaleChanged(value);
-
-			_oldScale = value;
-		}
-	}
-
-	private void OnScaleChanged(int newscale)
-	{
-		lock (scalelocker)
-		{
-			if (newdictionaryQuotes != null && newdictionaryQuotes.Count != 0)
-				AlgoQuotesScale(newscale, newdictionaryQuotes, usualbestbid,true,savedAgregatedBestbid); // TODO: временно прописал напрямую
-		}
-	}
-
-	// public ObservableCollection<Quote> GridData { get; set; }
-	public List<MarketDepthLevel> Quotes { get; set; }
-
-	public List<TradeApi> Ticks { get; set; } //= new List();
-
-	public List<int?> WebSockets { get; set; }
-
-	public TelerikGrid<MarketDepthLevel> QuotesGrid { get; set; }
-	public TelerikGrid<ClusterLevel> ClustersGrid { get; set; }
-
-	private string WindowId { get; set; } = Guid.NewGuid().ToString();
-	private string GridTableId { get; set; } = Guid.NewGuid().ToString();
-
-	/// <summary>
-	/// Индекс к которому мы должны таблицу откскроллить!
-	/// Обновляется на лету
-	/// </summary>
-	int bestbidIndex { get; set; }
-
-	protected override async Task<Task> OnInitializedAsync()
-	{
-		Console.WriteLine($"{DateTime.Now} On Initialized secID{secutityMain.id} set WorkWindow");
-
-		//Quotes = new();
-
-		Scale = 1;
-		Ticks = new ();
-
-		ApiDataService.NewMyOrder += NewMyOrder;
-		ApiDataService.NewQuotes += OnNewMarketDepth;
-		ApiDataService.NewTicks += OnNewTicks;
-
-		jsInteropService.OnKeyDown += OnKeyDown;
-		jsInteropService.OnScroll += OnScroll;
-		//сначала подпишемся на ордера
-
-		//TODO: Сделать нормальную подписку на частные ордера
-
-		WebSockets =
-		[
-			await ApiDataService.SubscribeOrderBook(secutityMain.id),
-	await ApiDataService.SubcribeTick(secutityMain.id)
-		];
+    [Parameter] public string secHash { get; set; }
+    [Parameter] public SecurityApi secutityMain { get; set; }
+    [Parameter] public string lastsecHashOpened { get; set; }
 
 
+    /// <summary>
+    /// Последний собранный масштаб
+    /// </summary>
+    private int prevbuildScale { get; set; } = 0;
 
-		return base.OnInitializedAsync();
-	}
+    private int _oldScale;//для первой отрисовки
+    public int Scale
+    {
+        get => _oldScale;
+        set
+        {
+            if (_oldScale != value)
+                OnScaleChanged(value);
 
-	protected override async Task OnAfterRenderAsync(bool firstRender)
-	{
-		if (firstRender)
-		{
-			await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
-			await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
-			await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
-		}
-		else
-		{
+            _oldScale = value;
+        }
+    }
 
-		}
-	}
+    private void OnScaleChanged(int newscale)
+    {
+        lock (scalelocker)
+        {
+            if (newdictionaryQuotes != null && newdictionaryQuotes.Count != 0)
+                AlgoQuotesScale(newscale, newdictionaryQuotes, usualbestbid, true, savedAgregatedBestbid); // TODO: временно прописал напрямую
+        }
+    }
 
-	// public override Task SetParametersAsync(ParameterView parameters)
-	// {
+    // public ObservableCollection<Quote> GridData { get; set; }
+    public List<MarketDepthLevel> Quotes { get; set; }
 
-	// 	Console.WriteLine($"{DateTime.Now} Re Parameters set WorkWindow");
+    public List<TradeApi> Ticks { get; set; } //= new List();
 
-	// 	return base.SetParametersAsync(parameters);
-	// }
+    public List<int?> WebSockets { get; set; }
 
-	protected override async Task OnParametersSetAsync()
-	{
-		Console.WriteLine($"{DateTime.Now} On Parameters {secutityMain.id} set WorkWindow");
+    public TelerikGrid<MarketDepthLevel> QuotesGrid { get; set; }
+    public TelerikGrid<ClusterLevel> ClustersGrid { get; set; }
 
-		base.OnParametersSet();
-	}
+    private string WindowId { get; set; } = Guid.NewGuid().ToString();
+    private string GridTableId { get; set; } = Guid.NewGuid().ToString();
 
-	int orderVolume = 1;
-	public ConcurrentDictionary<decimal, Order> Orders { get; set; } = new();
+    /// <summary>
+    /// Индекс к которому мы должны таблицу откскроллить!
+    /// Обновляется на лету
+    /// </summary>
+    int bestbidIndex { get; set; }
 
-	/// <summary>
-	/// Выставление
-	/// или отмена если нажали по той же ячейке.
-	/// </summary>
-	/// <param name="arg"></param>
-	/// <returns></returns>
-	private Task OnRowClickHandler(GridRowClickEventArgs arg)
-	{
-		try
-		{
-			var item = (MarketDepthLevel)arg.Item;
+    protected override async Task<Task> OnInitializedAsync()
+    {
+        Console.WriteLine($"{DateTime.Now} On Initialized secID{secutityMain.id} set WorkWindow");
 
-			if (Orders.ContainsKey(item.Price))
-			{
-				RemoveOrderClick(item);
-				return Task.CompletedTask;
-			}
+        //Quotes = new();
 
-			var order = new ClientOrder()
+        Scale = 1;
+        Ticks = new();
+
+        ApiDataService.NewMyOrder += NewMyOrder;
+        ApiDataService.NewQuotes += OnNewMarketDepth;
+        ApiDataService.NewTicks += OnNewTicks;
+
+        jsInteropService.OnKeyDown += OnKeyDown;
+        jsInteropService.OnScroll += OnScroll;
+        //сначала подпишемся на ордера
+
+        //TODO: Сделать нормальную подписку на частные ордера
+
+        WebSockets =
+        [
+            await ApiDataService.SubscribeOrderBook(secutityMain.id),
+    await ApiDataService.SubcribeTick(secutityMain.id)
+        ];
+
+
+
+        return base.OnInitializedAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
+            await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
+            await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
+        }
+        else
+        {
+
+        }
+    }
+
+    // public override Task SetParametersAsync(ParameterView parameters)
+    // {
+
+    // 	Console.WriteLine($"{DateTime.Now} Re Parameters set WorkWindow");
+
+    // 	return base.SetParametersAsync(parameters);
+    // }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Console.WriteLine($"{DateTime.Now} On Parameters {secutityMain.id} set WorkWindow");
+
+        base.OnParametersSet();
+    }
+
+    int orderVolume = 1;
+    public ConcurrentDictionary<decimal, Order> Orders { get; set; } = new();
+
+    /// <summary>
+    /// Выставление
+    /// или отмена если нажали по той же ячейке.
+    /// </summary>
+    /// <param name="arg"></param>
+    /// <returns></returns>
+    private Task OnRowClickHandler(GridRowClickEventArgs arg)
+    {
+        try
+        {
+            var item = (MarketDepthLevel)arg.Item;
+
+            if (Orders.ContainsKey(item.Price))
             {
-                SecID = secutityMain.id,
-                Side = item.Type,
-					Volume = orderVolume,
-                Price = item.Price,
-                Market = false,
-            };
-
-			Console.WriteLine($"Sending order price = {order.Price} side = {order.Side}");
-
-			//ApiDataService.SendOrder(order);
-		}
-		catch (Exception ex)
-		{
-			Console.WriteLine(ex.Message);
-		}
-
-		return Task.CompletedTask;
-	}
-
-	private void RemoveOrderClick(MarketDepthLevel level)
-	{
-
-		// Orders.TryGetValue(level.Price, out var _order);
-
-		// if (_order == null)
-		// 	Console.WriteLine("No Order Found in Row");
-
-		// ApiDataService.CancelOrder(_order);
-	}
-
-
-	protected override bool ShouldRender()
-	{
-
-		// была попытка перевести 
-		Console.WriteLine($"{DateTime.Now} Should {secutityMain.Isin} Render WorkWindow");
-
-		// if (lastsecHashOpened == secutityMain.SpecialHash)
-		// {
-		//     //TODO: Indicate that was opened last one
-		//     Console.WriteLine($"RENDERING SHOULD {secutityMain.Isin} LAST");
-		//     ApiDataService.LastWindowWasOpened();
-		//     return true;
-		// }
-
-		// if (lastsecHashOpened == "")
-		// {
-		//     Console.WriteLine($"RENDERING EMPTY {secutityMain.Isin} ");
-		//     return true;
-		// }
-
-		// Console.WriteLine($"NOT RENDERING {secutityMain.Isin} ");
-		// return false;
-
-		return base.ShouldRender();
-	}
-
-	DateTime lasttime = DateTime.Now;
-	int counter = 0;
-
-
-	int lasttradetickTime { get; set; } = -1;
-
-	private void ProcessClusterTick(List<TradeApi> ticks)
-	{
-
-		var copyclusters = ClusterDatas.ToList();
-
-		foreach (var tick in ticks)
-		{
-			var agregatingTime = tick.Time.Minute - tick.Time.Minute % 5;
-
-			//Console.WriteLine($"real time {DateTime.Now} agreagatedtime = {agregatingTime}");
-
-			if (agregatingTime != lasttradetickTime)
-			{
-				Console.WriteLine($"Time For clusters Updated lastmintime={agregatingTime} timeNow = {lasttradetickTime}");
-
-				foreach (var cluster in copyclusters)
-				{
-					cluster.AskVolume = 0;
-					cluster.BidVolume = 0;
-				}
-
-				Console.WriteLine($"Cluster Table Empty");
-
-				lasttradetickTime = agregatingTime;
-			}
-
-			decimal tickAgregatedLevel = tick.Price - tick.Price % (secutityMain.PriceStep * Scale);
-
-			if (IndexesQuotes.ContainsKey(tickAgregatedLevel) && copyclusters.Count != 0)
-			{
-				var index = IndexesQuotes[tickAgregatedLevel];
-
-
-				var lastclusterItem = (ClusterLevel)copyclusters[index].Clone();
-
-				if (tick.Side == Side.Sell)
-					lastclusterItem.AskVolume += tick.Volume;
-				if (tick.Side == Side.Buy)
-					lastclusterItem.BidVolume += tick.Volume;
-
-				copyclusters[index] = lastclusterItem;
-
-				//Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
-			}
-		}
-
-		ClusterDatas = copyclusters;
-	}
-
-	private async void OnNewTicks(string secID, List<TradeApi> ticks)
-	{
-		bool boolshouldrender = false;
-
-		if (secID != secutityMain.id)
-			return;
-
-		if (IndexesQuotes.Count != 0 && bestbidIndex != 0)
-		{
-			ProcessClusterTick(ticks);
-			UpdateClastersGrid();
-
-			if (ChartComponent != null)
-				ChartComponent.ProcessTicks(ticks);
-
-		}
-
-		//Chart2.Refresh();
-		//к сожалению нужно обновлению, а это означает что придется переносить все компоненты
-		//InvokeAsync(StateHasChanged);
-		//UpdateChart();
-
-	}
-
-	ConcurrentDictionary<decimal, MarketDepthLevel> QuotesDictionary = new();
-
-	/// <summary>
-	///Хранит информацию 
-	/// </summary>
-	Dictionary<decimal, int> IndexesQuotes = new Dictionary<decimal, int>();
-
-
-	private List<ClusterLevel> BuildEmptyClusterLevels(ICollection<MarketDepthLevel> _initialOrderBook)
-	{
-		var localclustersbuild = new List<ClusterLevel>();
-
-		foreach (var level in _initialOrderBook)
-		{
-			localclustersbuild.Add(new ClusterLevel() { Price = level.Price});
-		}
-
-		return localclustersbuild;
-
-	}
-
-	private void UpdateQuotesGrid()
-	{
-		InvokeAsync(()=> 
-		{
-
-			try
-			{
-				QuotesGrid.Data = Quotes;
-				QuotesGrid?.Rebind();
-			}
-			catch(Exception ex)
-			{
-				Console.WriteLine(ex.Message);
-			}
-		}).GetAwaiter().GetResult();		
-	}
-
-	private void UpdateClastersGrid()
-	{
-		InvokeAsync(()=> 
-		{
-			try
-			{
-				ClustersGrid.Data = ClusterDatas;
-				ClustersGrid?.Rebind();
-			}
-			catch (Exception ex)
-			{
-				Console.WriteLine(ex.Message);
-			}
-		}).GetAwaiter().GetResult();
-	}
-
-
-	private void UpdateChart()
-	{
-		InvokeAsync(() =>
-		{
-			try
-			{
-				Chart2.Refresh();
-			}
-			catch (Exception ex)
-			{
-				Console.WriteLine(ex.Message);
-			}
-		}).GetAwaiter().GetResult();
-	}
-
-
-
-	private ObservableCollection<MarketDepthLevel> BuildInitialQuotes(decimal bestbid)
-	{
-		try
-		{
-			int levels = 3000 ;
-
-			//округление
-			// var min = (bestbid * 0.7m);
-
-			decimal agrregatedlevel = bestbid - bestbid % (secutityMain.PriceStep * Scale);
-
-
-			//previous 
-			// var min = bestbid - levels * secutityMain.PriceStep * Scale;
-			// var realmin = min - min % secutityMain.PriceStep * Scale;
-			// var max = bestbid + levels * secutityMain.PriceStep;
-			// var realmax = max - max % secutityMain.PriceStep;
-
-			//new
-			var realmin = agrregatedlevel - levels * secutityMain.PriceStep * Scale;
-			var realmax = agrregatedlevel + levels * secutityMain.PriceStep * Scale;
-
-			Console.WriteLine($"secid={secutityMain.id} maxSEC ={secutityMain.PriceLimitHigh} minSEC= {secutityMain.PriceLimitLow} ");
-			Console.WriteLine($"secid={secutityMain.id} BESTBID ={bestbid} MIN {realmin} MAX {realmax}");
-
-			int index = 0;
-
-			ObservableCollection<MarketDepthLevel> localQuotesBuild = new();
-
-			// for (decimal i = realmin; i < realmax; i += secutityMain.PriceStep)
-			// {
-			// 	IndexesQuotes.TryAdd(i, index);
-			// 	localQuotesBuild.Add(MarketDepthLevel.GetEmptyLevel(i));
-			// 	//LocalQuotesBuild.Add(new MarketDepthLevel() { Ask = 1, Price = i, });
-			// 	index++;
-			// }
-
-			if(Quotes==null )
-				Quotes = new();
-			else 
-				Quotes.Clear();
-
-			IndexesQuotes.Clear();
-
-			for (decimal i = realmax; i > realmin; i -= secutityMain.PriceStep * Scale)
-			{
-				IndexesQuotes.TryAdd(i, index);
-				localQuotesBuild.Add(MarketDepthLevel.GetEmptyLevel(i));
-				//LocalQuotesBuild.Add(new MarketDepthLevel() { Ask = 1, Price = i, });
-				index++;
-			}
-
-			Console.WriteLine($" {secutityMain.Isin} Created INITIAL EMPTY QUOTES SCALE {Scale}");
-
-			//Quotes = localQuotesBuild;
-
-			return localQuotesBuild;
-
-
-			//пришлось засунуть местами плохо работает.. 
-			//InvokeAsync(StateHasChanged);
-
-			//QuotesGrid.Rebind();
-
-
-
-		}
-		catch (Exception ex)
-		{
-			Console.WriteLine(ex.Message);
-			return null;
-
-		}
-
-	}
-
-	public decimal savedAgregatedBestbid { get; set; }
-
-	bool skipped = false;
-
-	// public async void ScrollOrderBookTo(int index)
-	// {
-	//        if (QuotesGrid != null)
-	//        {
-	//            skipped = true;
-	//            var state = QuotesGrid.GetState();
-	//            var scrollindex = index - 10;
-	//            state.Skip = scrollindex;
-	//            Console.WriteLine($"Scrolling to {state.Skip} bestbid={Quotes[index].Price} price = {Quotes[scrollindex].Price}");
-	//            await QuotesGrid.SetStateAsync(state);
-	//        }
-	//    }
-
-	public async Task ScrollTo <T>(int index,TelerikGrid <T> _grid)
-	{
-
-		if (_grid != null)
-		{
-			skipped = true;
-			var state = _grid.GetState();
-			//TODO по хорошему надо выяснить сколько элементов показывается на экране... 
-			var scrollindex = index - 20;
-			state.Skip = scrollindex;
-
-			//TODO: Может выскочить ошибка
-			//Console.WriteLine($"Scrolling to {state.Skip} bestbid={Quotes[index].Price} price = {Quotes[scrollindex].Price}");
-			await _grid.SetStateAsync(state);
-		}
-
-	}
-
-
-	/// <summary>
-	/// Придется сравнивать прошлый вариант с новым. 
-	/// </summary>
-	/// <param name="newquotes"></param>
-	private ConcurrentDictionary<decimal, MarketDepthLevel> ScaleBuilderQuotes(ConcurrentDictionary<decimal, MarketDepthLevel> newquotes)
-	{
-
-		//здесь не может быть пустых уровней 
-		ConcurrentDictionary<decimal, MarketDepthLevel> QuotesAgregated = new ();
-		foreach (var level in newquotes)
-		{
-			decimal agrregatedlevel = level.Key - level.Key % (secutityMain.PriceStep * Scale);
-
-			//Console.WriteLine($"Agregated Level {agrregatedlevel}");
-
-			if (!QuotesAgregated.ContainsKey(agrregatedlevel))
-			{
-				QuotesAgregated[agrregatedlevel] = new MarketDepthLevel()
+                RemoveOrderClick(item);
+                return Task.CompletedTask;
+            }
+
+            var order = new ClientOrder()
                 {
-                    Bid = level.Value.Bid,
-                    Ask = level.Value.Ask,
-                    Price = agrregatedlevel,
+                    SecID = secutityMain.id,
+                    Side = item.Type,
+                    Volume = orderVolume,
+                    Price = item.Price,
+                    Market = false,
                 };
-			}
-			else
-			{
-				//в середине получается мы постоянно имеет и бид и аск.
-				if (level.Value.Type != QuotesAgregated[agrregatedlevel].Type)
-				{
 
-				}
+            Console.WriteLine($"Sending order price = {order.Price} side = {order.Side}");
 
-				if (level.Value.Type == Side.Buy)
-					QuotesAgregated[agrregatedlevel].Bid += level.Value.Bid;
+            //ApiDataService.SendOrder(order);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
 
-				if (level.Value.Type == Side.Sell)
-					QuotesAgregated[agrregatedlevel].Ask += level.Value.Ask;
-			}
-		}
+        return Task.CompletedTask;
+    }
 
-		return QuotesAgregated;
+    private void RemoveOrderClick(MarketDepthLevel level)
+    {
 
-		#region Для теста того что мы насобрали
+        // Orders.TryGetValue(level.Price, out var _order);
 
-		// var sorteddictionary = QuotesAgregated.Values.OrderByDescending(s => s.Price).ToList();
-		// foreach (var level in sorteddictionary)
-		// {
-		//     if (level.Ask!=0 && level.Bid!=0)
-		//         Console.WriteLine($"SPECIAL! ");
-		//     Console.WriteLine($" BID={level.Bid} ASK ={level.Ask} PRICE = {level.Price}");
-		// }
+        // if (_order == null)
+        // 	Console.WriteLine("No Order Found in Row");
+
+        // ApiDataService.CancelOrder(_order);
+    }
 
 
-		#endregion
+    protected override bool ShouldRender()
+    {
 
-		//теперь мы должны сравнить прошлый и обновить индексы. 
+        // была попытка перевести
+        Console.WriteLine($"{DateTime.Now} Should {secutityMain.Isin} Render WorkWindow");
 
-		//CompareOldWithNewAndPlaceIndexes(QuotesAgregated,null);
+        // if (lastsecHashOpened == secutityMain.SpecialHash)
+        // {
+        //     //TODO: Indicate that was opened last one
+        //     Console.WriteLine($"RENDERING SHOULD {secutityMain.Isin} LAST");
+        //     ApiDataService.LastWindowWasOpened();
+        //     return true;
+        // }
 
-	}
+        // if (lastsecHashOpened == "")
+        // {
+        //     Console.WriteLine($"RENDERING EMPTY {secutityMain.Isin} ");
+        //     return true;
+        // }
 
-	//QuotesDictionary - old
+        // Console.WriteLine($"NOT RENDERING {secutityMain.Isin} ");
+        // return false;
 
-	bool logquotes = false;
+        return base.ShouldRender();
+    }
 
-
-	private decimal GetRestVolumeFromOrders(decimal price)
-	{
-		if (Orders.ContainsKey(price))
-			return Orders[price].VolumeExecuted;
-
-		return 0;
-
-	}
-
-	private List<MarketDepthLevel> CompareOldWithNewAndPlaceIndexes
-	(ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes,
-		ConcurrentDictionary<decimal, MarketDepthLevel> oldQuotes , ICollection<MarketDepthLevel> _quotesList,bool crypto)
-	{
-
-		var copy = _quotesList.ToList();
-
-		if (!crypto)
-		{
-			foreach (var quoteKey in oldQuotes.Keys.ToList())
-			{
-
-				if (!newdictionaryQuotes.ContainsKey(quoteKey))
-				{
-					//меняем коллекицю внутри цикла
-					oldQuotes.TryRemove(quoteKey, out var _);
-
-					//Уровень удален.. 
-					//Значит кидаем 0
-					if (!IndexesQuotes.ContainsKey(quoteKey))
-						continue;
-
-					var indexfound = IndexesQuotes[quoteKey];
-					//меняем на нулевой
-
-					var emptylevel = MarketDepthLevel.GetEmptyLevel(quoteKey);
-
-					//_quotesList[indexfound] = emptylevel;
-					copy[indexfound] = emptylevel;
-
-					if (logquotes)
-						Console.WriteLine($" {secutityMain.id} Level removed {quoteKey} index = {indexfound}");
-
-				}
-				else
-				{
-					//новая котировка
-					var freshQuote = newdictionaryQuotes[quoteKey];
-					var oldquote = oldQuotes[quoteKey];
-
-					if (oldquote != freshQuote)
-					{
-						oldQuotes[quoteKey] = freshQuote;
-
-						if (!IndexesQuotes.ContainsKey(quoteKey))
-							continue;
-
-						//Поменялась котировочка.. 
-						var indexfound = IndexesQuotes[quoteKey];
-
-						//_quotesList[indexfound] = freshQuote;
-						copy[indexfound] = freshQuote;
-
-						if (logquotes)
-							Console.WriteLine($" {secutityMain.id} Level Changed! {quoteKey} index = {indexfound}");
-
-					}
-
-				}
+    DateTime lasttime = DateTime.Now;
+    int counter = 0;
 
 
-			}
+    int lasttradetickTime { get; set; } = -1;
 
-			foreach (var quoteKey in newdictionaryQuotes.Keys.ToList())
-			{
-				//в нашей колекции нет нового уровня... 
-				if (!oldQuotes.ContainsKey(quoteKey))
-				{
-					oldQuotes[quoteKey] = newdictionaryQuotes[quoteKey];
+    private void ProcessClusterTick(List<TradeApi> ticks)
+    {
 
-					if (!IndexesQuotes.ContainsKey(quoteKey))
-						continue;
+        var copyclusters = ClusterDatas.ToList();
 
-					var indexfound = IndexesQuotes[quoteKey];
+        foreach (var tick in ticks)
+        {
+            var agregatingTime = tick.Time.Minute - tick.Time.Minute % 5;
 
-					//_quotesList[indexfound] = newdictionaryQuotes[quoteKey];
-					copy[indexfound] = newdictionaryQuotes[quoteKey];
+            //Console.WriteLine($"real time {DateTime.Now} agreagatedtime = {agregatingTime}");
 
-					if (logquotes)
-						Console.WriteLine($" {secutityMain.id} Level Added! {quoteKey} index = {indexfound}");
+            if (agregatingTime != lasttradetickTime)
+            {
+                Console.WriteLine($"Time For clusters Updated lastmintime={agregatingTime} timeNow = {lasttradetickTime}");
 
-				}
-			}
-		}
-		else
-		{
-			foreach (var quoteKey in newdictionaryQuotes.Keys.ToList())
-			{
-				//в нашей колекции нет нового уровня... 
-				oldQuotes[quoteKey] = newdictionaryQuotes[quoteKey];
+                foreach (var cluster in copyclusters)
+                {
+                    cluster.AskVolume = 0;
+                    cluster.BidVolume = 0;
+                }
 
-				if (!IndexesQuotes.ContainsKey(quoteKey))
-					continue;
+                Console.WriteLine($"Cluster Table Empty");
 
-				var indexfound = IndexesQuotes[quoteKey];
+                lasttradetickTime = agregatingTime;
+            }
 
-				//_quotesList[indexfound] = newdictionaryQuotes[quoteKey];
-				copy[indexfound] = newdictionaryQuotes[quoteKey];
+            decimal tickAgregatedLevel = tick.Price - tick.Price % (secutityMain.PriceStep * Scale);
 
-				if (logquotes)
-					Console.WriteLine($" {secutityMain.id} Level Added! {quoteKey} index = {indexfound}");
-			}
-		}
+            if (IndexesQuotes.ContainsKey(tickAgregatedLevel) && copyclusters.Count != 0)
+            {
+                var index = IndexesQuotes[tickAgregatedLevel];
 
 
-		return copy;
+                var lastclusterItem = (ClusterLevel)copyclusters[index].Clone();
 
-	}
+                if (tick.Side == Side.Sell)
+                    lastclusterItem.AskVolume += tick.Volume;
+                if (tick.Side == Side.Buy)
+                    lastclusterItem.BidVolume += tick.Volume;
 
-	private ConcurrentDictionary<decimal, MarketDepthLevel> BuildMarketDepthDictionary(List<MarketDepthLevel> bids, List<MarketDepthLevel> asks)
-	{
-		var newdictionaryQuotes = new ConcurrentDictionary<decimal, MarketDepthLevel>();
-		foreach (var bid in bids)
-		{
-			newdictionaryQuotes.TryAdd(bid.Price, bid);
-		}
+                copyclusters[index] = lastclusterItem;
 
-		foreach (var ask in asks)
-		{
-			newdictionaryQuotes.TryAdd(ask.Price, ask);
-		}
+                //Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
+            }
+        }
 
-		return newdictionaryQuotes;
-	}
+        ClusterDatas = copyclusters;
+    }
 
-	public decimal bestbid { get; set; }
+    private async void OnNewTicks(string secID, List<TradeApi> ticks)
+    {
+        bool boolshouldrender = false;
+
+        if (secID != secutityMain.id)
+            return;
+
+        if (IndexesQuotes.Count != 0 && bestbidIndex != 0)
+        {
+            ProcessClusterTick(ticks);
+            UpdateClastersGrid();
+
+            if (ChartComponent != null)
+                ChartComponent.ProcessTicks(ticks);
+
+        }
+
+        //Chart2.Refresh();
+        //к сожалению нужно обновлению, а это означает что придется переносить все компоненты
+        //InvokeAsync(StateHasChanged);
+        //UpdateChart();
+
+    }
+
+    ConcurrentDictionary<decimal, MarketDepthLevel> QuotesDictionary = new();
+
+    /// <summary>
+    ///Хранит информацию
+    /// </summary>
+    Dictionary<decimal, int> IndexesQuotes = new Dictionary<decimal, int>();
 
 
-	public double minchart { get; set; }// = 0;
-	public double maxchart { get; set; }// = 10;
+    private List<ClusterLevel> BuildEmptyClusterLevels(ICollection<MarketDepthLevel> _initialOrderBook)
+    {
+        var localclustersbuild = new List<ClusterLevel>();
 
-	public TelerikChart Chart2 { get; set; }
+        foreach (var level in _initialOrderBook)
+        {
+            localclustersbuild.Add(new ClusterLevel() { Price = level.Price });
+        }
 
-	private int prevbestbid = 0;
-	private void UpdateBestBidIndex(decimal _bestbid)
-	{
-		if (IndexesQuotes.ContainsKey(_bestbid))
-		{
-			bestbidIndex = IndexesQuotes[_bestbid];
+        return localclustersbuild;
+
+    }
+
+    private void UpdateQuotesGrid()
+    {
+        InvokeAsync(() =>
+        {
+
+            try
+            {
+                QuotesGrid.Data = Quotes;
+                QuotesGrid?.Rebind();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }).GetAwaiter().GetResult();
+    }
+
+    private void UpdateClastersGrid()
+    {
+        InvokeAsync(() =>
+        {
+            try
+            {
+                ClustersGrid.Data = ClusterDatas;
+                ClustersGrid?.Rebind();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }).GetAwaiter().GetResult();
+    }
+
+
+    private void UpdateChart()
+    {
+        InvokeAsync(() =>
+        {
+            try
+            {
+                Chart2.Refresh();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }).GetAwaiter().GetResult();
+    }
+
+
+
+    private ObservableCollection<MarketDepthLevel> BuildInitialQuotes(decimal bestbid)
+    {
+        try
+        {
+            int levels = 3000;
+
+            //округление
+            // var min = (bestbid * 0.7m);
+
+            decimal agrregatedlevel = bestbid - bestbid % (secutityMain.PriceStep * Scale);
+
+
+            //previous
+            // var min = bestbid - levels * secutityMain.PriceStep * Scale;
+            // var realmin = min - min % secutityMain.PriceStep * Scale;
+            // var max = bestbid + levels * secutityMain.PriceStep;
+            // var realmax = max - max % secutityMain.PriceStep;
+
+            //new
+            var realmin = agrregatedlevel - levels * secutityMain.PriceStep * Scale;
+            var realmax = agrregatedlevel + levels * secutityMain.PriceStep * Scale;
+
+            Console.WriteLine($"secid={secutityMain.id} maxSEC ={secutityMain.PriceLimitHigh} minSEC= {secutityMain.PriceLimitLow} ");
+            Console.WriteLine($"secid={secutityMain.id} BESTBID ={bestbid} MIN {realmin} MAX {realmax}");
+
+            int index = 0;
+
+            ObservableCollection<MarketDepthLevel> localQuotesBuild = new();
+
+            // for (decimal i = realmin; i < realmax; i += secutityMain.PriceStep)
+            // {
+            // 	IndexesQuotes.TryAdd(i, index);
+            // 	localQuotesBuild.Add(MarketDepthLevel.GetEmptyLevel(i));
+            // 	//LocalQuotesBuild.Add(new MarketDepthLevel() { Ask = 1, Price = i, });
+            // 	index++;
+            // }
+
+            if (Quotes == null)
+                Quotes = new();
+            else
+                Quotes.Clear();
+
+            IndexesQuotes.Clear();
+
+            for (decimal i = realmax; i > realmin; i -= secutityMain.PriceStep * Scale)
+            {
+                IndexesQuotes.TryAdd(i, index);
+                localQuotesBuild.Add(MarketDepthLevel.GetEmptyLevel(i));
+                //LocalQuotesBuild.Add(new MarketDepthLevel() { Ask = 1, Price = i, });
+                index++;
+            }
+
+            Console.WriteLine($" {secutityMain.Isin} Created INITIAL EMPTY QUOTES SCALE {Scale}");
+
+            //Quotes = localQuotesBuild;
+
+            return localQuotesBuild;
+
+
+            //пришлось засунуть местами плохо работает..
+            //InvokeAsync(StateHasChanged);
+
+            //QuotesGrid.Rebind();
+
+
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            return null;
+
+        }
+
+    }
+
+    public decimal savedAgregatedBestbid { get; set; }
+
+    bool skipped = false;
+
+    // public async void ScrollOrderBookTo(int index)
+    // {
+    //        if (QuotesGrid != null)
+    //        {
+    //            skipped = true;
+    //            var state = QuotesGrid.GetState();
+    //            var scrollindex = index - 10;
+    //            state.Skip = scrollindex;
+    //            Console.WriteLine($"Scrolling to {state.Skip} bestbid={Quotes[index].Price} price = {Quotes[scrollindex].Price}");
+    //            await QuotesGrid.SetStateAsync(state);
+    //        }
+    //    }
+
+    public async Task ScrollTo<T>(int index, TelerikGrid<T> _grid)
+    {
+
+        if (_grid != null)
+        {
+            skipped = true;
+            var state = _grid.GetState();
+            //TODO по хорошему надо выяснить сколько элементов показывается на экране...
+            var scrollindex = index - 20;
+            state.Skip = scrollindex;
+
+            //TODO: Может выскочить ошибка
+            //Console.WriteLine($"Scrolling to {state.Skip} bestbid={Quotes[index].Price} price = {Quotes[scrollindex].Price}");
+            await _grid.SetStateAsync(state);
+        }
+
+    }
+
+
+    /// <summary>
+    /// Придется сравнивать прошлый вариант с новым.
+    /// </summary>
+    /// <param name="newquotes"></param>
+    private ConcurrentDictionary<decimal, MarketDepthLevel> ScaleBuilderQuotes(ConcurrentDictionary<decimal, MarketDepthLevel> newquotes)
+    {
+
+        //здесь не может быть пустых уровней
+        ConcurrentDictionary<decimal, MarketDepthLevel> QuotesAgregated = new();
+        foreach (var level in newquotes)
+        {
+            decimal agrregatedlevel = level.Key - level.Key % (secutityMain.PriceStep * Scale);
+
+            //Console.WriteLine($"Agregated Level {agrregatedlevel}");
+
+            if (!QuotesAgregated.ContainsKey(agrregatedlevel))
+            {
+                QuotesAgregated[agrregatedlevel] = new MarketDepthLevel()
+                    {
+                        Bid = level.Value.Bid,
+                        Ask = level.Value.Ask,
+                        Price = agrregatedlevel,
+                    };
+            }
+            else
+            {
+                //в середине получается мы постоянно имеет и бид и аск.
+                if (level.Value.Type != QuotesAgregated[agrregatedlevel].Type)
+                {
+
+                }
+
+                if (level.Value.Type == Side.Buy)
+                    QuotesAgregated[agrregatedlevel].Bid += level.Value.Bid;
+
+                if (level.Value.Type == Side.Sell)
+                    QuotesAgregated[agrregatedlevel].Ask += level.Value.Ask;
+            }
+        }
+
+        return QuotesAgregated;
+
+        #region Для теста того что мы насобрали
+
+        // var sorteddictionary = QuotesAgregated.Values.OrderByDescending(s => s.Price).ToList();
+        // foreach (var level in sorteddictionary)
+        // {
+        //     if (level.Ask!=0 && level.Bid!=0)
+        //         Console.WriteLine($"SPECIAL! ");
+        //     Console.WriteLine($" BID={level.Bid} ASK ={level.Ask} PRICE = {level.Price}");
+        // }
+
+
+        #endregion
+
+        //теперь мы должны сравнить прошлый и обновить индексы.
+
+        //CompareOldWithNewAndPlaceIndexes(QuotesAgregated,null);
+
+    }
+
+    //QuotesDictionary - old
+
+    bool logquotes = false;
+
+
+    private decimal GetRestVolumeFromOrders(decimal price)
+    {
+        if (Orders.ContainsKey(price))
+            return Orders[price].VolumeExecuted;
+
+        return 0;
+
+    }
+
+    private List<MarketDepthLevel> CompareOldWithNewAndPlaceIndexes
+    (ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes,
+        ConcurrentDictionary<decimal, MarketDepthLevel> oldQuotes, ICollection<MarketDepthLevel> _quotesList, bool crypto)
+    {
+
+        var copy = _quotesList.ToList();
+
+        if (!crypto)
+        {
+            foreach (var quoteKey in oldQuotes.Keys.ToList())
+            {
+
+                if (!newdictionaryQuotes.ContainsKey(quoteKey))
+                {
+                    //меняем коллекицю внутри цикла
+                    oldQuotes.TryRemove(quoteKey, out var _);
+
+                    //Уровень удален..
+                    //Значит кидаем 0
+                    if (!IndexesQuotes.ContainsKey(quoteKey))
+                        continue;
+
+                    var indexfound = IndexesQuotes[quoteKey];
+                    //меняем на нулевой
+
+                    var emptylevel = MarketDepthLevel.GetEmptyLevel(quoteKey);
+
+                    //_quotesList[indexfound] = emptylevel;
+                    copy[indexfound] = emptylevel;
+
+                    if (logquotes)
+                        Console.WriteLine($" {secutityMain.id} Level removed {quoteKey} index = {indexfound}");
+
+                }
+                else
+                {
+                    //новая котировка
+                    var freshQuote = newdictionaryQuotes[quoteKey];
+                    var oldquote = oldQuotes[quoteKey];
+
+                    if (oldquote != freshQuote)
+                    {
+                        oldQuotes[quoteKey] = freshQuote;
+
+                        if (!IndexesQuotes.ContainsKey(quoteKey))
+                            continue;
+
+                        //Поменялась котировочка..
+                        var indexfound = IndexesQuotes[quoteKey];
+
+                        //_quotesList[indexfound] = freshQuote;
+                        copy[indexfound] = freshQuote;
+
+                        if (logquotes)
+                            Console.WriteLine($" {secutityMain.id} Level Changed! {quoteKey} index = {indexfound}");
+
+                    }
+
+                }
+
+
+            }
+
+            foreach (var quoteKey in newdictionaryQuotes.Keys.ToList())
+            {
+                //в нашей колекции нет нового уровня...
+                if (!oldQuotes.ContainsKey(quoteKey))
+                {
+                    oldQuotes[quoteKey] = newdictionaryQuotes[quoteKey];
+
+                    if (!IndexesQuotes.ContainsKey(quoteKey))
+                        continue;
+
+                    var indexfound = IndexesQuotes[quoteKey];
+
+                    //_quotesList[indexfound] = newdictionaryQuotes[quoteKey];
+                    copy[indexfound] = newdictionaryQuotes[quoteKey];
+
+                    if (logquotes)
+                        Console.WriteLine($" {secutityMain.id} Level Added! {quoteKey} index = {indexfound}");
+
+                }
+            }
+        }
+        else
+        {
+            foreach (var quoteKey in newdictionaryQuotes.Keys.ToList())
+            {
+                //в нашей колекции нет нового уровня...
+                oldQuotes[quoteKey] = newdictionaryQuotes[quoteKey];
+
+                if (!IndexesQuotes.ContainsKey(quoteKey))
+                    continue;
+
+                var indexfound = IndexesQuotes[quoteKey];
+
+                //_quotesList[indexfound] = newdictionaryQuotes[quoteKey];
+                copy[indexfound] = newdictionaryQuotes[quoteKey];
+
+                if (logquotes)
+                    Console.WriteLine($" {secutityMain.id} Level Added! {quoteKey} index = {indexfound}");
+            }
+        }
+
+
+        return copy;
+
+    }
+
+    private ConcurrentDictionary<decimal, MarketDepthLevel> BuildMarketDepthDictionary(List<MarketDepthLevel> bids, List<MarketDepthLevel> asks)
+    {
+        var newdictionaryQuotes = new ConcurrentDictionary<decimal, MarketDepthLevel>();
+        foreach (var bid in bids)
+        {
+            newdictionaryQuotes.TryAdd(bid.Price, bid);
+        }
+
+        foreach (var ask in asks)
+        {
+            newdictionaryQuotes.TryAdd(ask.Price, ask);
+        }
+
+        return newdictionaryQuotes;
+    }
+
+    public decimal bestbid { get; set; }
+
+
+    public double minchart { get; set; }// = 0;
+    public double maxchart { get; set; }// = 10;
+
+    public TelerikChart Chart2 { get; set; }
+
+    private int prevbestbid = 0;
+    private void UpdateBestBidIndex(decimal _bestbid)
+    {
+        if (IndexesQuotes.ContainsKey(_bestbid))
+        {
+            bestbidIndex = IndexesQuotes[_bestbid];
 
             if (prevbestbid != bestbidIndex)
             {
-               // Console.WriteLine($"New BestBid Index {bestbidIndex} prev={prevbestbid}");
+                // Console.WriteLine($"New BestBid Index {bestbidIndex} prev={prevbestbid}");
             }
 
             prevbestbid = bestbidIndex;
-		}
-	}
+        }
+    }
 
 
-	//симуляция погано работает. 
-	//TODO: вынести нормально в настройки или в самом обьекте передавать
-	bool real = true;
-	bool initial = false;
+    //симуляция погано работает.
+    //TODO: вынести нормально в настройки или в самом обьекте передавать
+    bool real = true;
+    bool initial = false;
 
-	object scalelocker = new object();
+    object scalelocker = new object();
 
 
-	//if (prevbuildScale != Scale)
-	private void AlgoQuotesScale(int newscale, ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes, decimal bestbbid, bool crypto, decimal agregatedBestbid)
-	{
-		//поменялся масштаб
-		if (newscale != prevbuildScale)
-		{
-			//Применяем масштаб (даже если 1)
-			//строим пустой стакан на всю длину
-			var initialquotes = BuildInitialQuotes(bestbbid);
-			QuotesDictionary.Clear();
+    //if (prevbuildScale != Scale)
+    private void AlgoQuotesScale(int newscale, ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes, decimal bestbbid, bool crypto, decimal agregatedBestbid)
+    {
+        //поменялся масштаб
+        if (newscale != prevbuildScale)
+        {
+            //Применяем масштаб (даже если 1)
+            //строим пустой стакан на всю длину
+            var initialquotes = BuildInitialQuotes(bestbbid);
+            QuotesDictionary.Clear();
 
-			//TODO: исправить временная фикса
-			Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, initialquotes, crypto);
-			ClusterDatas = BuildEmptyClusterLevels(initialquotes);
-			//UpdateQuotesGrid();
+            //TODO: исправить временная фикса
+            Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, initialquotes, crypto);
+            ClusterDatas = BuildEmptyClusterLevels(initialquotes);
+            //UpdateQuotesGrid();
 
-			UpdateBestBidIndex(agregatedBestbid);
+            UpdateBestBidIndex(agregatedBestbid);
 
-			//TODO: вот это мракобесие надо выносить в отдельный компонент
+            //TODO: вот это мракобесие надо выносить в отдельный компонент
 
-			StateHasChanged();
+            StateHasChanged();
 
-			ScrollTo(bestbidIndex, QuotesGrid);
+            ScrollTo(bestbidIndex, QuotesGrid);
             ScrollTo(bestbidIndex, ClustersGrid);
-			// ---- теперь тоже саоме по кластерам //
+            // ---- теперь тоже саоме по кластерам //
 
 
-			//UpdateClastersGrid();
+            //UpdateClastersGrid();
 
-			//ScrollTo(bestbidIndex, ClustersGrid);
+            //ScrollTo(bestbidIndex, ClustersGrid);
 
-			initial = false;
+            initial = false;
 
-			prevbuildScale = Scale;
-		}
-		else
-		{
-			//TODO: Крипта пока что вшита напрямую,
-			Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary,Quotes,true);
-			UpdateQuotesGrid();
-		}
+            prevbuildScale = Scale;
+        }
+        else
+        {
+            //TODO: Крипта пока что вшита напрямую,
+            Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, Quotes, true);
+            UpdateQuotesGrid();
+        }
 
-		UpdateBestBidIndex(agregatedBestbid);
-	}
+        UpdateBestBidIndex(agregatedBestbid);
+    }
 
-	private void OnNewMarketDepth(List<MarketDepthLevel> bids, List<MarketDepthLevel> asks, string secID)
-	{
-		if (secID != secutityMain.id)
-			return;
+    private void OnNewMarketDepth(List<MarketDepthLevel> bids, List<MarketDepthLevel> asks, string secID)
+    {
+        if (secID != secutityMain.id)
+            return;
 
-		//с бинанса может такой апдейт прийти
-		if(bids.Count!=0)
-			usualbestbid = real ? bids[0].Price : asks[0].Price;
+        //с бинанса может такой апдейт прийти
+        if (bids.Count != 0)
+            usualbestbid = real ? bids[0].Price : asks[0].Price;
 
-		lock (scalelocker)
-		{
+        lock (scalelocker)
+        {
             savedAgregatedBestbid = usualbestbid - usualbestbid % (secutityMain.PriceStep * Scale);
-			var easyDictionaryCurrent = BuildMarketDepthDictionary(bids, asks);
+            var easyDictionaryCurrent = BuildMarketDepthDictionary(bids, asks);
 
-			newdictionaryQuotes = ScaleBuilderQuotes(easyDictionaryCurrent);
-			AlgoQuotesScale(Scale, newdictionaryQuotes, usualbestbid, true, savedAgregatedBestbid);
-		}
-	}
+            newdictionaryQuotes = ScaleBuilderQuotes(easyDictionaryCurrent);
+            AlgoQuotesScale(Scale, newdictionaryQuotes, usualbestbid, true, savedAgregatedBestbid);
+        }
+    }
 
-	public decimal minbid
-	{ get; set; }
+    public decimal minbid
+    { get; set; }
 
-	public decimal maxask { get; set; }
+    public decimal maxask { get; set; }
 
-	//Половина видимых индексов
-	public decimal middleamountofitems { get; set; } = 20;
-	public Chart ChartComponent { get; set; }
-	public int pagesize { get; set; } = 150;
+    //Половина видимых индексов
+    public decimal middleamountofitems { get; set; } = 20;
+    public Chart ChartComponent { get; set; }
+    public int pagesize { get; set; } = 150;
 
 
     private void NewMyOrder(Order myorder)
-	{
-		try{
-	/*if (myorder.SecurityId != secutityMain.id)
-	return;
+    {
+        try
+        {
+            /*if (myorder.SecurityId != secutityMain.id)
+            return;
 
-	Console.WriteLine($"New Order {myorder.SecurityId} side = {myorder.Side} price {myorder.PriceOrder} state {myorder.State}");
+            Console.WriteLine($"New Order {myorder.SecurityId} side = {myorder.Side} price {myorder.PriceOrder} state {myorder.State}");
 
-			if (myorder.State == Order.OrderStateType.Activ || myorder.State == Order.OrderStateType.Partial)
-			{
-			Orders[myorder.PriceOrder] = myorder;
-			Quotes[IndexesQuotes[myorder.PriceOrder]];
+                    if (myorder.State == Order.OrderStateType.Activ || myorder.State == Order.OrderStateType.Partial)
+                        {
+                        Orders[myorder.PriceOrder] = myorder;
+                        Quotes[IndexesQuotes[myorder.PriceOrder]];
 
-			UpdateOrdersAndGrid();
-				}
-				else if (myorder.State == Order.OrderStateType.Done
-				|| myorder.State == Order.OrderStateType.Fail
-			|| myorder.State == Order.OrderStateType.Cancel)
-						{
+                        UpdateOrdersAndGrid();
+                        }
+                        else if (myorder.State == Order.OrderStateType.Done
+                        || myorder.State == Order.OrderStateType.Fail
+                    || myorder.State == Order.OrderStateType.Cancel)
+                                {
 
-						Console.WriteLine($"Removing Order {myorder.SecurityId} price {myorder.PriceOrder} state {myorder.State}");
+                                Console.WriteLine($"Removing Order {myorder.SecurityId} price {myorder.PriceOrder} state {myorder.State}");
 
-				Orders.Remove(myorder.PriceOrder, out var _);
+                        Orders.Remove(myorder.PriceOrder, out var _);
 
-				if (LastCalculatedQuotesDictionary.ContainsKey(myorder.PriceOrder))
-				LastCalculatedQuotesDictionary[myorder.PriceOrder].RestVolume = null;
+                        if (LastCalculatedQuotesDictionary.ContainsKey(myorder.PriceOrder))
+                        LastCalculatedQuotesDictionary[myorder.PriceOrder].RestVolume = null;
 
-					UpdateOrdersAndGrid();
+                            UpdateOrdersAndGrid();
 
-            }*/
-		}
-		catch (Exception ex)
-		{
-			Console.WriteLine(ex.Message);
-		}
-	}
+                    }*/
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
 
-	private void OnKeyDown(string windowId, string keyCode, bool isCtrl, bool isShift)
-	{
-		try
-		{
-			if (windowId != secutityMain.SpecialHash)
-				return;
-
-
-			if (keyCode == "KeyM")
-			{
-			//двигаем в середину
-
-				ScrollTo(bestbidIndex,QuotesGrid);
-			}
-
-			if (keyCode == cancelHotKey)
-			{
-			/* foreach (var order in Orders)
-				{
-				ApiDataService.CancelOrder(order.Value);
-					} */
-			}
-
-			if (keyCode == plusHotKey)
-			{
-				if (Scale >= 5)
-				{
-					var newScale = Scale - 5;
-
-					if (newScale == 0)
-						Scale = 1;
-					else Scale=newScale;
-
-					Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
-
-				}
-			}
-
-            
-
-			if (keyCode == minusHotKey)
-			{
-				if (Scale == 1)
-					Scale += 4;
-				else Scale += 5;
-				//UpdateAll();
-
-				Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
-			}
-
-				/*  if (keyCode == "Backspace")
-			{
-				JSRuntime.InvokeVoidAsync("scrollToRow", GridTableId, 30);
-				} */
-		}
-		catch (Exception ex)
-		{
-			Console.WriteLine(ex.Message);
-		}
-
-		//Console.WriteLine($"{keyCode} {windowId}");
-	}
+    private void OnKeyDown(string windowId, string keyCode, bool isCtrl, bool isShift)
+    {
+        try
+        {
+            if (windowId != secutityMain.SpecialHash)
+                return;
 
 
-	//------------ графика ------------//
+            if (keyCode == "KeyM")
+            {
+                //двигаем в середину
+
+                ScrollTo(bestbidIndex, QuotesGrid);
+            }
+
+            if (keyCode == cancelHotKey)
+            {
+                /* foreach (var order in Orders)
+                    {
+                    ApiDataService.CancelOrder(order.Value);
+                        } */
+            }
+
+            if (keyCode == plusHotKey)
+            {
+                if (Scale >= 5)
+                {
+                    var newScale = Scale - 5;
+
+                    if (newScale == 0)
+                        Scale = 1;
+                    else Scale = newScale;
+
+                    Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
+
+                }
+            }
 
 
-	private string GetClassForClusters(ClusterLevel _clusterLevel)
-	{
-		if (_clusterLevel.Volume == 0 || _clusterLevel.Volume == null)
-		{
-			return "transparent-item";
-		}
 
-		return _clusterLevel.BidVolume<_clusterLevel.AskVolume ? "highlighted-item" : "highlighted-item2";
-	}
+            if (keyCode == minusHotKey)
+            {
+                if (Scale == 1)
+                    Scale += 4;
+                else Scale += 5;
+                //UpdateAll();
 
-	public string GetClassForQuote(MarketDepthLevel quote)
-	{
+                Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
+            }
 
-		if (quote.Volume == 0 || quote.Volume == null)
-		{
-			return "transparent-item";
-		}
+            /*  if (keyCode == "Backspace")
+                {
+                JSRuntime.InvokeVoidAsync("scrollToRow", GridTableId, 30);
+                } */
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
 
-		return quote.Type == Side.Sell ? "highlighted-item" : "highlighted-item2";
+        //Console.WriteLine($"{keyCode} {windowId}");
+    }
 
-	}
 
-		/*protected void PrepareSeriesPoint(ChartSeriesPointCustomizationSettings pointSettings)
+    //------------ графика ------------//
+
+
+    private string GetClassForClusters(ClusterLevel _clusterLevel)
+    {
+        if (_clusterLevel.Volume == 0 || _clusterLevel.Volume == null)
+        {
+            return "transparent-item";
+        }
+
+        return _clusterLevel.BidVolume < _clusterLevel.AskVolume ? "highlighted-item" : "highlighted-item2";
+    }
+
+    private string GetStyleForQuote(MarketDepthLevel quote)
+    {
+        // Максимальное значение, соответствующее 100%
+        int maxVolume = 50000;
+
+        int percentage = (int)((quote.Volume / (decimal)maxVolume) * 100);
+
+        string gradient = "";
+
+        if (quote.Volume == 0 || quote.Volume == null)
+        {
+            gradient = $"linear-gradient(to right, #c7a805 {percentage}%, #ffffff {percentage}%)";
+        }
+        else
+        {
+            if (percentage <= 100)
+            {
+                gradient = quote.Type == Side.Sell
+                    ? $"linear-gradient(to right, #c7a805 {percentage}%, #edc6c6 {percentage}%)"
+                    : $"linear-gradient(to right, #c7a805 {percentage}%, #a0dbc6 {percentage}%)";
+            }
+            else if (percentage <= 200)
+            {
+                int secondStripe = percentage - 100;
+
+                gradient = $"linear-gradient(to right, #f8d0c0 {secondStripe}%, #c7a805 {secondStripe}%)";
+            }
+            else
+            {
+                int thirdStripe = percentage - 200;
+
+                gradient = $"linear-gradient(to right, #c85dd9 {thirdStripe}%, #f8d0c0 {thirdStripe}%)";
+            }
+        }
+
+        return $"background: {gradient};";
+    }
+
+    public string GetClassForQuote(MarketDepthLevel quote)
+    {
+
+        if (quote.Volume == 0 || quote.Volume == null)
+        {
+            return "transparent-item";
+        }
+
+        return quote.Type == Side.Sell ? "highlighted-item" : "highlighted-item2";
+
+    }
+
+    /*protected void PrepareSeriesPoint(ChartSeriesPointCustomizationSettings pointSettings)
 		{
 
 		try
@@ -1405,93 +1450,93 @@
 
 	}*/
 
-	int firstVisibleIndex;
-	int lastVisibleIndex;
-	private ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes;
-	private decimal usualbestbid;
+    int firstVisibleIndex;
+    int lastVisibleIndex;
+    private ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes;
+    private decimal usualbestbid;
 
-	private void OnScroll(string gridTableId, string firstVisibleRowPrice, string lastVisibleRowPrice, int visibleRowCount)
-	{
-		if (gridTableId == GridTableId)
-		{
+    private void OnScroll(string gridTableId, string firstVisibleRowPrice, string lastVisibleRowPrice, int visibleRowCount)
+    {
+        if (gridTableId == GridTableId)
+        {
 
-			maxchart = double.Parse(firstVisibleRowPrice);
-			minchart = double.Parse(lastVisibleRowPrice);
+            maxchart = double.Parse(firstVisibleRowPrice);
+            minchart = double.Parse(lastVisibleRowPrice);
 
             range = (int)((maxchart - minchart) / ((double)secutityMain.PriceStep * Scale * 0.5));
 
-			// maxchart = maxprice;
-			// minchart = minprice;
+            // maxchart = maxprice;
+            // minchart = minprice;
 
-			Console.WriteLine($"Scrolled max = {maxchart} min = {minchart}");
+            Console.WriteLine($"Scrolled max = {maxchart} min = {minchart}");
 
-            if(ChartComponent!=null)
-                ChartComponent.SetMaxMin(maxchart,minchart);
-	
-			//if(Chart!=null)
+            if (ChartComponent != null)
+                ChartComponent.SetMaxMin(maxchart, minchart);
+
+            //if(Chart!=null)
             //Chart.RefreshData();
 
 
-			/*
-			int index = Quotes.FindIndex(q => q.Price.ToString("G29") == firstVisibleRowPrice);
-			if (index > -1)
-			{
-				firstVisibleIndex = index;
-			}
-			index = Quotes.FindIndex(q => q.Price.ToString("G29") == lastVisibleRowPrice);
-			if (index > -1)
-			{
-				lastVisibleIndex = index;
-			} */
+            /*
+            int index = Quotes.FindIndex(q => q.Price.ToString("G29") == firstVisibleRowPrice);
+            if (index > -1)
+            {
+                firstVisibleIndex = index;
+            }
+            index = Quotes.FindIndex(q => q.Price.ToString("G29") == lastVisibleRowPrice);
+            if (index > -1)
+            {
+                lastVisibleIndex = index;
+            } */
 
-           /*  Console.WriteLine($"{firstVisibleIndex} {firstVisibleRowPrice}");
-            Console.WriteLine($"{lastVisibleIndex} {lastVisibleRowPrice}");
-			Console.WriteLine($"Видимые {gridTableId} строки {visibleRowCount}"); */
-		}
+            /*  Console.WriteLine($"{firstVisibleIndex} {firstVisibleRowPrice}");
+             Console.WriteLine($"{lastVisibleIndex} {lastVisibleRowPrice}");
+             Console.WriteLine($"Видимые {gridTableId} строки {visibleRowCount}"); */
+        }
 
-		
 
-		//Console.WriteLine($"{windowId}");
-	}
+
+        //Console.WriteLine($"{windowId}");
+    }
 
     public int range { get; set; }
 
     // protected override Task OnParametersSetAsync()
-	// {
-	// 	GridData = ApiDataServiceTest.GetQuotes();
+    // {
+    // 	GridData = ApiDataServiceTest.GetQuotes();
 
-	// 	ApiDataServiceTest.NewQuoteChange += ProcessQuote;
-	// 	ApiDataServiceTest.SubscribeForQuotes("11");
+    // 	ApiDataServiceTest.NewQuoteChange += ProcessQuote;
+    // 	ApiDataServiceTest.SubscribeForQuotes("11");
 
-	// 	return base.OnParametersSetAsync();
-	// }
+    // 	return base.OnParametersSetAsync();
+    // }
 
-	// public void ProcessQuote(QuoteChange q)
-	// {
-	// 	if (GridData != null)
-	// 	{
-	// 		GridData[q.section] = q.Quote;
-	// 		Console.WriteLine($"updated {q.section} {q.Quote.Price}");
-	// 	}
-	// }
-	public void Dispose()
-	{
-		Console.WriteLine($"Disposing {secutityMain.id}");
+    // public void ProcessQuote(QuoteChange q)
+    // {
+    // 	if (GridData != null)
+    // 	{
+    // 		GridData[q.section] = q.Quote;
+    // 		Console.WriteLine($"updated {q.section} {q.Quote.Price}");
+    // 	}
+    // }
+    public void Dispose()
+    {
+        Console.WriteLine($"Disposing {secutityMain.id}");
 
-		jsInteropService.OnKeyDown -= OnKeyDown;
-		jsInteropService.OnScroll -= OnScroll;
+        jsInteropService.OnKeyDown -= OnKeyDown;
+        jsInteropService.OnScroll -= OnScroll;
 
-		ApiDataService.NewMyOrder -= NewMyOrder;
-		ApiDataService.NewQuotes -= OnNewMarketDepth;
-		ApiDataService.NewTicks -= OnNewTicks;
+        ApiDataService.NewMyOrder -= NewMyOrder;
+        ApiDataService.NewQuotes -= OnNewMarketDepth;
+        ApiDataService.NewTicks -= OnNewTicks;
 
-        if (WebSockets != null) 
-		foreach (var websocketID in WebSockets)
-		{
-			ApiDataService.StopWebSocket(websocketID);
-		}
+        if (WebSockets != null)
+            foreach (var websocketID in WebSockets)
+            {
+                ApiDataService.StopWebSocket(websocketID);
+            }
 
-	}
+    }
 
 
 

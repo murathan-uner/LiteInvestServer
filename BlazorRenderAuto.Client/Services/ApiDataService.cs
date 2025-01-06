@@ -17,6 +17,8 @@ using CryptoExchange.Net.Objects.Sockets;
 using Binance.Net.Objects.Models.Spot;
 using Binance.Net.Interfaces.Clients;
 using Binance.Net.Objects.Models.Spot.Socket;
+using DevExpress.Xpo.Helpers;
+using CryptoExchange.Net.Interfaces;
 
 
 namespace BlazorRenderAuto.Client.Services
@@ -58,6 +60,7 @@ namespace BlazorRenderAuto.Client.Services
 
 		//TODO: Можно тоже соединить напрямую с проектом сервера
 		static string loginrequest = "Common/Login";
+		static string logoutrequest = "Common/LogOut";
 		static string getinstruments = "Trading/GetAllSecurities";
 		static string openInstrument = "Trading/OpenInstrument";
 		static string closeInstrument = "Trading/CloseInstrument";
@@ -129,6 +132,24 @@ namespace BlazorRenderAuto.Client.Services
 				return null;
 			}
 		}
+
+		public async Task<System.Net.HttpStatusCode> LogOut(string login)
+		{
+			var request = new RestRequest(logoutrequest).AddQueryParameter("login", login, false);
+
+			try
+			{
+				var response = await client.PostAsync(request);
+                Console.WriteLine($"Logged Out {response.StatusCode}");
+                token = "";
+
+				return response.StatusCode;
+			}
+            catch (Exception ex)
+            {
+                return System.Net.HttpStatusCode.InternalServerError;
+            }
+        }
 
 		public async Task<Order?> SendOrder(ClientOrder order)
 		{

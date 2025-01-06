@@ -1,0 +1,8 @@
+body{
+    margin: 0px;
+}
+
+.login_button{
+    display: flex;
+    width: 100%
+}

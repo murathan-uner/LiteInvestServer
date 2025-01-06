@@ -10,46 +10,52 @@
 
 
 
-@* <TelerikWindow @bind-Visible=windowVisible
+<TelerikWindow @bind-Visible=windowVisible
 Resizable="true"
-               MinWidth="300"
-               MinHeight="200"
-               Centered="true"
-               Modal="true"
-               MaxWidth="800"
-               CloseOnOverlayClick="true"
-               MaxHeight="500">
-               <WindowContent>
-                    <TelerikForm>
-                       <FormItems>
-                           <FormItem>
+MinWidth="300"
+MinHeight="200"
+Centered="true"
+Modal="true"
+MaxWidth="800"
+CloseOnOverlayClick="true"
+MaxHeight="500">
+    <WindowContent>
+        <TelerikForm Model="@loginInfo">
+            <FormItems>
+                <FormItem Field="@nameof(UserLoginData.Login)">
 
-                           </FormItem>
-                       </FormItems>
-                   </TelerikForm>
-               </WindowContent>
-               <WindowFooter>
-        <TelerikButton OnClick="()=>{windowVisible = !windowVisible;}" Class="popup-button my-1 ms-2">Ok</TelerikButton>
-               </WindowFooter>
-</TelerikWindow> *@
+                </FormItem>
+                <FormItem Field="@nameof(UserLoginData.Password)">
 
-<nav id="header" class="navbar navbar-expand-lg bg-body-tertiary" data-bs-theme="dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="#">LiteInvest</a>
+                </FormItem>
+            </FormItems>
+
+            <FormButtons>
+                <TelerikButton OnClick="OnLoginClick" Class="login_button">Ok</TelerikButton>
+
+            </FormButtons>
+
+        </TelerikForm>
+    </WindowContent>
+</TelerikWindow>
+
+<div class="top-menu">
+    <section class="top-menu__section">
+        <a class="brand" href="/">LiteInvest</a>
         @*         <form class="d-flex internalSearch" role="search">
-            <DxComboBox Data="@Instruments"
-                        ValueFieldName="Isin"
-                        @bind-Value="@SecuritySelected"
-                        TextFieldName="@nameof(SecuritySelected.Isin)"
-                        SearchMode="@ListSearchMode.AutoSearch"
-                        SearchFilterCondition="@ListSearchFilterCondition.Contains"
-                        ListRenderMode="ListRenderMode.Virtual"
-                        CssClass="cw-480"
-                        InputId="cbVirtualScrolling" />
-        </form> *@
+                <DxComboBox Data="@Instruments"
+                            ValueFieldName="Isin"
+                            @bind-Value="@SecuritySelected"
+                            TextFieldName="@nameof(SecuritySelected.Isin)"
+                            SearchMode="@ListSearchMode.AutoSearch"
+                            SearchFilterCondition="@ListSearchFilterCondition.Contains"
+                            ListRenderMode="ListRenderMode.Virtual"
+                            CssClass="cw-480"
+                            InputId="cbVirtualScrolling" />
+            </form> *@
 
-        <form class="d-flex internalSearch" role="search">
-            <TelerikAutoComplete  @ref="TelerikComboBox" Data="@Instruments"
+        <form class="internalSearch" role="search">
+            <TelerikAutoComplete @ref="TelerikComboBox" Data="@Instruments"
             ValueField="@nameof(SecuritySelected.Isin)"
             @bind-Value="@AutoComplete"
             Placeholder="Выберите Инструмент!"
@@ -58,38 +64,69 @@ Resizable="true"
             FilterOperator="@StringFilterOperator.Contains"
             ShowClearButton="true" />
         </form>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        @*     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        Торговля
-                    </a>
-                    <ul class="dropdown-menu">
-                    </ul>
-                </li>
-            </ul>
-            <ul class="nav navbar-nav ml-auto">
-                <!--<li class="nav-item">
-                <a class="nav-link" href="#"><span class="fas fa-user"></span> Sign Up</a>
-                </li>-->
-                <li class="nav-item">
-                    <a class="nav-link" href="#" @onclick="OnLoginClick" @ref="LogInButton"><span class="fas fa-sign-in-alt"></span>@textlogin</a>
-                </li>
-            </ul>
+        </button> *@
+
+        <div>
+            <span>
+                Торговля
+            </span>
         </div>
+    </section>
+
+    <div class="top-menu__login" @onclick="LoginCLick">
+        <span>
+            @textlogin
+        </span>
     </div>
-</nav>
+    @*     <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Торговля
+                </a>
+                <ul class="dropdown-menu">
+                </ul>
+            </li>
+        </ul>
+        <ul class="nav navbar-nav ml-auto">
+            <!--<li class="nav-item">
+            <a class="nav-link" href="#"><span class="fas fa-user"></span> Sign Up</a>
+            </li>-->
+            <li class="nav-item">
+                <a class="nav-link" href="#" @onclick="OnLoginClick" @ref="LogInButton"><span class="fas fa-sign-in-alt"></span>@textlogin</a>
+            </li>
+        </ul>
+    </div> *@
+</div>
 
 
 
 @code
 {
+    private async void LoginCLick(){
+        if (textlogin == "Log In"){
+            windowVisible = true;
+        }
+        else{
+            MouseEventArgs args = new MouseEventArgs();
+            await OnLoginClick(args);
+        }
+    }
+
+    public class UserLoginData
+    {
+        public string Login { get; set; }
+        public string Password { get; set; }
+    };
+
+    //private UserLoginData loginInfo = new UserLoginData("samujan1@yandex.ru", "pass2");
+    private UserLoginData loginInfo = new UserLoginData();
+
     private string lastOnChangeValue { get; set; }
 
-    private async Task OnChangeHandler (object theUserInput)
+    private async Task OnChangeHandler(object theUserInput)
     {
         string currValue = theUserInput as string;
 
@@ -103,7 +140,8 @@ Resizable="true"
             }
         }
     }
-    bool windowVisible;
+
+    bool windowVisible = false;
 
     [Parameter] public Action LoginClicked { get; set; }
     [Parameter] public Action<SecurityApi> NewSecSelected { get; set; }
@@ -135,65 +173,75 @@ Resizable="true"
     private bool loadingLogIn { get; set; }
     public string textForLogin { get; set; }
 
- 
+
     public TelerikAutoComplete<SecurityApi> TelerikComboBox { get; set; }
+
+    //Entity.LoginInfo? res;
 
     private async Task<Task> OnLoginClick(MouseEventArgs obj)
     {
 
         try
         {
-
-
-
-            loadingLogIn = true;
-            textForLogin = "Входим";
-
-            var res = await ApiDataService.LogIn("samujan1@yandex.ru", "pass2");
-
-            if (res == null)
-            {
-                textForLogin = "ERROR LOGIN";
-                Console.WriteLine("ERROR LOGIN");
-            }
-            else
-            {
-                Console.WriteLine(" LOGIN SUCCESS");
-            }
-
-            textForLogin = "Грузим инструменты";
-            Console.WriteLine("Loading instruments");
-            Instruments = await ApiDataService.GetInstruments();
-            SecuritySelected = Instruments.FirstOrDefault();
-
-            textForLogin = $"Получено {Instruments.Count()}";
-            Console.WriteLine($"Loaded instruments {Instruments.Count()}");
-
-            textForLogin = "Готово";
-            textlogin = "ON";
-
-            LoginClicked?.Invoke();
-
-
-            loadingLogIn = false;
-            //windowVisible = true;
-            //windowRef.ShowAsync();
-
-            return Task.CompletedTask;
-
-            // if (logform != null)
+            // if (res != null && loginInfo != null)
             // {
-            // 	loadingLogIn =true;
-            // 	var res = await _apidataservice.LogIn(logform.Email, logform.pass);
-            // 	Instruments = await _apidataservice.GetInstruments();
-
-            // 	Console.WriteLine($"Loaded instruments {Instruments.Count()}");
-
-            // 	loadingLogIn = false;
-            // 	textlogin = "ON";
+            //     var r = await ApiDataService.LogOut(loginInfo.Login);
+            //     if (r == System.Net.HttpStatusCode.OK){
+            //         textlogin = "Log In";
+            //     }
+            //     return Task.CompletedTask;
             // }
+            // else{
+                loadingLogIn = true;
+                textForLogin = "Входим";
 
-            // windowRef.CloseAsync();
+                var res = await ApiDataService.LogIn(loginInfo.Login, loginInfo.Password);
+
+                if (res == null)
+                {
+                    textForLogin = "ERROR LOGIN";
+                    Console.WriteLine("ERROR LOGIN");
+                }
+                else
+                {
+                    Console.WriteLine(" LOGIN SUCCESS");
+                }
+
+                textForLogin = "Грузим инструменты";
+                Console.WriteLine("Loading instruments");
+                Instruments = await ApiDataService.GetInstruments();
+                SecuritySelected = Instruments.FirstOrDefault();
+
+                textForLogin = $"Получено {Instruments.Count()}";
+                Console.WriteLine($"Loaded instruments {Instruments.Count()}");
+
+                textForLogin = "Готово";
+                textlogin = "ON";
+
+                LoginClicked?.Invoke();
+
+
+                loadingLogIn = false;
+                windowVisible = false;
+                //windowRef.ShowAsync();
+
+                return Task.CompletedTask;
+
+                // if (logform != null)
+                // {
+                // 	loadingLogIn =true;
+                // 	var res = await _apidataservice.LogIn(logform.Email, logform.pass);
+                // 	Instruments = await _apidataservice.GetInstruments();
+
+                // 	Console.WriteLine($"Loaded instruments {Instruments.Count()}");
+
+                // 	loadingLogIn = false;
+                // 	textlogin = "ON";
+                // }
+
+                // windowRef.CloseAsync();
+
+            // }
         }
         catch (Exception ex)
         {
@@ -204,14 +252,14 @@ Resizable="true"
 
     private Task SecurityApiChanged(SecurityApi sec)
     {
-        
+
         ApiDataService.OpenInstrument(sec);
         return Task.CompletedTask;
     }
 
     public void Dispose()
     {
-        
+
         GC.SuppressFinalize(this);
     }
 }
