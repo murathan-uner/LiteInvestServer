@@ -312,10 +312,10 @@
                     </GridColumns>
 
                     <RowTemplate Context="ClusterDatas">
-                        <td class="@GetClassForClusters(ClusterDatas) price cell-text">
+                        <td class="@GetClassForClusters(ClusterDatas) price">
                             @ClusterDatas.Price.ToString("G29")
                         </td>
-                        <td class="@GetClassForClusters(ClusterDatas) cell-text">
+                        <td class="@GetClassForClusters(ClusterDatas)">
                             @if (ClusterDatas.Volume != 0)
                             {
                                 @ClusterDatas.Volume.KiloFormat()
@@ -426,16 +426,16 @@
                         <GridColumn Width="50px" Field="@nameof(MarketDepthLevel.RestVolume)" HeaderClass="grid-header" />
                     </GridColumns>
                     <RowTemplate Context="Quotes">
-                        <td style="@GetStyleForQuote(Quotes)" class="cell-text ">
+                        <td style="@GetStyleForQuote(Quotes)" class="">
                             @if (Quotes.Volume != 0)
                             {
                                 @Quotes.Volume
                             }
                         </td>
-                        <td class="@GetClassForQuote(Quotes) price cell-text">
+                        <td class="@GetClassForQuote(Quotes) price">
                             @Quotes.Price.ToString("G29")
                         </td>
-                        <td class="@GetClassForQuote(Quotes) restVolume cell-text">
+                        <td class="@GetClassForQuote(Quotes) restVolume">
                             <span class="restVolumeSpan">
                                 @Quotes.RestVolume
                             </span>
