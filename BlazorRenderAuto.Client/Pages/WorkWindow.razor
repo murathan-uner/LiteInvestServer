@@ -1539,6 +1539,32 @@
     }
 
 
+    private void OnRead(GridReadEventArgs args)
+    {
 
+		if (Quotes==null || Quotes.Count == 0 || args.Request.Skip == 0)
+            return ;
+
+        var result = Quotes.ToDataSourceResult(args.Request);
+
+       
+        /*
+            int oppositemiddle = 6000 - args.Request.Skip - 75;
+
+        int range = 150;
+
+        if (6000 - oppositemiddle > 150)
+        range = 6000 - oppositemiddle;*/
+
+        // var range = Quotes.GetRange( args.Request.Skip, 50);
+
+        args.Data = result.Data;
+        var list = args.Data as IEnumerable<MarketDepthLevel>;
+
+		if(list!=null)
+        Console.WriteLine($"skip = {args.Request.Skip} max = {list.ToArray()[0].Price}");
+
+        args.Total = result.Total;
+    }
 
 }
