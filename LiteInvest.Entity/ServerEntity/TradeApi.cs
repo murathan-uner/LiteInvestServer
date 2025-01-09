@@ -26,6 +26,17 @@ namespace BlazorRenderAuto.Client.Entity
 		[JsonProperty("p")]
 		public decimal Price { get; set; }
 
+		public string Color
+		{
+			get
+			{
+				if (Side == Side.Sell)
+					return "red";
+
+				return "green";
+			}
+		}
+
 		public int IndexForChart { get; set; }
 	}
 }

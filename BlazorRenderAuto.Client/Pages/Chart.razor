@@ -3,9 +3,54 @@
 @using LiteInvest.Entity.ServerEntity
 
 
+<TelerikChart @ref="Chart2" Class="chart" Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%">
+    <ChartLegend Visible="false"></ChartLegend>
+    <ChartPannable Enabled="true"></ChartPannable>
+    <ChartSeriesItems>
+
+        <ChartSeries Type="ChartSeriesType.ScatterLine"
+                     Data="@Ticks"
+                     YField="@nameof(TradeApi.Price)"
+                     XField="@nameof(TradeApi.IndexForChart)"
+                     SizeField="@nameof(TradeApi.Volume)"
+                     ColorField="@nameof(TradeApi.Color)">
+
+            <ChartSeriesMarkers Visible="false">
+
+            </ChartSeriesMarkers>
+
+            <ChartSeriesLabels Visible="true"
+                               Template="chartSeriesLabelTemplate"
+                               AriaTemplate="chartSeriesAriaTemplate" />
+        </ChartSeries>
 
 
- <TelerikChart @ref="Chart2" Class="chart"  Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%">
+        <ChartSeries Type="ChartSeriesType.Bubble"
+                     Data="@Ticks"
+                     YField="@nameof(TradeApi.Price)"
+                     XField="@nameof(TradeApi.IndexForChart)"
+                     SizeField="@nameof(TradeApi.Volume)"
+                     ColorField="@nameof(TradeApi.Color)">
+
+
+        </ChartSeries>
+
+    </ChartSeriesItems>
+
+
+    <ChartXAxes>
+        <ChartXAxis Max="@counter" Min="@(counter-maxamount)" Visible="false">
+        </ChartXAxis>
+    </ChartXAxes>
+
+    <ChartYAxes>
+        <ChartYAxis Min="@minchart" Max="@maxchart" Visible="false">
+        </ChartYAxis>
+    </ChartYAxes>
+
+</TelerikChart>
+
+@*  <TelerikChart @ref="Chart2" Class="chart"  Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%">
     <ChartLegend Visible="false"></ChartLegend>
 
     <ChartSeriesItems>
@@ -24,30 +69,20 @@
         </ChartYAxis>
     </ChartYAxes>
 
-</TelerikChart>  
+</TelerikChart>   *@
 
+<script suppress-error="BL9992">
+    function chartSeriesLabelTemplate(context) {
+        return context.dataItem.Volume;
+    }
 
-@*  <TelerikChart @ref="Chart2" Class="chart"  Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%">
-    <ChartLegend Visible="false"></ChartLegend>
-
-    <ChartSeriesItems>
-
-        <ChartSeries Type="ChartSeriesType.Line"
-                     Data="@Ticks"
-                     Field="@nameof(TradeApi.Price)">
-        </ChartSeries> 
-
-    </ChartSeriesItems>
-    
-    <ChartValueAxes>
-        <ChartValueAxis Min="minchart" Max="maxchart" ></ChartValueAxis>
-    </ChartValueAxes>
-
-</TelerikChart>  *@
+</script>
 
 @code {
 
     public List<TradeApi> Ticks { get; set; }
+
+    int maxamount = 30;
 
     [Parameter]
     public SecurityApi secutityMain { get; set; }
@@ -71,7 +106,7 @@
         {
             foreach (var tick in ticks)
             {
-                counter += 1;
+                counter += 2;
                 tick.IndexForChart = counter;
 
                 if (Ticks == null)
@@ -82,7 +117,7 @@
                 //Console.WriteLine($" {secutityMain.Isin} Added New tick {tick.Price} index {tick.IndexForChart}");
                 Ticks.Add(tick);
 
-                if (Ticks.Count > 30)
+                if (Ticks.Count > maxamount)
                     Ticks.RemoveAt(0);
             }
         }
@@ -94,6 +129,12 @@
         InvokeAsync(StateHasChanged);
     }
 
+    double range = 0;
+
+    public async void PushInvokeAsync()
+    {
+        InvokeAsync(StateHasChanged);
+    }
 
     public void SetMaxMin(double max, double min)
     {

@@ -657,11 +657,25 @@
     }
 
 
+    bool firstrender = false;
+    protected override void OnAfterRender(bool _firstRender)
+    {
+        firstrender = _firstRender;
+        base.OnAfterRender(_firstRender);
+    }
+
     protected override bool ShouldRender()
     {
 
+
         // была попытка перевести
         Console.WriteLine($"{DateTime.Now} Should {secutityMain.Isin} Render WorkWindow");
+
+
+        if (!firstrender && Chart2 != null)
+            ChartComponent.PushInvokeAsync();
+
+        return firstrender;
 
         // if (lastsecHashOpened == secutityMain.SpecialHash)
         // {
@@ -1198,8 +1212,12 @@
             UpdateBestBidIndex(agregatedBestbid);
 
             //TODO: вот это мракобесие надо выносить в отдельный компонент
+            //TODO: но тут у нас слишком много всего замешано. Особенно 2 таблицы. 
 
-            StateHasChanged();
+            var task= InvokeAsync(StateHasChanged);
+
+            if (!task.IsCompleted)
+                task.Wait();
 
             ScrollTo(bestbidIndex, QuotesGrid);
             ScrollTo(bestbidIndex, ClustersGrid);
@@ -1222,8 +1240,22 @@
         }
 
         UpdateBestBidIndex(agregatedBestbid);
-    }
 
+        Console.WriteLine($"best bid {agregatedBestbid}");
+        if(agregatedBestbid>(decimal)maxchart && maxchart!=0)
+        {
+
+        }
+
+        //TODO: тут по хорошему вообще брать бест аск
+        if (agregatedBestbid < (decimal)minchart && minchart!=0)
+        {
+
+        }
+
+    }
+    //TODO: сюда же приходит лишь кусок изменений (крипта)
+    //рынок фортс (полные изменения)
     private void OnNewMarketDepth(List<MarketDepthLevel> bids, List<MarketDepthLevel> asks, string secID)
     {
         if (secID != secutityMain.id)
@@ -1231,7 +1263,10 @@
 
         //с бинанса может такой апдейт прийти
         if (bids.Count != 0)
-            usualbestbid = real ? bids[0].Price : asks[0].Price;
+            usualbestbid =  bids[0].Price;
+
+        if (asks.Count != 0)
+            usualbestAsk = asks[0].Price;
 
         lock (scalelocker)
         {
@@ -1242,6 +1277,8 @@
             AlgoQuotesScale(Scale, newdictionaryQuotes, usualbestbid, true, savedAgregatedBestbid);
         }
     }
+
+    public decimal usualbestAsk { get; set; }
 
     public decimal minbid
     { get; set; }
@@ -1460,17 +1497,22 @@
         if (gridTableId == GridTableId)
         {
 
-            maxchart = double.Parse(firstVisibleRowPrice);
+            var maxchart2 = double.Parse(firstVisibleRowPrice);
+
             minchart = double.Parse(lastVisibleRowPrice);
 
-            range = (int)((maxchart - minchart) / ((double)secutityMain.PriceStep * Scale * 0.5));
+            if (range == 0)
+            {
+                range = maxchart2 - minchart;
+                // range = (int)((maxchart - minchart) / ((double)secutityMain.PriceStep * Scale * 0.5));
+            }
 
-            // maxchart = maxprice;
-            // minchart = minprice;
+            maxchart = minchart + range;
+            //найти в каком индекс у нас минимум... 
 
-            Console.WriteLine($"Scrolled max = {maxchart} min = {minchart}");
-
-            if (ChartComponent != null)
+            Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart} min = {minchart} range ={range}");
+             
+            if (ChartComponent != null) 
                 ChartComponent.SetMaxMin(maxchart, minchart);
 
             //if(Chart!=null)
@@ -1499,7 +1541,7 @@
         //Console.WriteLine($"{windowId}");
     }
 
-    public int range { get; set; }
+    public double range { get; set; }
 
     // protected override Task OnParametersSetAsync()
     // {
