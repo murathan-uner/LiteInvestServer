@@ -11,17 +11,16 @@
         <ChartSeries Type="ChartSeriesType.ScatterLine"
                      Data="@Ticks"
                      YField="@nameof(TradeApi.Price)"
-                     XField="@nameof(TradeApi.IndexForChart)"
-                     SizeField="@nameof(TradeApi.Volume)"
-                     ColorField="@nameof(TradeApi.Color)">
+                     XField="@nameof(TradeApi.IndexForChart)">
+            
+          @*   SizeField="@nameof(TradeApi.Volume)"
+            ColorField="@nameof(TradeApi.Color)" *@
 
             <ChartSeriesMarkers Visible="false">
 
             </ChartSeriesMarkers>
 
-            <ChartSeriesLabels Visible="true"
-                               Template="chartSeriesLabelTemplate"
-                               AriaTemplate="chartSeriesAriaTemplate" />
+
         </ChartSeries>
 
 
@@ -31,7 +30,10 @@
                      XField="@nameof(TradeApi.IndexForChart)"
                      SizeField="@nameof(TradeApi.Volume)"
                      ColorField="@nameof(TradeApi.Color)">
-
+                     
+            <ChartSeriesLabels Visible="true"
+                               Template="chartSeriesLabelTemplate"
+                               AriaTemplate="chartSeriesAriaTemplate" />
 
         </ChartSeries>
 
@@ -82,7 +84,7 @@
 
     public List<TradeApi> Ticks { get; set; }
 
-    int maxamount = 30;
+    int maxamount = 30; //надо разделить на шаг и получится реальное количество отображаемых элементов
 
     [Parameter]
     public SecurityApi secutityMain { get; set; }
