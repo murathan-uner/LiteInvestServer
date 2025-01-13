@@ -1,23 +1,26 @@
 ﻿@using BlazorRenderAuto.Client.Entity
+@using BlazorRenderAuto.Client.Services
 @using LiteInvest.Entity.PlazaEntity
 @using LiteInvest.Entity.ServerEntity
 
+@inject ApiDataService _apidataService
 
 <TelerikChart @ref="Chart2" Class="chart" Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%">
+
     <ChartLegend Visible="false"></ChartLegend>
-    <ChartPannable Enabled="true"></ChartPannable>
+    <ChartPannable Enabled="false"></ChartPannable>
+
     <ChartSeriesItems>
 
         <ChartSeries Type="ChartSeriesType.ScatterLine"
-                     Data="@Ticks"
-                     YField="@nameof(TradeApi.Price)"
-                     XField="@nameof(TradeApi.IndexForChart)">
-            
-          @*   SizeField="@nameof(TradeApi.Volume)"
-            ColorField="@nameof(TradeApi.Color)" *@
+        Data="@Ticks"
+        YField="@nameof(TradeApi.Price)"
+        XField="@nameof(TradeApi.IndexForChart)"
+        Color="#808080"
+        ZIndex="0"
+        >
 
             <ChartSeriesMarkers Visible="false">
-
             </ChartSeriesMarkers>
 
 
@@ -25,15 +28,18 @@
 
 
         <ChartSeries Type="ChartSeriesType.Bubble"
-                     Data="@Ticks"
-                     YField="@nameof(TradeApi.Price)"
-                     XField="@nameof(TradeApi.IndexForChart)"
-                     SizeField="@nameof(TradeApi.Volume)"
-                     ColorField="@nameof(TradeApi.Color)">
-                     
+        Data="@Ticks"
+        YField="@nameof(TradeApi.Price)"
+        XField="@nameof(TradeApi.IndexForChart)"
+        SizeField="@nameof(TradeApi.Volume)"
+        ColorField="@nameof(TradeApi.Color)"
+        Opacity ="1"
+        ZIndex="1"
+        >
+
             <ChartSeriesLabels Visible="true"
-                               Template="chartSeriesLabelTemplate"
-                               AriaTemplate="chartSeriesAriaTemplate" />
+            Template="chartSeriesLabelTemplate"
+            AriaTemplate="chartSeriesAriaTemplate" />
 
         </ChartSeries>
 
@@ -75,7 +81,7 @@
 
 <script suppress-error="BL9992">
     function chartSeriesLabelTemplate(context) {
-        return context.dataItem.Volume;
+    return context.dataItem.Volume;
     }
 
 </script>
@@ -84,7 +90,8 @@
 
     public List<TradeApi> Ticks { get; set; }
 
-    int maxamount = 30; //надо разделить на шаг и получится реальное количество отображаемых элементов
+    public int maxamount { get; set; } = 30; //надо разделить на шаг и получится реальное количество отображаемых элементов
+    static int maxStaticValue { get; set; } = 30;
 
     [Parameter]
     public SecurityApi secutityMain { get; set; }
@@ -94,9 +101,32 @@
 
     public TelerikChart Chart2 { get; set; }
 
-    int counter = 0;
+    int counter = 1;
 
+    int lastvalue = 0;
+    public void NumberOfWindowsChanged(int newvalue)
+    {
 
+        newvalue = _apidataService.openedInstruments;
+
+        if(lastvalue==newvalue)
+            return;
+
+        lastvalue = newvalue;
+
+        var res = maxStaticValue / newvalue;
+
+        if (Ticks.Count > 0)
+        {
+           Ticks[0].Volume = basicvolume / newvalue;
+        }
+
+        maxamount = res;
+        Console.WriteLine($"new max amount {maxamount} {secutityMain.Isin}  №{newvalue} of windows (CHART MESSAGE) ticksvol = {Ticks[0].Volume}");
+        InvokeAsync(StateHasChanged);
+    }
+
+    decimal basicvolume = 0;
 
     public void ProcessTicks(List<TradeApi> ticks)
     {
@@ -108,20 +138,32 @@
         {
             foreach (var tick in ticks)
             {
-                counter += 2;
-                tick.IndexForChart = counter;
+
 
                 if (Ticks == null)
                 {
                     Ticks = new List<TradeApi>();
+                    // Ticks.Add(new TradeApi(){IndexForChart = 0, Size = 100,});
+                    basicvolume = secutityMain.Lot * 500;
+                    Ticks.Add(new TradeApi() { IndexForChart = 0, Volume = basicvolume, });
+                    Console.WriteLine($"{secutityMain.Isin} max value for chart {secutityMain.Lot * 300}");
                 }
+
+                counter += 1;
+                tick.IndexForChart = counter;
 
                 //Console.WriteLine($" {secutityMain.Isin} Added New tick {tick.Price} index {tick.IndexForChart}");
                 Ticks.Add(tick);
-
+                
                 if (Ticks.Count > maxamount)
-                    Ticks.RemoveAt(0);
+                    Ticks.RemoveAt(1);
+
+
             }
+
+             if (Ticks.Count > 1)
+                 Ticks[0].Price = Ticks[1].Price;
+
         }
         catch (Exception ex)
         {

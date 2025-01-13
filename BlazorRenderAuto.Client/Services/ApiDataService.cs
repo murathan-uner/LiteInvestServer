@@ -48,6 +48,7 @@ namespace BlazorRenderAuto.Client.Services
 	{
 		//TODO: перенести все нормально в настройки
 
+		public int openedInstruments { get; set; } = 0;
 
 		string mainadress = "http://188.72.77.60:3000/";
 		Uri websocketurl = new Uri("ws://188.72.77.60:5000/");
@@ -315,7 +316,8 @@ namespace BlazorRenderAuto.Client.Services
 					{
 						Isin = instument.Name,
 						PriceStep = (decimal)instument.PriceStep,
-						id = instument.Name
+						id = instument.Name,
+						Lot = (decimal)instument.MinTradeQuantity
 					};
 
 

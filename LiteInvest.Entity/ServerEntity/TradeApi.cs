@@ -1,5 +1,6 @@
 ﻿using LiteInvest.Entity.PlazaEntity;
 using Newtonsoft.Json;
+using System.Drawing;
 
 namespace BlazorRenderAuto.Client.Entity
 {
@@ -31,12 +32,34 @@ namespace BlazorRenderAuto.Client.Entity
 			get
 			{
 				if (Side == Side.Sell)
+					//return "#fca49c";
+
 					return "red";
 
+					//return "#6CCCAC";
 				return "green";
 			}
 		}
 
 		public int IndexForChart { get; set; }
+
+		private decimal? _size;
+		public decimal Size
+		{
+			get
+			{
+
+				if (_size != null)
+					return (decimal) _size;
+
+				var vol = (int)Volume;
+				var res= vol.ToString().Length;
+				return res;
+			}
+			set
+			{
+				_size = value;
+			}
+		}
 	}
 }

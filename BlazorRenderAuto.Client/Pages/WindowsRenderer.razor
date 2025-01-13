@@ -22,23 +22,23 @@ OnReorder="@OnReorder">
 	<TileLayoutItems>
 		@foreach (var security in OpenedInstruments)
 		{
-            <TileLayoutItem @key="security.SpecialHash">
-                <HeaderTemplate>
-                    <div @onclick="() => focusWindowByHeaderClick(security.SpecialHash)">
-                        @security.Isin
-                        <svg class="buttonclose" @onclick="() => OnClosingMain(security)" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">
-                            <line x1="0" y1="0" x2="10" y2="10" stroke="black" stroke-width="2" />
-                            <line x1="0" y1="10" x2="10" y2="0" stroke="black" stroke-width="2" />
-                        </svg>
-                    </div>
-                </HeaderTemplate>
-                <Content>
-                    <div class="tile-content">
-						<WorkWindow secHash="@security.SpecialHash" secutityMain="@security"  />
-                    </div>
-                </Content>
-            </TileLayoutItem>
-        }
+			<TileLayoutItem @key="security.SpecialHash">
+				<HeaderTemplate>
+					<div @onclick="() => focusWindowByHeaderClick(security.SpecialHash)">
+						@security.Isin
+						<svg class="buttonclose" @onclick="() => OnClosingMain(security)" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">
+							<line x1="0" y1="0" x2="10" y2="10" stroke="black" stroke-width="2" />
+							<line x1="0" y1="10" x2="10" y2="0" stroke="black" stroke-width="2" />
+						</svg>
+					</div>
+				</HeaderTemplate>
+				<Content>
+					<div class="tile-content">
+						<WorkWindow secHash="@security.SpecialHash" secutityMain="@security" WindowsOpened="@OpenedInstruments.Count" />
+					</div>
+				</Content>
+			</TileLayoutItem>
+		}
 	</TileLayoutItems>
 </TelerikTileLayout>
 
@@ -47,13 +47,15 @@ OnReorder="@OnReorder">
 
 	private bool shouldNOTrenderafterclick = false;
 
-    public string lasthashForRender { get; set; } = "";
+	public string lasthashForRender { get; set; } = "";
 
 	private void focusWindowByHeaderClick(string id)
 	{
 		shouldNOTrenderafterclick = true;
 		js.InvokeVoidAsync("focusElementById", id);
 	}
+
+
 
 	ObservableCollection<SecurityApi> OpenedInstruments { get; set; } = new();
 
@@ -69,17 +71,18 @@ OnReorder="@OnReorder">
 	{
 
 		if (firstRender)
-        {
-            _apidataService.LastwindowOpened += () =>
-            {
-                lasthashForRender = "";
-            };
+		{
+			_apidataService.LastwindowOpened += () =>
+			{
+				lasthashForRender = "";
+			};
 
 			_apidataService.NewSecOpened += (sec) =>
-            {
-                lasthashForRender = sec.SpecialHash;
+			{
+				lasthashForRender = sec.SpecialHash;
 
 				OpenedInstruments.Add(sec);
+				_apidataService.openedInstruments++;
 				InvokeAsync(StateHasChanged);
 			};
 
@@ -108,32 +111,33 @@ OnReorder="@OnReorder">
 	protected override bool ShouldRender()
 	{
 		if (shouldNOTrenderafterclick)
-        {
+		{
 			Console.WriteLine("Pass Render Windows");
-            shouldNOTrenderafterclick = false;
+			shouldNOTrenderafterclick = false;
 			return false;
-        }
+		}
 
 		return base.ShouldRender();
 	}
 
 	public Task OnClosingMain(SecurityApi sec)
 	{
-		try
-		{
-			//await _apidataservice.CloseInstrument(sec);
-			// var index = OpenedInstruments.FindIndex(s => s.SpecialHash == sec.SpecialHash);
-			// OpenedInstruments.RemoveAt(index);
-               OpenedInstruments.Remove(sec);
-			return Task.CompletedTask;
+        try
+        {
+            //await _apidataservice.CloseInstrument(sec);
+            // var index = OpenedInstruments.FindIndex(s => s.SpecialHash == sec.SpecialHash);
+            // OpenedInstruments.RemoveAt(index);
+            OpenedInstruments.Remove(sec);
+            _apidataService.openedInstruments--;
+            return Task.CompletedTask;
 
-		}
-		catch (Exception ex)
-		{
-			return Task.CompletedTask;
-		}
+        }
+        catch (Exception ex)
+        {
+            return Task.CompletedTask;
+        }
 
-		// Remove tile with the given ID
+        // Remove tile with the given ID
 		//RegisteredInstruments.Remove(instrument);
 	}
 

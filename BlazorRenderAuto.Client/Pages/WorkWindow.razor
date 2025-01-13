@@ -266,9 +266,9 @@
 
     <TelerikGridLayout>
         <GridLayoutColumns>
-            <Telerik.Blazor.Components.GridLayoutColumn Width="33.33%" />
-            <Telerik.Blazor.Components.GridLayoutColumn Width="33.33%" />
-            <Telerik.Blazor.Components.GridLayoutColumn Width="33.33%" />
+            <Telerik.Blazor.Components.GridLayoutColumn Width="20%" />
+            <Telerik.Blazor.Components.GridLayoutColumn Width="47%" />
+            <Telerik.Blazor.Components.GridLayoutColumn Width="33%" />
         </GridLayoutColumns>
 
         <GridLayoutRows>
@@ -463,6 +463,15 @@
 
     TelerikGrid<ClusterLevel> clustersgrid;
     List<ClusterLevel> ClusterDatas { get; set; } = new();
+
+    [Parameter]
+    public int WindowsOpened {
+        set
+        {
+            if (ChartComponent != null)
+                ChartComponent.NumberOfWindowsChanged(value);
+        }
+    }
 
     // public class ClusterData
     // {
@@ -1241,7 +1250,7 @@
 
         UpdateBestBidIndex(agregatedBestbid);
 
-        Console.WriteLine($"best bid {agregatedBestbid}");
+       // Console.WriteLine($"best bid {agregatedBestbid}");
         if(agregatedBestbid>(decimal)maxchart && maxchart!=0)
         {
 
@@ -1510,7 +1519,7 @@
             maxchart = minchart + range;
             //найти в каком индекс у нас минимум... 
 
-            Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart} min = {minchart} range ={range}");
+           // Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart} min = {minchart} range ={range}");
              
             if (ChartComponent != null) 
                 ChartComponent.SetMaxMin(maxchart, minchart);
