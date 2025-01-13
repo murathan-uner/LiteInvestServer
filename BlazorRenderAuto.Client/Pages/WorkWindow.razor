@@ -5,6 +5,8 @@
 @using System.Reactive.Linq
 @using BlazorRenderAuto.Client.Entity
 @using BlazorRenderAuto.Client.Services
+@using DevExpress.Data.Utils
+@using LiteInvest.Entity.Helpers
 
 @using LiteInvest.Entity.PlazaEntity
 @using LiteInvest.Entity.ServerEntity
@@ -462,14 +464,15 @@
 
 
     TelerikGrid<ClusterLevel> clustersgrid;
-    List<ClusterLevel> ClusterDatas { get; set; } = new();
+    List<ClusterLevel> ClusterDatas { get; set; } = new List<ClusterLevel>();
+    List<MarketDepthLevel> Quotes { get; set; }
 
     [Parameter]
     public int WindowsOpened {
         set
         {
             if (ChartComponent != null)
-                ChartComponent.NumberOfWindowsChanged(value);
+                ChartComponent.ChangeScaleOfChart();
         }
     }
 
@@ -510,7 +513,7 @@
     /// <summary>
     /// Последний собранный масштаб
     /// </summary>
-    private int prevbuildScale { get; set; } = 0;
+    private int prevbuildScale { get; set; }
 
     private int _oldScale;//для первой отрисовки
     public int Scale
@@ -530,12 +533,12 @@
         lock (scalelocker)
         {
             if (newdictionaryQuotes != null && newdictionaryQuotes.Count != 0)
-                AlgoQuotesScale(newscale, newdictionaryQuotes, usualbestbid, true, savedAgregatedBestbid); // TODO: временно прописал напрямую
+                AlgoQuotesScale( newdictionaryQuotes, usualbestbid, ApiDataService.crypto, savedAgregatedBestbid); // TODO: временно прописал напрямую
         }
     }
 
     // public ObservableCollection<Quote> GridData { get; set; }
-    public List<MarketDepthLevel> Quotes { get; set; }
+  
 
     public List<TradeApi> Ticks { get; set; } //= new List();
 
@@ -568,7 +571,7 @@
 
         jsInteropService.OnKeyDown += OnKeyDown;
         jsInteropService.OnScroll += OnScroll;
-        //сначала подпишемся на ордера
+      
 
         //TODO: Сделать нормальную подписку на частные ордера
 
@@ -588,7 +591,7 @@
         if (firstRender)
         {
             await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
-            await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
+             await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
             await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
         }
         else
@@ -680,28 +683,12 @@
         // была попытка перевести
         Console.WriteLine($"{DateTime.Now} Should {secutityMain.Isin} Render WorkWindow");
 
+        //TODO: вернуть
 
-        if (!firstrender && Chart2 != null)
-            ChartComponent.PushInvokeAsync();
+        // if (!firstrender && Chart2 != null)
+        //     ChartComponent.PushInvokeAsync();
 
         return firstrender;
-
-        // if (lastsecHashOpened == secutityMain.SpecialHash)
-        // {
-        //     //TODO: Indicate that was opened last one
-        //     Console.WriteLine($"RENDERING SHOULD {secutityMain.Isin} LAST");
-        //     ApiDataService.LastWindowWasOpened();
-        //     return true;
-        // }
-
-        // if (lastsecHashOpened == "")
-        // {
-        //     Console.WriteLine($"RENDERING EMPTY {secutityMain.Isin} ");
-        //     return true;
-        // }
-
-        // Console.WriteLine($"NOT RENDERING {secutityMain.Isin} ");
-        // return false;
 
         return base.ShouldRender();
     }
@@ -950,6 +937,8 @@
     //        }
     //    }
 
+
+
     public async Task ScrollTo<T>(int index, TelerikGrid<T> _grid)
     {
 
@@ -962,7 +951,7 @@
             state.Skip = scrollindex;
 
             //TODO: Может выскочить ошибка
-            //Console.WriteLine($"Scrolling to {state.Skip} bestbid={Quotes[index].Price} price = {Quotes[scrollindex].Price}");
+            Console.WriteLine($"Scrolling to {scrollindex} {typeof(T)}");
             await _grid.SetStateAsync(state);
         }
 
@@ -1203,11 +1192,13 @@
 
 
     //if (prevbuildScale != Scale)
-    private void AlgoQuotesScale(int newscale, ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes, decimal bestbbid, bool crypto, decimal agregatedBestbid)
+    private void AlgoQuotesScale(ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes, decimal bestbbid, bool crypto, decimal agregatedBestbid)
     {
         //поменялся масштаб
-        if (newscale != prevbuildScale)
+        if (Scale != prevbuildScale)
         {
+            prevbuildScale = Scale;
+           
             //Применяем масштаб (даже если 1)
             //строим пустой стакан на всю длину
             var initialquotes = BuildInitialQuotes(bestbbid);
@@ -1220,26 +1211,33 @@
 
             UpdateBestBidIndex(agregatedBestbid);
 
-            //TODO: вот это мракобесие надо выносить в отдельный компонент
-            //TODO: но тут у нас слишком много всего замешано. Особенно 2 таблицы. 
-
-            var task= InvokeAsync(StateHasChanged);
-
-            if (!task.IsCompleted)
-                task.Wait();
-
-            ScrollTo(bestbidIndex, QuotesGrid);
-            ScrollTo(bestbidIndex, ClustersGrid);
-            // ---- теперь тоже саоме по кластерам //
-
-
             //UpdateClastersGrid();
+            //UpdateQuotesGrid();
+          
+            //NOTE: Почему тоесли мы скроллим сразу, его перекрывает..
 
-            //ScrollTo(bestbidIndex, ClustersGrid);
+            Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
+
+
+            Helper.CreateTimerAndStart(() =>
+            {
+                //Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
+
+                 ScrollTo<MarketDepthLevel>(bestbidIndex, QuotesGrid);
+                 ScrollTo<ClusterLevel>(bestbidIndex, ClustersGrid);
+
+                UpdateClastersGrid();
+                UpdateQuotesGrid();
+
+                
+
+
+            }, 500, false);
+
 
             initial = false;
 
-            prevbuildScale = Scale;
+           
         }
         else
         {
@@ -1267,24 +1265,25 @@
     //рынок фортс (полные изменения)
     private void OnNewMarketDepth(List<MarketDepthLevel> bids, List<MarketDepthLevel> asks, string secID)
     {
-        if (secID != secutityMain.id)
-            return;
+        
+            if (secID != secutityMain.id)
+                return;
 
-        //с бинанса может такой апдейт прийти
-        if (bids.Count != 0)
-            usualbestbid =  bids[0].Price;
+            //с бинанса может такой апдейт прийти
+            if (bids.Count != 0)
+                usualbestbid = bids[0].Price;
 
-        if (asks.Count != 0)
-            usualbestAsk = asks[0].Price;
+            if (asks.Count != 0)
+                usualbestAsk = asks[0].Price;
 
-        lock (scalelocker)
-        {
-            savedAgregatedBestbid = usualbestbid - usualbestbid % (secutityMain.PriceStep * Scale);
-            var easyDictionaryCurrent = BuildMarketDepthDictionary(bids, asks);
+            lock (scalelocker)
+            {
+                savedAgregatedBestbid = usualbestbid - usualbestbid % (secutityMain.PriceStep * Scale);
+                var easyDictionaryCurrent = BuildMarketDepthDictionary(bids, asks);
 
-            newdictionaryQuotes = ScaleBuilderQuotes(easyDictionaryCurrent);
-            AlgoQuotesScale(Scale, newdictionaryQuotes, usualbestbid, true, savedAgregatedBestbid);
-        }
+                newdictionaryQuotes = ScaleBuilderQuotes(easyDictionaryCurrent);
+                AlgoQuotesScale(newdictionaryQuotes, usualbestbid, ApiDataService.crypto, savedAgregatedBestbid);
+            }
     }
 
     public decimal usualbestAsk { get; set; }
@@ -1524,28 +1523,7 @@
             if (ChartComponent != null) 
                 ChartComponent.SetMaxMin(maxchart, minchart);
 
-            //if(Chart!=null)
-            //Chart.RefreshData();
-
-
-            /*
-            int index = Quotes.FindIndex(q => q.Price.ToString("G29") == firstVisibleRowPrice);
-            if (index > -1)
-            {
-                firstVisibleIndex = index;
-            }
-            index = Quotes.FindIndex(q => q.Price.ToString("G29") == lastVisibleRowPrice);
-            if (index > -1)
-            {
-                lastVisibleIndex = index;
-            } */
-
-            /*  Console.WriteLine($"{firstVisibleIndex} {firstVisibleRowPrice}");
-             Console.WriteLine($"{lastVisibleIndex} {lastVisibleRowPrice}");
-             Console.WriteLine($"Видимые {gridTableId} строки {visibleRowCount}"); */
         }
-
-
 
         //Console.WriteLine($"{windowId}");
     }

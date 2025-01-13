@@ -20,22 +20,29 @@ MaxWidth="800"
 CloseOnOverlayClick="true"
 MaxHeight="500">
     <WindowContent>
+
         <TelerikForm Model="@loginInfo">
             <FormItems>
                 <FormItem Field="@nameof(UserLoginData.Login)">
-
+                   
                 </FormItem>
                 <FormItem Field="@nameof(UserLoginData.Password)">
-
+                    
                 </FormItem>
             </FormItems>
 
             <FormButtons>
-                <TelerikButton OnClick="OnLoginClick" Class="login_button">Ok</TelerikButton>
+                <TelerikButton OnClick="OnLoginClick" Class="login_button">
+                    Войти
+                    <TelerikLoader Class="loader-indicator" ThemeColor="light" Visible="@loadingLogIn"></TelerikLoader>
+                </TelerikButton>
 
             </FormButtons>
-
         </TelerikForm>
+        @if (!string.IsNullOrWhiteSpace(@textForLogin))
+        {
+                <p style="color: @colorforlogin;">@textForLogin</p>
+        }
     </WindowContent>
 </TelerikWindow>
 
@@ -172,7 +179,7 @@ MaxHeight="500">
     int i = 0;
     private bool loadingLogIn { get; set; }
     public string textForLogin { get; set; }
-
+    public string colorforlogin { get; set; }
 
     public TelerikAutoComplete<SecurityApi> TelerikComboBox { get; set; }
 
@@ -183,29 +190,41 @@ MaxHeight="500">
 
         try
         {
-            // if (res != null && loginInfo != null)
-            // {
-            //     var r = await ApiDataService.LogOut(loginInfo.Login);
-            //     if (r == System.Net.HttpStatusCode.OK){
-            //         textlogin = "Log In";
-            //     }
-            //     return Task.CompletedTask;
-            // }
-            // else{
                 loadingLogIn = true;
+                colorforlogin = "black";
                 textForLogin = "Входим";
 
-                var res = await ApiDataService.LogIn(loginInfo.Login, loginInfo.Password);
+                //var res = await ApiDataService.LogIn(loginInfo.Login, loginInfo.Password);
+            var res = await ApiDataService.LogIn("samujan1@yandex.ru", "pass2");
 
-                if (res == null)
+
+                //TODO по хорошему на сервере надо убрать ответ NULL 
+                if (res.errorMessage != "" && res.errorMessage!=null)
                 {
-                    textForLogin = "ERROR LOGIN";
+                    textForLogin = res.errorMessage;
                     Console.WriteLine("ERROR LOGIN");
+
+                    colorforlogin = "red";
+                    loadingLogIn = false;
+                    windowVisible = true;
+
+                     return Task.CompletedTask;
                 }
-                else
+                //фатальная ошибка, то есть толи сервер мертв
+                if (res == null || res.token=="")
                 {
-                    Console.WriteLine(" LOGIN SUCCESS");
+                    textForLogin = "Ошибка входа";
+                    Console.WriteLine("ERROR LOGIN");
+
+                    colorforlogin = "red";
+                    loadingLogIn = false;
+                    windowVisible = true;
+
+                    return Task.CompletedTask;
                 }
+
+                colorforlogin = "green";
+                textForLogin = "Успешно";
 
                 textForLogin = "Грузим инструменты";
                 Console.WriteLine("Loading instruments");
@@ -216,32 +235,20 @@ MaxHeight="500">
                 Console.WriteLine($"Loaded instruments {Instruments.Count()}");
 
                 textForLogin = "Готово";
+
+                if (res.Name != null)
+                    textlogin = res.Name;
+                else
+                {
                 textlogin = "ON";
-
-                LoginClicked?.Invoke();
-
+                }
 
                 loadingLogIn = false;
                 windowVisible = false;
-                //windowRef.ShowAsync();
+
+                LoginClicked?.Invoke();
 
                 return Task.CompletedTask;
-
-                // if (logform != null)
-                // {
-                // 	loadingLogIn =true;
-                // 	var res = await _apidataservice.LogIn(logform.Email, logform.pass);
-                // 	Instruments = await _apidataservice.GetInstruments();
-
-                // 	Console.WriteLine($"Loaded instruments {Instruments.Count()}");
-
-                // 	loadingLogIn = false;
-                // 	textlogin = "ON";
-                // }
-
-                // windowRef.CloseAsync();
-
-            // }
         }
         catch (Exception ex)
         {

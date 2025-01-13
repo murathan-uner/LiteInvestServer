@@ -33,7 +33,7 @@
         XField="@nameof(TradeApi.IndexForChart)"
         SizeField="@nameof(TradeApi.Volume)"
         ColorField="@nameof(TradeApi.Color)"
-        Opacity ="1"
+        Opacity ="0.6"
         ZIndex="1"
         >
 
@@ -92,6 +92,7 @@
 
     public int maxamount { get; set; } = 30; //надо разделить на шаг и получится реальное количество отображаемых элементов
     static int maxStaticValue { get; set; } = 30;
+    public int maxScaleForChart { get; set; } = 200;
 
     [Parameter]
     public SecurityApi secutityMain { get; set; }
@@ -104,24 +105,49 @@
     int counter = 1;
 
     int lastvalue = 0;
-    public void NumberOfWindowsChanged(int newvalue)
-    {
 
-        newvalue = _apidataService.openedInstruments;
+    protected override void OnInitialized()
+    {
+        if (Ticks == null)
+        {
+            Ticks = new List<TradeApi>();
+            // Ticks.Add(new TradeApi(){IndexForChart = 0, Size = 100,});
+
+            //TODO: нам помоему сервер не отдает это значение
+            basicvolume = secutityMain.Lot * maxScaleForChart;
+            Ticks.Add(new TradeApi() { IndexForChart = -3 * maxStaticValue, Volume = basicvolume, });
+
+            Console.WriteLine($"{secutityMain.Isin} max value for chart {secutityMain.Lot * 300}");
+        }
+
+        base.OnInitialized();
+    }
+
+    public void ChangeScaleOfChart()
+    {
+        //TODO: решил сделать реализацию через инжект.
+        // Возможно это опасно
+
+        var newvalue = _apidataService.openedInstruments;
+
+        if (newvalue == 0) newvalue = 1;
 
         if(lastvalue==newvalue)
             return;
 
         lastvalue = newvalue;
 
-        var res = maxStaticValue / newvalue;
+        var res = maxStaticValue / (newvalue * 0.3m);
 
-        if (Ticks.Count > 0)
+
+        if (Ticks!=null && Ticks.Count > 0)
         {
            Ticks[0].Volume = basicvolume / newvalue;
         }
 
-        maxamount = res;
+        maxamount = (int)res;
+
+        if(Ticks!=null && Ticks.Count>0)
         Console.WriteLine($"new max amount {maxamount} {secutityMain.Isin}  №{newvalue} of windows (CHART MESSAGE) ticksvol = {Ticks[0].Volume}");
         InvokeAsync(StateHasChanged);
     }
@@ -139,16 +165,6 @@
             foreach (var tick in ticks)
             {
 
-
-                if (Ticks == null)
-                {
-                    Ticks = new List<TradeApi>();
-                    // Ticks.Add(new TradeApi(){IndexForChart = 0, Size = 100,});
-                    basicvolume = secutityMain.Lot * 500;
-                    Ticks.Add(new TradeApi() { IndexForChart = 0, Volume = basicvolume, });
-                    Console.WriteLine($"{secutityMain.Isin} max value for chart {secutityMain.Lot * 300}");
-                }
-
                 counter += 1;
                 tick.IndexForChart = counter;
 
@@ -157,8 +173,6 @@
                 
                 if (Ticks.Count > maxamount)
                     Ticks.RemoveAt(1);
-
-
             }
 
              if (Ticks.Count > 1)

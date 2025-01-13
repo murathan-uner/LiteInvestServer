@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 using System.Xml;
 
-namespace LiteInvestServer.Helpers
+namespace LiteInvest.Entity.Helpers
 {
     public class Helper
     {

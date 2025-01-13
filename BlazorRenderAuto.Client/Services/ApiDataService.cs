@@ -95,7 +95,12 @@ namespace BlazorRenderAuto.Client.Services
 		public Action<List<MarketDepthLevel>, List<MarketDepthLevel>,string> NewQuotes { get; set; }
 
 
-		private bool crypto { get; set; } = true;
+		/// <summary>
+		/// КРИПТА ИЛИ НЕТ
+		/// НАСТРОЙКА ИСПОЛЬЗУЕТСЯ ДЛЯ ВСЕГО ПРОЕКТА
+		/// TODO: вынеси настройки нормально
+		/// </summary>
+		public bool crypto { get; set; } = false;
 
 		public ApiDataService()
 		{
@@ -115,7 +120,7 @@ namespace BlazorRenderAuto.Client.Services
 		public async Task<LoginInfo> LogIn(string login, string pass)
 		{
 
-			return new LoginInfo(){ expirationTime = DateTime.Now + TimeSpan.FromDays(1),token = "sucesstoken"};
+			//return new LoginInfo(){ expirationTime = DateTime.Now + TimeSpan.FromDays(1),token = "sucesstoken"};
 
 			var request = new RestRequest(loginrequest)
 				.AddQueryParameter("login", login, false)

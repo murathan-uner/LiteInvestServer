@@ -16,13 +16,15 @@ namespace LiteInvest.Entity.ServerEntity
     {
         public User(string _login, string _pass)
         {
-
             Login = _login;
             Password = _pass;
         }
 
         [DataMember]
-        public string Login { get; private set; }
+        public string Name { get; set; }
+
+		[DataMember]
+        public string Login { get; set; }
 
         //TODO: pass HASH
         [JsonIgnore]

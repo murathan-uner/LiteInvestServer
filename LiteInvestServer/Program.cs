@@ -2,13 +2,14 @@
 using PlazaEngine.Engine;
 
 using System.Collections.Concurrent;
-using LiteInvestServer.Helpers;
 using System.Text.Json;
 using LiteInvestServer.WebScoketFactory;
 using LiteInvestServer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using BlazorRenderAuto.Client.Entity;
+using LiteInvest.Entity.Helpers;
 using LiteInvest.Entity.PlazaEntity;
 using LiteInvest.Entity.ServerEntity;
 using LiteInvestServer.Options;
@@ -684,8 +685,9 @@ common.MapPost("/Login", async(string login, string pass, HttpContext httpContex
 {
     if (!UsersContext.ContainsKey(login))
     {
-        return Results.Problem("User does not exist!");
-    }
+		return Results.Json(new LoginInfo()
+			{ errorMessage = "Users doesn`t exist" });
+	}
 
     var user = UsersContext[login];
 
@@ -697,13 +699,15 @@ common.MapPost("/Login", async(string login, string pass, HttpContext httpContex
 
     if (user.Password != pass)
     {
-        return Results.Problem("Pass incorrect");
+        return Results.Json(new LoginInfo()
+	        {errorMessage = "Incorrect pass"});
     }
     var authResponse = jwtprovider.GenerateToken(user);
-    httpContext.Response.Cookies.Append(authkeyname, authResponse.Token, cookieOptions);
+    httpContext.Response.Cookies.Append(authkeyname, authResponse.token, cookieOptions);
 
     return Results.Json(authResponse);
-}).Produces<AuthResponse>();
+
+}).Produces<LoginInfo>();
 
 common.MapPost("/LogOut", async (HttpContext httpContext) =>
 {
