@@ -3,7 +3,8 @@
 @using LiteInvest.Entity.PlazaEntity
 @using LiteInvest.Entity.ServerEntity
 
-@inject ApiDataService _apidataService
+@inject ApiDataService ApidataService
+@implements IDisposable
 
 <TelerikChart @ref="Chart2" Class="chart" Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%">
 
@@ -45,39 +46,19 @@
 
     </ChartSeriesItems>
 
-
+    @* 
     <ChartXAxes>
         <ChartXAxis Max="@counter" Min="@(counter-maxamount)" Visible="false">
         </ChartXAxis>
     </ChartXAxes>
 
-    <ChartYAxes>
+     <ChartYAxes>
         <ChartYAxis Min="@minchart" Max="@maxchart" Visible="false">
         </ChartYAxis>
-    </ChartYAxes>
+    </ChartYAxes> *@
 
 </TelerikChart>
 
-@*  <TelerikChart @ref="Chart2" Class="chart"  Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%">
-    <ChartLegend Visible="false"></ChartLegend>
-
-    <ChartSeriesItems>
-
-        <ChartSeries Type="ChartSeriesType.ScatterLine"
-                     Data="@Ticks"
-                     YField="@nameof(TradeApi.Price)"
-                     XField="@nameof(TradeApi.IndexForChart)">
-        </ChartSeries> 
-
-    </ChartSeriesItems>
-
-    <ChartYAxes>
-        <ChartYAxis Max="@maxchart" Min="@minchart">
-            <ChartYAxisTitle Text=""></ChartYAxisTitle>
-        </ChartYAxis>
-    </ChartYAxes>
-
-</TelerikChart>   *@
 
 <script suppress-error="BL9992">
     function chartSeriesLabelTemplate(context) {
@@ -106,8 +87,11 @@
 
     int lastvalue = 0;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        ApidataService.NewTicks += ProcessTicks;
+        ApidataService.NewMaxMin += ProcessNewMaxMin;
+
         if (Ticks == null)
         {
             Ticks = new List<TradeApi>();
@@ -120,7 +104,15 @@
             Console.WriteLine($"{secutityMain.Isin} max value for chart {secutityMain.Lot * 300}");
         }
 
-        base.OnInitialized();
+        base.OnInitializedAsync();
+    }
+
+    private void ProcessNewMaxMin(SecurityApi sec, double max, double min)
+    {
+       if(sec.SpecialHash!=secutityMain.SpecialHash)
+           return;
+
+       SetMaxMin(max, min);
     }
 
     protected override void OnAfterRender(bool firstRender)
@@ -138,7 +130,7 @@
         //TODO: решил сделать реализацию через инжект.
         // Возможно это опасно
 
-        var newvalue = _apidataService.openedInstruments;
+        var newvalue = ApidataService.openedInstruments;
 
         if (newvalue == 0) newvalue = 1;
 
@@ -164,8 +156,11 @@
 
     decimal basicvolume = 0;
 
-    public void ProcessTicks(List<TradeApi> ticks)
+    public void ProcessTicks(string sec, List<TradeApi> ticks)
     {
+
+        if (sec != secutityMain.id)
+            return;
 
         if(ticks==null)
             return;
@@ -178,7 +173,7 @@
                 counter += 1;
                 tick.IndexForChart = counter;
 
-                //Console.WriteLine($" {secutityMain.Isin} Added New tick {tick.Price} index {tick.IndexForChart}");
+                Console.WriteLine($" {secutityMain.Isin} Added New tick {tick.Price} index {tick.IndexForChart}");
                 Ticks.Add(tick);
                 
                 if (Ticks.Count > maxamount)
@@ -217,6 +212,27 @@
         {
             Console.WriteLine(ex.Message);
         }
+    }
+
+    private void UpdateChart()
+    {
+        InvokeAsync(() =>
+        {
+            try
+            {
+                Chart2.Refresh();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }).GetAwaiter().GetResult();
+    }
+
+    public void Dispose()
+    {
+        ApidataService.NewMaxMin -= ProcessNewMaxMin;
+        ApidataService.NewTicks -= ProcessTicks;
     }
 
 }

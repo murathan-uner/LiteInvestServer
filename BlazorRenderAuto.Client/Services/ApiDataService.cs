@@ -10,6 +10,7 @@ using RestSharp;
 using BlazorRenderAuto.Client.Entity;
 using Websocket.Client;
 using System;
+using System.Collections.ObjectModel;
 using Binance.Net.Interfaces;
 using Binance.Net.Objects.Models.Futures;
 using Binance.Net.Objects.Models.Futures.Socket;
@@ -100,7 +101,7 @@ namespace BlazorRenderAuto.Client.Services
 		/// НАСТРОЙКА ИСПОЛЬЗУЕТСЯ ДЛЯ ВСЕГО ПРОЕКТА
 		/// TODO: вынеси настройки нормально
 		/// </summary>
-		public bool crypto { get; set; } = false;
+		public bool crypto { get; set; } = true;
 
 		public ApiDataService()
 		{
@@ -116,6 +117,18 @@ namespace BlazorRenderAuto.Client.Services
 			// websocketClient = new WebsocketClient(websocketurl);
 		}
 
+		public Action<SecurityApi, double, double> NewMaxMin { get; set; }
+		public void SetNewMaxMin(SecurityApi security, double max, double min)
+		{
+			NewMaxMin?.Invoke(security, max, min);
+		}
+		
+		public Action <SecurityApi,ICollection<MarketDepthLevel>, Dictionary<decimal, int>> BuildNewTable { get; set; }
+		//initialquotes
+		public void SendInitialQuotes(SecurityApi sec, ICollection<MarketDepthLevel> _initialOrderBook, Dictionary<decimal, int> indexesQuotes)
+		{
+			BuildNewTable?.Invoke(sec,_initialOrderBook, indexesQuotes);
+		}
 
 		public async Task<LoginInfo> LogIn(string login, string pass)
 		{
@@ -558,6 +571,13 @@ namespace BlazorRenderAuto.Client.Services
 		public void LastWindowWasOpened()
 		{
 			LastwindowOpened?.Invoke();
+		}
+
+		public Action <SecurityApi,int> ScrollClusters { get; set; }
+
+		public void ScrollClustes(SecurityApi secmain, int bestbidIndex)
+		{
+			ScrollClusters?.Invoke(secmain,bestbidIndex);
 		}
 	}
 

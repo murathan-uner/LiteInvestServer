@@ -1,15 +1,19 @@
 ﻿@using BlazorRenderAuto.Client.Entity
+@using BlazorRenderAuto.Client.Services
 @using LiteInvest.Entity.PlazaEntity
+@using LiteInvest.Entity.ServerEntity
 
+@inject ApiDataService ApiDataService
+@implements IDisposable
 
 <TelerikGrid @ref="ClustersGrid"
-             EnableLoaderContainer="true"
-             RowHeight="15"
-             Height="99vh"
-             Data="@ClusterDatas"
-             TItem="@ClusterLevel"
-             ScrollMode="@GridScrollMode.Virtual"
-             PageSize="@pagesize">
+EnableLoaderContainer="true"
+RowHeight="15"
+Height="99vh"
+Data="@ClusterDatas"
+TItem="@ClusterLevel"
+ScrollMode="@GridScrollMode.Virtual"
+PageSize="@pagesize">
 
     <GridColumns>
         <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Price)" HeaderClass="grid-header" />
@@ -36,18 +40,72 @@
     [Parameter]
     public int pagesize { get; set; }
 
+    [Parameter] 
+    public SecurityApi secutityMain { get; set; }
+
+
+    //TODO: надо как то вынести нормально
+    [Parameter] public int Scale { get; set; } = 1;
+
+
     public TelerikGrid<ClusterLevel> ClustersGrid { get; set; }
     List<ClusterLevel> ClusterDatas { get; set; } = new List<ClusterLevel>();
+    int lasttradetickTime { get; set; } = -1;
+
+    Dictionary<decimal, int> IndexesQuotes = new Dictionary<decimal, int>();
 
     protected override void OnInitialized()
     {
 
+        //ScrollClusters
+        // ApiDataService.NewTicks += ProcessClusterTick;
+        ApiDataService.BuildNewTable += BuildEmptyClusterLevels;
+        ApiDataService.ScrollClusters+= ScrollClusters;
+
+        //TODO: развернуть.
+        // ApiDataService.BuildNewTable += BuildNewTable;
+        // ClusterDatas = BuildEmptyClusterLevels(initialquotes);
 
         base.OnInitialized();
     }
 
-    private void ProcessClusterTick(List<TradeApi> ticks)
+    private void ScrollClusters(SecurityApi sec, int bestbidindex)
     {
+
+        if (sec.SpecialHash != secutityMain.SpecialHash)
+            return;
+
+        Console.WriteLine($"Scrolling {bestbidindex} Clusters {secutityMain.SpecialHash} ");
+
+        WorkWindow.ScrollTo(bestbidindex, ClustersGrid);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void BuildEmptyClusterLevels(SecurityApi sec, ICollection<MarketDepthLevel> _initialOrderBook, Dictionary<decimal, int> initDictionary)
+    {
+
+        if(sec.SpecialHash!=secutityMain.SpecialHash)
+            return;
+
+        ClusterDatas.Clear();
+
+        foreach (var level in _initialOrderBook)
+        {
+            ClusterDatas.Add(new ClusterLevel() { Price = level.Price });
+        }
+
+        IndexesQuotes = initDictionary;
+
+        UpdateClastersGrid();
+      
+        Console.WriteLine($"Build New Clusters {secutityMain.SpecialHash}");
+    }
+
+    private void ProcessClusterTick(string sec, List<TradeApi> ticks)
+    {
+
+        if(sec!=secutityMain.id)
+            return;
 
         var copyclusters = ClusterDatas.ToList();
 
@@ -74,10 +132,9 @@
 
             decimal tickAgregatedLevel = tick.Price - tick.Price % (secutityMain.PriceStep * Scale);
 
-            if (IndexesQuotes.ContainsKey(tickAgregatedLevel) && copyclusters.Count != 0)
+            if (IndexesQuotes!=null && IndexesQuotes.ContainsKey(tickAgregatedLevel) && copyclusters.Count != 0)
             {
                 var index = IndexesQuotes[tickAgregatedLevel];
-
 
                 var lastclusterItem = (ClusterLevel)copyclusters[index].Clone();
 
@@ -88,11 +145,45 @@
 
                 copyclusters[index] = lastclusterItem;
 
-                //Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
+                Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
             }
         }
 
         ClusterDatas = copyclusters;
+        UpdateClastersGrid();
     }
+
+    private string GetClassForClusters(ClusterLevel _clusterLevel)
+    {
+        if (_clusterLevel.Volume == 0 || _clusterLevel.Volume == null)
+        {
+            return "transparent-item";
+        }
+
+        return _clusterLevel.BidVolume < _clusterLevel.AskVolume ? "highlighted-item" : "highlighted-item2";
+    }
+
+    public void Dispose()
+    {
+        ApiDataService.NewTicks -= ProcessClusterTick;
+        ApiDataService.ScrollClusters -= ScrollClusters;
+    }
+
+    private void UpdateClastersGrid()
+    {
+        InvokeAsync(() =>
+        {
+            try
+            {
+                ClustersGrid.Data = ClusterDatas;
+                ClustersGrid?.Rebind();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }).GetAwaiter().GetResult();
+    }
+
 
 }
