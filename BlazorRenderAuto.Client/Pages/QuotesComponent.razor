@@ -1,0 +1,166 @@
+﻿@using System.Collections.Concurrent
+@using LiteInvest.Entity.PlazaEntity
+@using LiteInvest.Entity.ServerEntity
+
+
+<TelerikGrid @ref="QuotesGrid" Id="@GridTableId"
+             OnRowClick="@OnRowClickHandler"
+             EnableLoaderContainer="true"
+             RowHeight="15"
+             Height="99vh"
+             Data="@Quotes"
+             TItem="@MarketDepthLevel"
+             ScrollMode="@GridScrollMode.Virtual"
+             Pageable="false"
+             Sortable="false"
+             PageSize="@pagesize">
+    <GridColumns>
+        <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Volume)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Price)" HeaderClass="grid-header" />
+        <GridColumn Width="50px" Field="@nameof(MarketDepthLevel.RestVolume)" HeaderClass="grid-header" />
+    </GridColumns>
+    <RowTemplate Context="Quotes">
+        <td style="@GetStyleForQuote(Quotes)" class="">
+            @if (Quotes.Volume != 0)
+            {
+                @Quotes.Volume
+            }
+        </td>
+        <td class="@GetClassForQuote(Quotes) price">
+            @Quotes.Price.ToString("G29")
+        </td>
+        <td class="@GetClassForQuote(Quotes) restVolume">
+            <span class="restVolumeSpan">
+                @Quotes.RestVolume
+            </span>
+            @if (Quotes.RestVolume.ToString() != string.Empty)
+            {
+                <svg class="removeOrder" @onclick="() => RemoveOrderClick(Quotes)" xmlns="http://www.w3.org/2000/svg" width="22" height="15" viewBox="-2 -2 15 15">
+                    <line x1="0" y1="0" x2="10" y2="10" stroke="red" stroke-width="2" />
+                    <line x1="0" y1="10" x2="10" y2="0" stroke="red" stroke-width="2" />
+                </svg>
+            }
+        </td>
+    </RowTemplate>
+</TelerikGrid>
+
+
+
+@code {
+
+
+    [Parameter] public int pagesize { get; set; }
+    [Parameter] public SecurityApi secutityMain { get; set; }
+
+    public TelerikGrid<MarketDepthLevel> QuotesGrid { get; set; }
+    List<MarketDepthLevel> Quotes { get; set; }
+
+
+    private string GridTableId { get; set; } = Guid.NewGuid().ToString();
+
+
+    int orderVolume = 1;
+    public ConcurrentDictionary<decimal, Order> Orders { get; set; } = new();
+
+    /// <summary>
+    /// Выставление
+    /// или отмена если нажали по той же ячейке.
+    /// </summary>
+    /// <param name="arg"></param>
+    /// <returns></returns>
+    private Task OnRowClickHandler(GridRowClickEventArgs arg)
+    {
+        try
+        {
+            var item = (MarketDepthLevel)arg.Item;
+
+            if (Orders.ContainsKey(item.Price))
+            {
+                RemoveOrderClick(item);
+                return Task.CompletedTask;
+            }
+
+            var order = new ClientOrder()
+            {
+                SecID = secutityMain.id,
+                Side = item.Type,
+                Volume = orderVolume,
+                Price = item.Price,
+                Market = false,
+            };
+
+            Console.WriteLine($"Sending order price = {order.Price} side = {order.Side}");
+
+            //ApiDataService.SendOrder(order);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+
+        return Task.CompletedTask;
+    }
+    
+    private void RemoveOrderClick(MarketDepthLevel level)
+    {
+
+        // Orders.TryGetValue(level.Price, out var _order);
+
+        // if (_order == null)
+        // 	Console.WriteLine("No Order Found in Row");
+
+        // ApiDataService.CancelOrder(_order);
+    }
+
+    
+    // ----- ---- ------------- графика ---------------------// 
+
+    private string GetStyleForQuote(MarketDepthLevel quote)
+    {
+        // Максимальное значение, соответствующее 100%
+        int maxVolume = 50000;
+
+        int percentage = (int)((quote.Volume / (decimal)maxVolume) * 100);
+
+        string gradient = "";
+
+        if (quote.Volume == 0 || quote.Volume == null)
+        {
+            gradient = $"linear-gradient(to right, #c7a805 {percentage}%, #ffffff {percentage}%)";
+        }
+        else
+        {
+            if (percentage <= 100)
+            {
+                gradient = quote.Type == Side.Sell
+                    ? $"linear-gradient(to right, #c7a805 {percentage}%, #edc6c6 {percentage}%)"
+                    : $"linear-gradient(to right, #c7a805 {percentage}%, #a0dbc6 {percentage}%)";
+            }
+            else if (percentage <= 200)
+            {
+                int secondStripe = percentage - 100;
+
+                gradient = $"linear-gradient(to right, #f8d0c0 {secondStripe}%, #c7a805 {secondStripe}%)";
+            }
+            else
+            {
+                int thirdStripe = percentage - 200;
+
+                gradient = $"linear-gradient(to right, #c85dd9 {thirdStripe}%, #f8d0c0 {thirdStripe}%)";
+            }
+        }
+
+        return $"background: {gradient};";
+    }
+    public string GetClassForQuote(MarketDepthLevel quote)
+    {
+
+        if (quote.Volume == 0 || quote.Volume == null)
+        {
+            return "transparent-item";
+        }
+
+        return quote.Type == Side.Sell ? "highlighted-item" : "highlighted-item2";
+
+    }
+}

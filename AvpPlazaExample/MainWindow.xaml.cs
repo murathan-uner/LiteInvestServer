@@ -21,6 +21,7 @@ using AvpPlazaTester;
 using LiteInvest.Entity.PlazaEntity;
 using PlazaEngine;
 using PlazaEngine.Engine;
+using RouterLogger = LiteInvest.Entity.PlazaEntity.RouterLogger;
 
 
 namespace AvpPlazaExample

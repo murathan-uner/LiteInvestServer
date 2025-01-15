@@ -1,9 +1,8 @@
 ﻿using AvpPlazaExample;
 
 using PlazaEngine.Engine;
-using PlazaEngine.Entity;
 
-using RouterLoggerSpace;
+
 
 using System;
 using System.Collections.Generic;
@@ -12,6 +11,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using LiteInvest.Entity.PlazaEntity;
+using RouterLogger = PlazaEngine.Engine.RouterLogger;
 
 /*
  Сценарий 2.

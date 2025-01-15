@@ -123,6 +123,16 @@
         base.OnInitialized();
     }
 
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Chart2.Refresh();
+        }
+
+        base.OnAfterRender(firstRender);
+    }
+
     public void ChangeScaleOfChart()
     {
         //TODO: решил сделать реализацию через инжект.

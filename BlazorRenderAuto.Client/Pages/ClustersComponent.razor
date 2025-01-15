@@ -1,0 +1,98 @@
+﻿@using BlazorRenderAuto.Client.Entity
+@using LiteInvest.Entity.PlazaEntity
+
+
+<TelerikGrid @ref="ClustersGrid"
+             EnableLoaderContainer="true"
+             RowHeight="15"
+             Height="99vh"
+             Data="@ClusterDatas"
+             TItem="@ClusterLevel"
+             ScrollMode="@GridScrollMode.Virtual"
+             PageSize="@pagesize">
+
+    <GridColumns>
+        <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Price)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header" />
+    </GridColumns>
+
+    <RowTemplate Context="ClusterDatas">
+        <td class="@GetClassForClusters(ClusterDatas) price">
+            @ClusterDatas.Price.ToString("G29")
+        </td>
+        <td class="@GetClassForClusters(ClusterDatas)">
+            @if (ClusterDatas.Volume != 0)
+            {
+                @ClusterDatas.Volume.KiloFormat()
+                ;
+            }
+        </td>
+    </RowTemplate>
+
+</TelerikGrid>
+
+@code {
+
+    [Parameter]
+    public int pagesize { get; set; }
+
+    public TelerikGrid<ClusterLevel> ClustersGrid { get; set; }
+    List<ClusterLevel> ClusterDatas { get; set; } = new List<ClusterLevel>();
+
+    protected override void OnInitialized()
+    {
+
+
+        base.OnInitialized();
+    }
+
+    private void ProcessClusterTick(List<TradeApi> ticks)
+    {
+
+        var copyclusters = ClusterDatas.ToList();
+
+        foreach (var tick in ticks)
+        {
+            var agregatingTime = tick.Time.Minute - tick.Time.Minute % 5;
+
+            //Console.WriteLine($"real time {DateTime.Now} agreagatedtime = {agregatingTime}");
+
+            if (agregatingTime != lasttradetickTime)
+            {
+                Console.WriteLine($"Time For clusters Updated lastmintime={agregatingTime} timeNow = {lasttradetickTime}");
+
+                foreach (var cluster in copyclusters)
+                {
+                    cluster.AskVolume = 0;
+                    cluster.BidVolume = 0;
+                }
+
+                Console.WriteLine($"Cluster Table Empty");
+
+                lasttradetickTime = agregatingTime;
+            }
+
+            decimal tickAgregatedLevel = tick.Price - tick.Price % (secutityMain.PriceStep * Scale);
+
+            if (IndexesQuotes.ContainsKey(tickAgregatedLevel) && copyclusters.Count != 0)
+            {
+                var index = IndexesQuotes[tickAgregatedLevel];
+
+
+                var lastclusterItem = (ClusterLevel)copyclusters[index].Clone();
+
+                if (tick.Side == Side.Sell)
+                    lastclusterItem.AskVolume += tick.Volume;
+                if (tick.Side == Side.Buy)
+                    lastclusterItem.BidVolume += tick.Volume;
+
+                copyclusters[index] = lastclusterItem;
+
+                //Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
+            }
+        }
+
+        ClusterDatas = copyclusters;
+    }
+
+}

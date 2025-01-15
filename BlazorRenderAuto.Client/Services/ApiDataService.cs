@@ -279,7 +279,8 @@ namespace BlazorRenderAuto.Client.Services
 
 			var clone = (SecurityApi)sec.Clone();
 
-			clone.SpecialHash = DateTime.Now.GetHashCode().ToString();
+			;
+			clone.SpecialHash = Guid.NewGuid().ToString();
 			NewSecOpened?.Invoke(clone);
 
 			return Task.CompletedTask;

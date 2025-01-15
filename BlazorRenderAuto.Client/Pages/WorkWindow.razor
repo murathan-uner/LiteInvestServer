@@ -280,177 +280,17 @@
         <GridLayoutItems>
             <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="1">
 
-                @*  
-                <TelerikGrid 
-                    @ref="QuotesGrid" Id="@GridTableId" 
-                    OnRowClick="@OnRowClickHandler" 
-                    RowHeight="10"
-                    Height="90vh"
-                    Data="@Quotes"
-                    TItem="@MarketDepthLevel"
-                    ScrollMode="@GridScrollMode.Virtual"
-                    PageSize="150">
-                    <GridColumns>
-                        <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Volume)" HeaderClass="d-none" />
-                        <GridColumn Width="1fr"  Field="@nameof(MarketDepthLevel.Price)" HeaderClass="d-none" />
-                        <GridColumn Width="50px"  Field="@nameof(MarketDepthLevel.RestVolume)" HeaderClass="d-none" />
-                    </GridColumns>
-
-                </TelerikGrid> *@
-
-                <TelerikGrid @ref="ClustersGrid"
-                EnableLoaderContainer="true"
-                RowHeight="15"
-                Height="99vh"
-                Data="@ClusterDatas"
-                TItem="@ClusterLevel"
-                OnRowClick="@OnRowClickHandler"
-                ScrollMode="@GridScrollMode.Virtual"
-                PageSize="@pagesize">
-
-                    <GridColumns>
-                        <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Price)" HeaderClass="grid-header" />
-                        <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header" />
-                    </GridColumns>
-
-                    <RowTemplate Context="ClusterDatas">
-                        <td class="@GetClassForClusters(ClusterDatas) price">
-                            @ClusterDatas.Price.ToString("G29")
-                        </td>
-                        <td class="@GetClassForClusters(ClusterDatas)">
-                            @if (ClusterDatas.Volume != 0)
-                            {
-                                @ClusterDatas.Volume.KiloFormat()
-                                ;
-                            }
-                        </td>
-                    </RowTemplate>
-
-                </TelerikGrid>
-
-
+                <ClustersComponent @key="secutityMain.SpecialHash"></ClustersComponent>
 
             </Telerik.Blazor.Components.GridLayoutItem>
             <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="2">
 
                 <Chart @key="secutityMain.SpecialHash" @ref="ChartComponent" secutityMain="secutityMain"> </Chart>
 
-                @* <TelerikChart Class="chart" @ref="Chart2" Transitions="false" RenderAs="@RenderingMode.Canvas"  Width="100%">
-					<ChartLegend Visible="false"></ChartLegend>
-
-					<ChartSeriesItems>
-						<ChartSeries Type="ChartSeriesType.Bubble"
-						Data="@Ticks"
-
-						YField="@nameof(TradeApi.Price)"
-						XField="@nameof(TradeApi.IndexForChart)"
-						SizeField="@nameof(TradeApi.Volume)">
-
-						</ChartSeries>
-
-
-					</ChartSeriesItems>
-
-					<ChartValueAxes>
-						<ChartValueAxis Min="@minchart" Max="@maxchart" Color="red"></ChartValueAxis>
-					</ChartValueAxes>
-
-
-				</TelerikChart>   *@
-
-                @* 
-				<DxChart CssClass="chart"
-				CustomizeSeriesPoint="@PrepareSeriesPoint"
-				@ref="Chart"
-				Data="Ticks"
-				Width="100%"
-				SeriesSelectionMode=ChartSelectionMode.None
-				PointSelectionMode=ChartSelectionMode.None
-
-				LabelOverlap="ChartLabelOverlap.Hide">
-					<DxChartLineSeries Name="ticksLineSeries"
-					T="TradeApi"
-					TArgument="int"
-					TValue="decimal"
-					ValueField="si => si.Price"
-					ArgumentField="si => si.IndexForChart"
-					HoverMode="ChartContinuousSeriesHoverMode.None"
-					SelectionMode=ChartContinuousSeriesSelectionMode.None>
-
-
-						<DxChartSeriesPoint HoverMode=ChartSeriesPointHoverMode.None
-						SelectionMode=ChartSeriesPointSelectionMode.None />
-
-						<DxChartLegend Visible="false" />
-
-						<!--<DxChartSeriesPoint Visible="true"
-						HoverMode="ChartSeriesPointHoverMode.None" />-->
-						<!--<DxChartSeriesLabel Visible="true"
-						ValueFormat="ChartElementFormat.Thousands(1)" />-->
-					</DxChartLineSeries>
-
-					<DxChartArgumentAxis Visible="false">
-						<DxChartAxisLabel Visible="false" />
-						<DxChartAxisTick Visible="false" />
-						<DxChartAxisMinorTick Visible="false" />
-						<DxChartAxisGridLines Visible="true" />
-					</DxChartArgumentAxis>
-
-					<DxChartValueAxis Visible="false" VisualRangeUpdateMode="ChartVisualRangeUpdateMode.Reset">
-						<DxChartAxisLabel Visible="false" />
-						<DxChartAxisTick Visible="false" />
-						<DxChartAxisMinorTick Visible="false" />
-						<DxChartAxisGridLines Visible="true" />
-						<DxChartAxisRange />
-					</DxChartValueAxis>
-
-					<DxChartZoomAndPanSettings ArgumentAxisZoomAndPanMode="ChartAxisZoomAndPanMode.None" />
-
-				</DxChart>  *@
-
             </Telerik.Blazor.Components.GridLayoutItem>
             <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="3">
 
-                <TelerikGrid @ref="QuotesGrid" Id="@GridTableId"
-                OnRowClick="@OnRowClickHandler"
-                EnableLoaderContainer="true"
-                RowHeight="15"
-                Height="99vh"
-                Data="@Quotes"
-                TItem="@MarketDepthLevel"
-                ScrollMode="@GridScrollMode.Virtual"
-                Pageable="false"
-                Sortable="false"
-                PageSize="@pagesize">
-                    <GridColumns>
-                        <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Volume)" HeaderClass="grid-header" />
-                        <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Price)" HeaderClass="grid-header" />
-                        <GridColumn Width="50px" Field="@nameof(MarketDepthLevel.RestVolume)" HeaderClass="grid-header" />
-                    </GridColumns>
-                    <RowTemplate Context="Quotes">
-                        <td style="@GetStyleForQuote(Quotes)" class="">
-                            @if (Quotes.Volume != 0)
-                            {
-                                @Quotes.Volume
-                            }
-                        </td>
-                        <td class="@GetClassForQuote(Quotes) price">
-                            @Quotes.Price.ToString("G29")
-                        </td>
-                        <td class="@GetClassForQuote(Quotes) restVolume">
-                            <span class="restVolumeSpan">
-                                @Quotes.RestVolume
-                            </span>
-                            @if (Quotes.RestVolume.ToString() != string.Empty)
-                            {
-                                <svg class="removeOrder" @onclick="() => RemoveOrderClick(Quotes)" xmlns="http://www.w3.org/2000/svg" width="22" height="15" viewBox="-2 -2 15 15">
-                                    <line x1="0" y1="0" x2="10" y2="10" stroke="red" stroke-width="2" />
-                                    <line x1="0" y1="10" x2="10" y2="0" stroke="red" stroke-width="2" />
-                                </svg>
-                            }
-                        </td>
-                    </RowTemplate>
-                </TelerikGrid>
+                <QuotesComponent @key="secutityMain.SpecialHash"></QuotesComponent>
 
             </Telerik.Blazor.Components.GridLayoutItem>
         </GridLayoutItems>
@@ -463,10 +303,6 @@
 @code {
 
 
-    TelerikGrid<ClusterLevel> clustersgrid;
-    List<ClusterLevel> ClusterDatas { get; set; } = new List<ClusterLevel>();
-    List<MarketDepthLevel> Quotes { get; set; }
-
     [Parameter]
     public int WindowsOpened {
         set
@@ -476,30 +312,6 @@
         }
     }
 
-    // public class ClusterData
-    // {
-    // 	public decimal Volume;
-    // 	public DateTime DateTime;
-
-    // 	public ClusterData(decimal volume, DateTime dateTime)
-    // 	{
-    // 		Volume = volume;
-    // 		DateTime = dateTime;
-    // 	}
-    // }
-
-    // private void UpdateClusterData(decimal volumeSumm)
-    // {
-    // 	if (ClusterDatas != null && ClusterDatas.Count > 5)
-    // 	{
-    // 		ClusterDatas.RemoveAt(0);
-    // 	}
-
-    // 	ClusterDatas.Add(new ClusterData(volumeSumm, DateTime.Now));
-    // 	clustersgrid.Rebind();
-    // }
-
-    TelerikChart chart;
 
     static string plusHotKey = "Equal";
     static string minusHotKey = "Minus";
@@ -538,23 +350,20 @@
     }
 
     // public ObservableCollection<Quote> GridData { get; set; }
-  
+
 
     public List<TradeApi> Ticks { get; set; } //= new List();
 
-    public List<int?> WebSockets { get; set; }
-
-    public TelerikGrid<MarketDepthLevel> QuotesGrid { get; set; }
-    public TelerikGrid<ClusterLevel> ClustersGrid { get; set; }
-
     private string WindowId { get; set; } = Guid.NewGuid().ToString();
-    private string GridTableId { get; set; } = Guid.NewGuid().ToString();
+   
 
     /// <summary>
     /// Индекс к которому мы должны таблицу откскроллить!
     /// Обновляется на лету
     /// </summary>
     int bestbidIndex { get; set; }
+
+    public List<int?> WebSockets { get; set; }
 
     protected override async Task<Task> OnInitializedAsync()
     {
@@ -571,17 +380,15 @@
 
         jsInteropService.OnKeyDown += OnKeyDown;
         jsInteropService.OnScroll += OnScroll;
-      
+
 
         //TODO: Сделать нормальную подписку на частные ордера
 
         WebSockets =
         [
             await ApiDataService.SubscribeOrderBook(secutityMain.id),
-    await ApiDataService.SubcribeTick(secutityMain.id)
+            await ApiDataService.SubcribeTick(secutityMain.id)
         ];
-
-
 
         return base.OnInitializedAsync();
     }
@@ -590,8 +397,10 @@
     {
         if (firstRender)
         {
-            await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
-             await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
+            //TODO: вынуть из компонента? 
+            //await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
+
+            await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
             await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
         }
         else
@@ -613,59 +422,6 @@
         Console.WriteLine($"{DateTime.Now} On Parameters {secutityMain.id} set WorkWindow");
 
         base.OnParametersSet();
-    }
-
-    int orderVolume = 1;
-    public ConcurrentDictionary<decimal, Order> Orders { get; set; } = new();
-
-    /// <summary>
-    /// Выставление
-    /// или отмена если нажали по той же ячейке.
-    /// </summary>
-    /// <param name="arg"></param>
-    /// <returns></returns>
-    private Task OnRowClickHandler(GridRowClickEventArgs arg)
-    {
-        try
-        {
-            var item = (MarketDepthLevel)arg.Item;
-
-            if (Orders.ContainsKey(item.Price))
-            {
-                RemoveOrderClick(item);
-                return Task.CompletedTask;
-            }
-
-            var order = new ClientOrder()
-                {
-                    SecID = secutityMain.id,
-                    Side = item.Type,
-                    Volume = orderVolume,
-                    Price = item.Price,
-                    Market = false,
-                };
-
-            Console.WriteLine($"Sending order price = {order.Price} side = {order.Side}");
-
-            //ApiDataService.SendOrder(order);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private void RemoveOrderClick(MarketDepthLevel level)
-    {
-
-        // Orders.TryGetValue(level.Price, out var _order);
-
-        // if (_order == null)
-        // 	Console.WriteLine("No Order Found in Row");
-
-        // ApiDataService.CancelOrder(_order);
     }
 
 
@@ -699,54 +455,7 @@
 
     int lasttradetickTime { get; set; } = -1;
 
-    private void ProcessClusterTick(List<TradeApi> ticks)
-    {
-
-        var copyclusters = ClusterDatas.ToList();
-
-        foreach (var tick in ticks)
-        {
-            var agregatingTime = tick.Time.Minute - tick.Time.Minute % 5;
-
-            //Console.WriteLine($"real time {DateTime.Now} agreagatedtime = {agregatingTime}");
-
-            if (agregatingTime != lasttradetickTime)
-            {
-                Console.WriteLine($"Time For clusters Updated lastmintime={agregatingTime} timeNow = {lasttradetickTime}");
-
-                foreach (var cluster in copyclusters)
-                {
-                    cluster.AskVolume = 0;
-                    cluster.BidVolume = 0;
-                }
-
-                Console.WriteLine($"Cluster Table Empty");
-
-                lasttradetickTime = agregatingTime;
-            }
-
-            decimal tickAgregatedLevel = tick.Price - tick.Price % (secutityMain.PriceStep * Scale);
-
-            if (IndexesQuotes.ContainsKey(tickAgregatedLevel) && copyclusters.Count != 0)
-            {
-                var index = IndexesQuotes[tickAgregatedLevel];
-
-
-                var lastclusterItem = (ClusterLevel)copyclusters[index].Clone();
-
-                if (tick.Side == Side.Sell)
-                    lastclusterItem.AskVolume += tick.Volume;
-                if (tick.Side == Side.Buy)
-                    lastclusterItem.BidVolume += tick.Volume;
-
-                copyclusters[index] = lastclusterItem;
-
-                //Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
-            }
-        }
-
-        ClusterDatas = copyclusters;
-    }
+  
 
     private async void OnNewTicks(string secID, List<TradeApi> ticks)
     {
@@ -795,6 +504,7 @@
 
     private void UpdateQuotesGrid()
     {
+       
         InvokeAsync(() =>
         {
 
@@ -1021,7 +731,7 @@
 
     //QuotesDictionary - old
 
-    bool logquotes = false;
+    bool logquotes = true;
 
 
     private decimal GetRestVolumeFromOrders(decimal price)
@@ -1042,6 +752,37 @@
 
         if (!crypto)
         {
+
+
+            // foreach (var quoteKey in oldQuotes.Keys)
+            // {
+            //     if (!IndexesQuotes.ContainsKey(quoteKey))
+            //         continue;
+
+            //     var indexfound = IndexesQuotes[quoteKey];
+            //     //меняем на нулевой
+
+            //     var emptylevel = MarketDepthLevel.GetEmptyLevel(quoteKey);
+
+            //     //_quotesList[indexfound] = emptylevel;
+            //     copy[indexfound] = emptylevel;
+            // }
+
+            // oldQuotes.Clear();
+            
+            // foreach (var quoteKey in newdictionaryQuotes.Keys)
+            // {
+            //     oldQuotes[quoteKey] = newdictionaryQuotes[quoteKey];
+            //     if (!IndexesQuotes.ContainsKey(quoteKey))
+            //         continue;
+
+            //     var indexfound = IndexesQuotes[quoteKey];
+
+            //     //_quotesList[indexfound] = newdictionaryQuotes[quoteKey];
+            //     copy[indexfound] = newdictionaryQuotes[quoteKey];
+            // }
+
+
             foreach (var quoteKey in oldQuotes.Keys.ToList())
             {
 
@@ -1113,6 +854,10 @@
 
                     if (logquotes)
                         Console.WriteLine($" {secutityMain.id} Level Added! {quoteKey} index = {indexfound}");
+
+                }
+                else
+                {
 
                 }
             }
@@ -1198,7 +943,7 @@
         if (Scale != prevbuildScale)
         {
             prevbuildScale = Scale;
-           
+
             //Применяем масштаб (даже если 1)
             //строим пустой стакан на всю длину
             var initialquotes = BuildInitialQuotes(bestbbid);
@@ -1213,7 +958,9 @@
 
             //UpdateClastersGrid();
             //UpdateQuotesGrid();
-          
+
+            InvokeAsync(StateHasChanged);
+
             //NOTE: Почему тоесли мы скроллим сразу, его перекрывает..
 
             Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
@@ -1223,14 +970,11 @@
             {
                 //Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
 
-                 ScrollTo<MarketDepthLevel>(bestbidIndex, QuotesGrid);
-                 ScrollTo<ClusterLevel>(bestbidIndex, ClustersGrid);
+                /* ScrollTo<MarketDepthLevel>(bestbidIndex, QuotesGrid);
+                ScrollTo<ClusterLevel>(bestbidIndex, ClustersGrid);
 
                 UpdateClastersGrid();
-                UpdateQuotesGrid();
-
-                
-
+                UpdateQuotesGrid();*/
 
             }, 500, false);
 
@@ -1242,7 +986,7 @@
         else
         {
             //TODO: Крипта пока что вшита напрямую,
-            Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, Quotes, true);
+            Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, Quotes, ApiDataService.crypto);
             UpdateQuotesGrid();
         }
 
@@ -1414,86 +1158,8 @@
         return _clusterLevel.BidVolume < _clusterLevel.AskVolume ? "highlighted-item" : "highlighted-item2";
     }
 
-    private string GetStyleForQuote(MarketDepthLevel quote)
-    {
-        // Максимальное значение, соответствующее 100%
-        int maxVolume = 50000;
+    
 
-        int percentage = (int)((quote.Volume / (decimal)maxVolume) * 100);
-
-        string gradient = "";
-
-        if (quote.Volume == 0 || quote.Volume == null)
-        {
-            gradient = $"linear-gradient(to right, #c7a805 {percentage}%, #ffffff {percentage}%)";
-        }
-        else
-        {
-            if (percentage <= 100)
-            {
-                gradient = quote.Type == Side.Sell
-                    ? $"linear-gradient(to right, #c7a805 {percentage}%, #edc6c6 {percentage}%)"
-                    : $"linear-gradient(to right, #c7a805 {percentage}%, #a0dbc6 {percentage}%)";
-            }
-            else if (percentage <= 200)
-            {
-                int secondStripe = percentage - 100;
-
-                gradient = $"linear-gradient(to right, #f8d0c0 {secondStripe}%, #c7a805 {secondStripe}%)";
-            }
-            else
-            {
-                int thirdStripe = percentage - 200;
-
-                gradient = $"linear-gradient(to right, #c85dd9 {thirdStripe}%, #f8d0c0 {thirdStripe}%)";
-            }
-        }
-
-        return $"background: {gradient};";
-    }
-
-    public string GetClassForQuote(MarketDepthLevel quote)
-    {
-
-        if (quote.Volume == 0 || quote.Volume == null)
-        {
-            return "transparent-item";
-        }
-
-        return quote.Type == Side.Sell ? "highlighted-item" : "highlighted-item2";
-
-    }
-
-    /*protected void PrepareSeriesPoint(ChartSeriesPointCustomizationSettings pointSettings)
-		{
-
-		try
-		{
-		//всегда 1 элемент
-	var t = (TradeApi)pointSettings.Point.DataItems.ToArray()[0];
-
-	//показывать объём сверху
-			pointSettings.PointLabel.Texts = new string[] { t.Volume.ToString() };
-			pointSettings.PointLabel.Visible = true;
-
-			//кружок
-			pointSettings.PointAppearance.Symbol = ChartPointSymbol.Circle;
-
-			//TODO: Исправить размеры - сделать адаптивными
-			//TODO: написать логику расчета адаптивных элементов
-			pointSettings.PointAppearance.Size = 1;
-
-			if (t.Side == Side.Sell)
-			pointSettings.PointAppearance.Color = Color.Red;
-				else if (t.Side == Side.Buy)
-			pointSettings.PointAppearance.Color = Color.Green;
-				}
-				catch (Exception ex)
-		{
-
-		}
-
-	}*/
 
     int firstVisibleIndex;
     int lastVisibleIndex;
