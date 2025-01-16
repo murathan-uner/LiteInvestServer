@@ -88,6 +88,8 @@ PageSize="@pagesize">
     private int prevbuildScale { get; set; }
 
     private int _oldScale;//для первой отрисовки
+    
+    [Parameter]
     public int Scale
     {
         get => _oldScale;
@@ -139,6 +141,8 @@ PageSize="@pagesize">
 
         ApiDataService.NewQuotes += OnNewMarketDepth; 
         jsInteropService.OnScroll += OnScroll;
+        
+        
 
         return base.OnInitializedAsync();
     }
@@ -635,6 +639,13 @@ PageSize="@pagesize">
     public double minchart { get; set; }// = 0;
     public double maxchart { get; set; }// = 10;
 
+    static string plusHotKey = "Equal";
+    static string minusHotKey = "Minus";
+    static string cancelHotKey = "KeyC";
+
+
+   
+
     private void OnScroll(string gridTableId, string firstVisibleRowPrice, string lastVisibleRowPrice, int visibleRowCount)
     {
         
@@ -722,6 +733,7 @@ PageSize="@pagesize">
     {
         jsInteropService.OnScroll -= OnScroll;
         ApiDataService.NewQuotes -= OnNewMarketDepth;
+       
     }
 
 }
