@@ -66,7 +66,8 @@ function getScrollEvent(gridTableId) {
                         }
                     });
 
-                    if (firstVisibleRowPrice !== null && lastVisibleRowPrice !== null) {
+                    if (firstVisibleRowPrice !== null && lastVisibleRowPrice !== null)
+                    {
                         DOTNET_JSINTEROPSERVICE_REFERENCE.invokeMethodAsync(
                             "OnScroll", gridTableId,
                             firstVisibleRowPrice,

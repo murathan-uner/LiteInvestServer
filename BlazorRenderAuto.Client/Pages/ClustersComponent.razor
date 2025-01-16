@@ -58,7 +58,7 @@ PageSize="@pagesize">
     {
 
         //ScrollClusters
-        // ApiDataService.NewTicks += ProcessClusterTick;
+        ApiDataService.NewTicks += ProcessClusterTick;
         ApiDataService.BuildNewTable += BuildEmptyClusterLevels;
         ApiDataService.ScrollClusters+= ScrollClusters;
 
@@ -145,7 +145,7 @@ PageSize="@pagesize">
 
                 copyclusters[index] = lastclusterItem;
 
-                Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
+               // Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
             }
         }
 

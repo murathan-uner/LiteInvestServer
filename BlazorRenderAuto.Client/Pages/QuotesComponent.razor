@@ -109,6 +109,8 @@ PageSize="@pagesize">
         }
     }
 
+
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
 
@@ -367,9 +369,10 @@ PageSize="@pagesize">
                  WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
                  ApiDataService.ScrollClustes(secutityMain,bestbidIndex);
                  UpdateQuotesGrid();
-             //InvokeAsync(StateHasChanged);
 
-            }, 200, false);
+          
+
+            }, 400, false);
 
 
         }
@@ -651,7 +654,7 @@ PageSize="@pagesize">
             maxchart = minchart + range;
             //найти в каком индекс у нас минимум... 
 
-             Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart} min = {minchart} range ={range}");
+             //Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart} min = {minchart} range ={range}");
 
 
              ApiDataService.SetNewMaxMin(secutityMain, maxchart, minchart);

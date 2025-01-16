@@ -46,16 +46,16 @@
 
     </ChartSeriesItems>
 
-    @* 
+
     <ChartXAxes>
         <ChartXAxis Max="@counter" Min="@(counter-maxamount)" Visible="false">
         </ChartXAxis>
     </ChartXAxes>
 
-     <ChartYAxes>
+    <ChartYAxes>
         <ChartYAxis Min="@minchart" Max="@maxchart" Visible="false">
         </ChartYAxis>
-    </ChartYAxes> *@
+    </ChartYAxes> 
 
 </TelerikChart>
 
@@ -72,6 +72,7 @@
     public List<TradeApi> Ticks { get; set; }
 
     public int maxamount { get; set; } = 30; //надо разделить на шаг и получится реальное количество отображаемых элементов
+
     static int maxStaticValue { get; set; } = 30;
     public int maxScaleForChart { get; set; } = 200;
 
@@ -101,7 +102,9 @@
             basicvolume = secutityMain.Lot * maxScaleForChart;
             Ticks.Add(new TradeApi() { IndexForChart = -3 * maxStaticValue, Volume = basicvolume, });
 
-            Console.WriteLine($"{secutityMain.Isin} max value for chart {secutityMain.Lot * 300}");
+            //Console.WriteLine($"{secutityMain.Isin} max value for chart {secutityMain.Lot * 300}");
+
+            ChangeScaleOfChart();
         }
 
         base.OnInitializedAsync();
@@ -139,7 +142,7 @@
 
         lastvalue = newvalue;
 
-        var res = maxStaticValue / (newvalue * 0.3m);
+        var res = maxStaticValue / (newvalue );
 
 
         if (Ticks!=null && Ticks.Count > 0)
@@ -150,7 +153,8 @@
         maxamount = (int)res;
 
         if(Ticks!=null && Ticks.Count>0)
-        Console.WriteLine($"new max amount {maxamount} {secutityMain.Isin}  №{newvalue} of windows (CHART MESSAGE) ticksvol = {Ticks[0].Volume}");
+            Console.WriteLine($"  {secutityMain.Isin} new RANGE FOR CHART = {maxamount}   NEW SCALE (VOL) = {Ticks[0].Volume}");
+       
         InvokeAsync(StateHasChanged);
     }
 
@@ -173,7 +177,7 @@
                 counter += 1;
                 tick.IndexForChart = counter;
 
-                Console.WriteLine($" {secutityMain.Isin} Added New tick {tick.Price} index {tick.IndexForChart}");
+                //Console.WriteLine($" {secutityMain.Isin} Added New tick {tick.Price} index {tick.IndexForChart}");
                 Ticks.Add(tick);
                 
                 if (Ticks.Count > maxamount)
