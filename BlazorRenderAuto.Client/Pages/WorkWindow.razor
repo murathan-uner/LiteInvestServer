@@ -354,6 +354,9 @@
             //TODO: вынуть из компонента? 
             //await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
 
+            
+            await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
+
             await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
 
             await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
@@ -478,61 +481,61 @@
 
     private void OnKeyDown(string windowId, string keyCode, bool isCtrl, bool isShift)
     {
-        // try
-        // {
-        //     if (windowId != secutityMain.SpecialHash)
-        //         return;
+        try
+        {
+            if (windowId != secutityMain.SpecialHash)
+                return;
 
 
-        //     if (keyCode == "KeyM")
-        //     {
-        //         //двигаем в середину
+            if (keyCode == "KeyM")
+            {
+                //двигаем в середину
 
-        //         ScrollTo(bestbidIndex, QuotesGrid);
-        //     }
+                ScrollTo(bestbidIndex, QuotesGrid);
+            }
 
-        //     if (keyCode == cancelHotKey)
-        //     {
-        //         /* foreach (var order in Orders)
-        //             {
-        //             ApiDataService.CancelOrder(order.Value);
-        //                 } */
-        //     }
+            if (keyCode == cancelHotKey)
+            {
+                /* foreach (var order in Orders)
+                    {
+                    ApiDataService.CancelOrder(order.Value);
+                        } */
+            }
 
-        //     if (keyCode == plusHotKey)
-        //     {
-        //         if (Scale >= 5)
-        //         {
-        //             var newScale = Scale - 5;
+            if (keyCode == plusHotKey)
+            {
+                if (Scale >= 5)
+                {
+                    var newScale = Scale - 5;
 
-        //             if (newScale == 0)
-        //                 Scale = 1;
-        //             else Scale = newScale;
+                    if (newScale == 0)
+                        Scale = 1;
+                    else Scale = newScale;
 
-        //             Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
+                    Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
 
-        //         }
-        //     }
+                }
+            }
 
 
 
-        //     if (keyCode == minusHotKey)
-        //     {
-        //         if (Scale == 1)
-        //             Scale += 4;
-        //         else Scale += 5;
-        //         //UpdateAll();
+            if (keyCode == minusHotKey)
+            {
+                if (Scale == 1)
+                    Scale += 4;
+                else Scale += 5;
+                //UpdateAll();
 
-        //         Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
-        //     }
+                Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
+            }
 
-        // }
-        // catch (Exception ex)
-        // {
-        //     Console.WriteLine(ex.Message);
-        // }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
 
-        //Console.WriteLine($"{keyCode} {windowId}");
+        Console.WriteLine($"{keyCode} {windowId}");
     }
 
 
