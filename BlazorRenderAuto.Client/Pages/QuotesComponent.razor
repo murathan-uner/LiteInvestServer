@@ -118,12 +118,17 @@ PageSize="@pagesize">
 
         if (firstRender)
         {
+
+            jsInteropService.OnScroll += OnScroll;
+
+            //getScrollEvent2
             await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
+            
 
             Scale = 1;
 
             ApiDataService.NewQuotes += OnNewMarketDepth; 
-            jsInteropService.OnScroll += OnScroll;
+            
 
             _firstrender = true;
 
@@ -370,6 +375,8 @@ PageSize="@pagesize">
             InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
             WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
             InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
+
+            //JSRuntime.InvokeVoidAsync("getScrollEvent2", GridTableId);
 
             ApiDataService.ScrollClustes(secutityMain, bestbidIndex);
             Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
