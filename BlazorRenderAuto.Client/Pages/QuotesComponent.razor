@@ -4,6 +4,8 @@
 @using LiteInvest.Entity.Helpers
 @using LiteInvest.Entity.PlazaEntity
 @using LiteInvest.Entity.ServerEntity
+@using Telerik.DataSource
+@using Telerik.DataSource.Extensions
 
 @inject ApiDataService ApiDataService
 @implements IDisposable
@@ -11,16 +13,16 @@
 @inject IJSRuntime JSRuntime
 
 <TelerikGrid @ref="QuotesGrid" Id="@GridTableId"
-             OnRowClick="@OnRowClickHandler"
-             EnableLoaderContainer="true"
-             RowHeight="15"
-             Height="100vh"
-             Data="@Quotes"
-             TItem="@MarketDepthLevel"
-             ScrollMode="@GridScrollMode.Virtual"
-             Pageable="false"
-             Sortable="false"
-             PageSize="@pagesize">
+OnRowClick="@OnRowClickHandler"
+EnableLoaderContainer="true"
+RowHeight="15"
+Height="100vh"
+Data="@Quotes"
+TItem="@MarketDepthLevel"
+ScrollMode="@GridScrollMode.Virtual"
+Pageable="false"
+Sortable="false"
+PageSize="@pagesize">
     <GridColumns>
         <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Volume)" HeaderClass="grid-header" />
         <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Price)" HeaderClass="grid-header" />
@@ -120,21 +122,82 @@
         {
 
             jsInteropService.OnScroll += OnScroll;
+            jsInteropService.OnKeyDown += OnKeyDown;
 
             //getScrollEvent2
             await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
-            
+            await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
+
 
             Scale = 1;
 
             ApiDataService.NewQuotes += OnNewMarketDepth; 
-            
+
 
             _firstrender = true;
 
         }
 
         base.OnAfterRender(firstRender);
+    }
+
+    private void OnKeyDown(string windowId, string keyCode, bool isCtrl, bool isShift)
+    {
+        try
+        {
+            if (windowId != secutityMain.SpecialHash)
+                return;
+
+
+            if (keyCode == "KeyM")
+            {
+                //двигаем в середину
+
+                //ScrollTo(bestbidIndex, QuotesGrid);
+            }
+
+            if (keyCode == cancelHotKey)
+            {
+                /* foreach (var order in Orders)
+                    {
+                    ApiDataService.CancelOrder(order.Value);
+                        } */
+            }
+
+            if (keyCode == plusHotKey)
+            {
+                if (Scale >= 5)
+                {
+                    var newScale = Scale - 5;
+
+                    if (newScale == 0)
+                        Scale = 1;
+                    else Scale = newScale;
+
+                    Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
+
+                }
+            }
+
+
+
+            if (keyCode == minusHotKey)
+            {
+                if (Scale == 1)
+                    Scale += 4;
+                else Scale += 5;
+                //UpdateAll();
+
+                Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
+            }
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+
+        Console.WriteLine($"{keyCode} {windowId}");
     }
 
 
@@ -150,8 +213,9 @@
 
     protected override Task OnInitializedAsync()
     {
-      
 
+        Quotes = new List<MarketDepthLevel>();
+        Quotes.Add(new MarketDepthLevel(){Price = 1});
 
         return base.OnInitializedAsync();
     }
@@ -692,6 +756,24 @@
 
     public double range { get; set; }
 
+    private async Task GridReadHandler(GridReadEventArgs args)
+    {
+      // if(Quotes==null )
+       // return;
+
+        DataSourceResult result = Quotes.ToDataSourceResult(args.Request);
+
+        if (result != null && result.Data!=null)
+        {
+            var r2=result.Data as IEnumerable<MarketDepthLevel>;
+            Console.WriteLine($"skip = {args.Request.Skip} price= {r2.First().Price} ");
+        }
+
+        args.Data = result.Data;
+        args.Total = result.Total;
+        args.AggregateResults = result.AggregateResults; // Grid only
+    }
+
     // ----- ---- ------------- графика ---------------------//
 
     private string GetStyleForQuote(MarketDepthLevel quote)
@@ -745,9 +827,12 @@
 
     public void Dispose()
     {
+        jsInteropService.OnKeyDown -= OnKeyDown;
         jsInteropService.OnScroll -= OnScroll;
         ApiDataService.NewQuotes -= OnNewMarketDepth;
        
     }
+
+
 
 }

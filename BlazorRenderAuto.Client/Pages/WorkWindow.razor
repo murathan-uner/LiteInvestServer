@@ -334,7 +334,7 @@
         ApiDataService.NewMyOrder += NewMyOrder;
 
 
-        jsInteropService.OnKeyDown += OnKeyDown;
+    
 
         //TODO: Сделать нормальную подписку на частные ордера
 
@@ -354,7 +354,7 @@
             //TODO: вынуть из компонента? 
             //await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
 
-            await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
+            
 
            
         }
@@ -378,64 +378,7 @@
 
     public int Scale = 1;
 
-    private void OnKeyDown(string windowId, string keyCode, bool isCtrl, bool isShift)
-    {
-        try
-        {
-            if (windowId != secutityMain.SpecialHash)
-                return;
-
-
-            if (keyCode == "KeyM")
-            {
-                //двигаем в середину
-
-                //ScrollTo(bestbidIndex, QuotesGrid);
-            }
-
-            if (keyCode == cancelHotKey)
-            {
-                /* foreach (var order in Orders)
-                    {
-                    ApiDataService.CancelOrder(order.Value);
-                        } */
-            }
-
-            if (keyCode == plusHotKey)
-            {
-                if (Scale >= 5)
-                {
-                    var newScale = Scale - 5;
-
-                    if (newScale == 0)
-                        Scale = 1;
-                    else Scale = newScale;
-
-                    Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
-
-                }
-            }
-
-
-
-            if (keyCode == minusHotKey)
-            {
-                if (Scale == 1)
-                    Scale += 4;
-                else Scale += 5;
-                //UpdateAll();
-
-                Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
-            }
-
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-        }
-
-        Console.WriteLine($"{keyCode} {windowId}");
-    }
+   
 
     bool firstrender = false;
 
@@ -456,7 +399,7 @@
 
         //TODO: вернуть
 
-        if (firstrender)
+        if (!firstrender)
             return false;
 
         return base.ShouldRender();
@@ -548,7 +491,7 @@
     {
         Console.WriteLine($"Disposing {secutityMain.id}");
 
-        jsInteropService.OnKeyDown -= OnKeyDown;
+        
        
 
         ApiDataService.NewMyOrder -= NewMyOrder;

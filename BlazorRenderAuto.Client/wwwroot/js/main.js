@@ -51,11 +51,14 @@ function getScrollEvent(gridTableId) {
     }
 
     let debounceTimer;
-    const onScroll = (event) => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            handleScroll(targetElement, gridTableId, headerHeight);
-        }, 100);
+    const onScroll = (event) =>
+    {
+        //clearTimeout(debounceTimer);
+        //debounceTimer = setTimeout(() => {
+        //    handleScroll(targetElement, gridTableId, headerHeight);
+        //}, 100);
+
+        handleScroll(targetElement, gridTableId, headerHeight);
     };
 
     targetElement.addEventListener('scroll', onScroll);
