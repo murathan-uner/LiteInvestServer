@@ -5,6 +5,7 @@
 
 @inject ApiDataService ApiDataService
 @implements IDisposable
+@inject IJSRuntime JSRuntime
 
 <TelerikGrid @ref="ClustersGrid"
 EnableLoaderContainer="true"
@@ -58,15 +59,27 @@ PageSize="@pagesize">
     {
 
         //ScrollClusters
-        ApiDataService.NewTicks += ProcessClusterTick;
-        ApiDataService.BuildNewTable += BuildEmptyClusterLevels;
-        ApiDataService.ScrollClusters+= ScrollClusters;
+       
 
         //TODO: развернуть.
         // ApiDataService.BuildNewTable += BuildNewTable;
         // ClusterDatas = BuildEmptyClusterLevels(initialquotes);
 
         base.OnInitialized();
+    }
+
+    protected override async void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
+
+             ApiDataService.NewTicks += ProcessClusterTick;
+             ApiDataService.BuildNewTable += BuildEmptyClusterLevels;
+             ApiDataService.ScrollClusters+= ScrollClusters;
+        }
+
+        base.OnAfterRender(firstRender);
     }
 
     private void ScrollClusters(SecurityApi sec, int bestbidindex)
@@ -77,8 +90,9 @@ PageSize="@pagesize">
 
         Console.WriteLine($"Scrolling {bestbidindex} Clusters {secutityMain.SpecialHash} ");
 
+        InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
         WorkWindow.ScrollTo(bestbidindex, ClustersGrid);
-        InvokeAsync(StateHasChanged);
+        InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
     }
 
     private void BuildEmptyClusterLevels(SecurityApi sec, ICollection<MarketDepthLevel> _initialOrderBook, Dictionary<decimal, int> initDictionary)

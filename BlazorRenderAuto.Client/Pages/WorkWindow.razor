@@ -322,7 +322,7 @@
 
 
     private string WindowId { get; set; } = Guid.NewGuid().ToString();
-   
+
 
     public List<int?> WebSockets { get; set; }
 
@@ -333,7 +333,7 @@
 
         ApiDataService.NewMyOrder += NewMyOrder;
 
-      
+
         jsInteropService.OnKeyDown += OnKeyDown;
 
         //TODO: Сделать нормальную подписку на частные ордера
@@ -341,7 +341,7 @@
         WebSockets =
         [
             await ApiDataService.SubscribeOrderBook(secutityMain.id),
-            await ApiDataService.SubcribeTick(secutityMain.id)
+    await ApiDataService.SubcribeTick(secutityMain.id)
         ];
 
         return base.OnInitializedAsync();
@@ -356,9 +356,9 @@
 
             await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
 
-            //await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
+           
         }
-       
+
     }
 
     // public override Task SetParametersAsync(ParameterView parameters)
@@ -437,9 +437,12 @@
         Console.WriteLine($"{keyCode} {windowId}");
     }
 
+    bool firstrender = false;
+
     protected override void OnAfterRender(bool _firstRender)
     {
-
+        if (_firstRender)
+            firstrender = true;
 
         base.OnAfterRender(_firstRender);
     }
@@ -453,8 +456,8 @@
 
         //TODO: вернуть
 
-        // if (!firstrender && Chart2 != null)
-        //     ChartComponent.PushInvokeAsync();
+        if (firstrender)
+            return false;
 
         return base.ShouldRender();
     }
