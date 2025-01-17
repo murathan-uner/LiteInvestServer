@@ -332,6 +332,7 @@ namespace PlazaEngine.Engine
         {
             try
             {
+	            Console.WriteLine($" [PLAZA ENGINE] Request for Order BOOK subscription {secid}");
 
                 if (!Securities.ContainsKey(secid) || Securities[secid] == null)
                     return ;

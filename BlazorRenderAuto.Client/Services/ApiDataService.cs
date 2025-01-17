@@ -444,17 +444,17 @@ namespace BlazorRenderAuto.Client.Services
 						}
 						catch (Exception ex)
 						{
-
+							Console.WriteLine($" SOCKET EXCEPTION -> {ex.Message}");
 						}
 					});
 
-
+					Console.WriteLine($"Subscribing Order book {secid}");
 					Console.WriteLine(webscoketrequest);
 
 					var hash = websocketClient.GetHashCode();
 					AllWebSockets.TryAdd(hash, websocketClient);
 
-					await websocketClient.Start();
+					await websocketClient.StartOrFail();
 					return hash;
 				}
 				else
