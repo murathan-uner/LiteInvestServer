@@ -11,16 +11,16 @@
 @inject IJSRuntime JSRuntime
 
 <TelerikGrid @ref="QuotesGrid" Id="@GridTableId"
-OnRowClick="@OnRowClickHandler"
-EnableLoaderContainer="true"
-RowHeight="15"
-Height="99vh"
-Data="@Quotes"
-TItem="@MarketDepthLevel"
-ScrollMode="@GridScrollMode.Virtual"
-Pageable="false"
-Sortable="false"
-PageSize="@pagesize">
+             OnRowClick="@OnRowClickHandler"
+             EnableLoaderContainer="true"
+             RowHeight="15"
+             Height="100vh"
+             Data="@Quotes"
+             TItem="@MarketDepthLevel"
+             ScrollMode="@GridScrollMode.Virtual"
+             Pageable="false"
+             Sortable="false"
+             PageSize="@pagesize">
     <GridColumns>
         <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Volume)" HeaderClass="grid-header" />
         <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Price)" HeaderClass="grid-header" />
@@ -135,7 +135,7 @@ PageSize="@pagesize">
     {
         Scale = 1;
 
-        ApiDataService.NewQuotes += OnNewMarketDepth; 
+        ApiDataService.NewQuotes += OnNewMarketDepth;
         jsInteropService.OnScroll += OnScroll;
 
         return base.OnInitializedAsync();
@@ -160,13 +160,13 @@ PageSize="@pagesize">
             }
 
             var order = new ClientOrder()
-            {
-                SecID = secutityMain.id,
-                Side = item.Type,
-                Volume = orderVolume,
-                Price = item.Price,
-                Market = false,
-            };
+                {
+                    SecID = secutityMain.id,
+                    Side = item.Type,
+                    Volume = orderVolume,
+                    Price = item.Price,
+                    Market = false,
+                };
 
             Console.WriteLine($"Sending order price = {order.Price} side = {order.Side}");
 
@@ -364,10 +364,10 @@ PageSize="@pagesize">
             {
                 //Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
 
-                 WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
-                 ApiDataService.ScrollClustes(secutityMain,bestbidIndex);
-                 UpdateQuotesGrid();
-             //InvokeAsync(StateHasChanged);
+                WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
+                ApiDataService.ScrollClustes(secutityMain,bestbidIndex);
+                UpdateQuotesGrid();
+                //InvokeAsync(StateHasChanged);
 
             }, 200, false);
 
@@ -376,13 +376,13 @@ PageSize="@pagesize">
         else
         {
             //TODO: Крипта пока что вшита напрямую,
-            Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, Quotes, ApiDataService.crypto); 
+            Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, Quotes, ApiDataService.crypto);
             UpdateQuotesGrid();
         }
 
         UpdateBestBidIndex(agregatedBestbid);
 
-       
+
         // if (agregatedBestbid > (decimal)maxchart && maxchart != 0)
         // {
 
@@ -396,7 +396,7 @@ PageSize="@pagesize">
 
     }
 
-    
+
     /// <summary>
     /// Придется сравнивать прошлый вариант с новым.
     /// </summary>
@@ -617,7 +617,7 @@ PageSize="@pagesize">
             prevbestbid = bestbidIndex;
         }
     }
-    
+
     private void RemoveOrderClick(MarketDepthLevel level)
     {
 
@@ -634,7 +634,7 @@ PageSize="@pagesize">
 
     private void OnScroll(string gridTableId, string firstVisibleRowPrice, string lastVisibleRowPrice, int visibleRowCount)
     {
-        
+
         if (gridTableId == GridTableId)
         {
 
@@ -649,22 +649,22 @@ PageSize="@pagesize">
             }
 
             maxchart = minchart + range;
-            //найти в каком индекс у нас минимум... 
+            //найти в каком индекс у нас минимум...
 
-             Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart} min = {minchart} range ={range}");
+            Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart} min = {minchart} range ={range}");
 
 
-             ApiDataService.SetNewMaxMin(secutityMain, maxchart, minchart);
-             // if (ChartComponent != null) 
-             //     ChartComponent.SetMaxMin(maxchart, minchart);
+            ApiDataService.SetNewMaxMin(secutityMain, maxchart, minchart);
+            // if (ChartComponent != null)
+            //     ChartComponent.SetMaxMin(maxchart, minchart);
 
         }
 
     }
 
     public double range { get; set; }
-    
-    // ----- ---- ------------- графика ---------------------// 
+
+    // ----- ---- ------------- графика ---------------------//
 
     private string GetStyleForQuote(MarketDepthLevel quote)
     {
@@ -677,7 +677,7 @@ PageSize="@pagesize">
 
         if (quote.Volume == 0 || quote.Volume == null)
         {
-            gradient = $"linear-gradient(to right, #c7a805 {percentage}%, #ffffff {percentage}%)";
+            gradient = "";
         }
         else
         {
@@ -708,7 +708,7 @@ PageSize="@pagesize">
 
         if (quote.Volume == 0 || quote.Volume == null)
         {
-            return "transparent-item";
+            return "";
         }
 
         return quote.Type == Side.Sell ? "highlighted-item" : "highlighted-item2";

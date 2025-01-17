@@ -10,7 +10,7 @@
 
 <TelerikTileLayout Columns="OpenedInstruments.Count"
 ColumnWidth="auto"
-RowHeight="99vh"
+RowHeight="94.5vh"
 Reorderable="true"
 ColumnSpacing="0px"
 RowSpacing="0px"
@@ -24,7 +24,7 @@ OnReorder="@OnReorder">
 		{
 			<TileLayoutItem @key="security.SpecialHash">
 				<HeaderTemplate>
-					<div @onclick="() => focusWindowByHeaderClick(security.SpecialHash)">
+					<div id="header" @onclick="() => focusWindowByHeaderClick(security.SpecialHash)">
 						@security.Isin
 						<svg class="buttonclose" @onclick="() => OnClosingMain(security)" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">
 							<line x1="0" y1="0" x2="10" y2="10" stroke="black" stroke-width="2" />

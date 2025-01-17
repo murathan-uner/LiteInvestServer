@@ -27,63 +27,92 @@ function getScrollEventForAllTables(gridTableId) {
 }
 
 function getScrollEvent(gridTableId) {
-    let parent = document.getElementById(gridTableId);
-    if (parent) {
-        let targetElement = parent.querySelector(".k-grid-content");
-        if (targetElement) {
-            targetElement.addEventListener('scroll', (event) => {
-                if (parent) {
-                    let visibleHeight = targetElement.clientHeight;
+    const parent = document.getElementById(gridTableId);
+    if (!parent) {
+        console.log("Родительский элемент с ID " + gridTableId + " не найден");
+        return;
+    }
 
-                    let headerHeight = 0;
-                    let header = document.querySelector("#header");
-                    if (header) {
-                        headerHeight = header.offsetHeight + 20;
+    const targetElement = parent.querySelector(".k-grid-content");
+    if (!targetElement) {
+        console.log("Элемент .k-grid-content не найден в родительском элементе");
+        return;
+    }
+
+    const table = targetElement.querySelector(".k-grid-table");
+    if (table) {
+        table.classList.add("scroll-table");
+    }
+
+    let headerHeight = 0;
+    const header = document.querySelector("#header");
+    if (header) {
+        headerHeight = header.clientHeight;
+    }
+
+    let debounceTimer;
+    const onScroll = (event) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            handleScroll(targetElement, gridTableId, headerHeight);
+        }, 100);
+    };
+
+    targetElement.addEventListener('scroll', onScroll);
+
+    const observer = new MutationObserver(() => {
+        if (!parent.contains(targetElement)) {
+            observer.disconnect();
+            targetElement.removeEventListener('scroll', onScroll);
+        }
+    });
+
+    const config = {
+        childList: true,
+        subtree: true
+    };
+
+    observer.observe(document.body, config);
+
+    function handleScroll(targetElement, gridTableId, headerHeight) {
+        const visibleHeight = targetElement.clientHeight;
+        const rows = targetElement.querySelectorAll("tr");
+
+        let firstVisibleRowPrice = null;
+        let lastVisibleRowPrice = null;
+        let visibleRowCount = 0;
+
+        rows.forEach((row) => {
+            const rect = row.getBoundingClientRect();
+
+            if (rect.top < visibleHeight && rect.bottom > 0) {
+                const priceCell = row.querySelector(".price");
+
+                if (priceCell) {
+                    const price = priceCell.textContent.trim();
+
+                    if (firstVisibleRowPrice === null) {
+                        firstVisibleRowPrice = price;
                     }
+                    lastVisibleRowPrice = price;
 
-                    let rows = targetElement.querySelectorAll("tr");
-
-                    let firstVisibleRowPrice = null;
-                    let lastVisibleRowPrice = null;
-                    let visibleRowCount = 0;
-
-                    rows.forEach((row, index) => {
-                        let rect = row.getBoundingClientRect();
-
-                        if (rect.top - headerHeight < visibleHeight && rect.bottom - headerHeight > 0) {
-                            let priceCell = row.querySelector(".price");
-
-                            if (priceCell) {
-                                let price = priceCell.textContent.trim();
-
-                                if (firstVisibleRowPrice === null) {
-                                    firstVisibleRowPrice = price;
-                                }
-                                lastVisibleRowPrice = price;
-
-                                visibleRowCount++;
-                            }
-                        }
-                    });
-
-                    if (firstVisibleRowPrice !== null && lastVisibleRowPrice !== null) {
-                        DOTNET_JSINTEROPSERVICE_REFERENCE.invokeMethodAsync(
-                            "OnScroll", gridTableId,
-                            firstVisibleRowPrice,
-                            lastVisibleRowPrice,
-                            visibleRowCount
-                        );
-                    }
-                } else {
-                    console.log("Элемент с ID " + gridTableId + " не найден");
+                    visibleRowCount++;
                 }
+            }
+        });
+
+        if (firstVisibleRowPrice !== null && lastVisibleRowPrice !== null) {
+            DOTNET_JSINTEROPSERVICE_REFERENCE.invokeMethodAsync(
+                "OnScroll", gridTableId,
+                firstVisibleRowPrice,
+                lastVisibleRowPrice,
+                visibleRowCount
+            ).catch((error) => {
+                console.error("Ошибка вызова метода OnScroll:", error);
             });
         }
-    } else {
-        console.log("Родительский элемент с ID " + gridTableId + " не найден");
     }
 }
-
 
 function getWheelEvent(historyTableId) {
     let parent = document.getElementById(historyTableId);

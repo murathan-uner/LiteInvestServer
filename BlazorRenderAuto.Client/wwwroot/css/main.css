@@ -6,3 +6,12 @@ body{
     display: flex;
     width: 100%
 }
+
+.scroll-table {
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+}
+
+    .scroll-table tr {
+        scroll-snap-align: start;
+    }
