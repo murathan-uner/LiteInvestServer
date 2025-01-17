@@ -14,6 +14,7 @@
 
 <TelerikGrid @ref="QuotesGrid" Id="@GridTableId"
 OnRowClick="@OnRowClickHandler"
+
 EnableLoaderContainer="true"
 RowHeight="15"
 Height="100vh"
@@ -397,6 +398,7 @@ PageSize="@pagesize">
 
     private void UpdateQuotesGrid()
     {
+        //QuotesGrid?.Rebind();
 
         InvokeAsync(() =>
         {
@@ -413,6 +415,7 @@ PageSize="@pagesize">
         }).GetAwaiter().GetResult();
     }
 
+    int i = 0;
     //if (prevbuildScale != Scale)
     private void AlgoQuotesScale(ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes, decimal bestbbid, bool crypto, decimal agregatedBestbid)
     {
@@ -422,6 +425,7 @@ PageSize="@pagesize">
         //поменялся масштаб
         if (Scale != prevbuildScale)
         {
+            i++;
             prevbuildScale = Scale;
 
             //Применяем масштаб (даже если 1)
@@ -433,28 +437,21 @@ PageSize="@pagesize">
             Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, initialquotes, crypto);
             ApiDataService.SendInitialQuotes(secutityMain, initialquotes, IndexesQuotes);
 
+            if(i>=2)
+                WorkWindow.ScrollTo(200, QuotesGrid);
 
             UpdateBestBidIndex(agregatedBestbid);
-
-            InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
+            UpdateQuotesGrid();
+            //InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
             WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
+            //UpdateQuotesGrid();
             InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
 
-            //JSRuntime.InvokeVoidAsync("getScrollEvent2", GridTableId);
+            //UpdateQuotesGrid();
 
             ApiDataService.ScrollClustes(secutityMain, bestbidIndex);
             Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
 
-
-            // Helper.CreateTimerAndStart(() =>
-            // {
-            //     //Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
-
-            //      // WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
-            //      // ApiDataService.ScrollClustes(secutityMain,bestbidIndex);
-            //      // UpdateQuotesGrid();
-
-            // }, 400, false);
 
 
         }
@@ -737,18 +734,18 @@ PageSize="@pagesize">
             if (range == 0)
             {
                 range = maxchart2 - minchart;
-                // range = (int)((maxchart - minchart) / ((double)secutityMain.PriceStep * Scale * 0.5));
             }
 
             maxchart = minchart + range;
             //найти в каком индекс у нас минимум...
 
+            //Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart2} min = {minchart} range ={range}");
             Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart} min = {minchart} range ={range}");
 
 
+           // ApiDataService.SetNewMaxMin(secutityMain, maxchart2, minchart);
             ApiDataService.SetNewMaxMin(secutityMain, maxchart, minchart);
-            // if (ChartComponent != null)
-            //     ChartComponent.SetMaxMin(maxchart, minchart);
+           
 
         }
 
@@ -769,9 +766,11 @@ PageSize="@pagesize">
             Console.WriteLine($"skip = {args.Request.Skip} price= {r2.First().Price} ");
         }
 
-        args.Data = result.Data;
-        args.Total = result.Total;
-        args.AggregateResults = result.AggregateResults; // Grid only
+      //  args.Data = result.Data;
+      //  args.Total = result.Total;
+      //  args.AggregateResults = result.AggregateResults; // Grid only
+
+       
     }
 
     // ----- ---- ------------- графика ---------------------//

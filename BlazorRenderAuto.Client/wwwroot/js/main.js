@@ -26,7 +26,80 @@ function getScrollEventForAllTables(gridTableId) {
     }
 }
 
-function getScrollEvent(gridTableId) {
+function getScrollEvent2(gridTableId)
+{
+    const parent = document.getElementById(gridTableId);
+    if (!parent) {
+        console.log("Родительский элемент с ID " + gridTableId + " не найден");
+        return;
+    }
+
+    const targetElement = parent.querySelector(".k-grid-content");
+    if (!targetElement) {
+        console.log("Элемент .k-grid-content не найден в родительском элементе");
+        return;
+    }
+
+    const table = targetElement.querySelector(".k-grid-table");
+    if (table) {
+        table.classList.add("scroll-table");
+    }
+
+    let headerHeight = 0;
+    const header = document.querySelector("#header");
+    if (header) {
+        headerHeight = header.clientHeight;
+    }
+
+    handleScroll(targetElement, gridTableId, headerHeight);
+
+    const config = {
+        childList: true,
+        subtree: true
+    };
+
+    function handleScroll(targetElement, gridTableId, headerHeight) {
+        const visibleHeight = targetElement.clientHeight;
+        const rows = targetElement.querySelectorAll("tr");
+
+        let firstVisibleRowPrice = null;
+        let lastVisibleRowPrice = null;
+        let visibleRowCount = 0;
+
+        rows.forEach((row) => {
+            const rect = row.getBoundingClientRect();
+
+            if (rect.top < visibleHeight && rect.bottom > 0) {
+                const priceCell = row.querySelector(".price");
+
+                if (priceCell) {
+                    const price = priceCell.textContent.trim();
+
+                    if (firstVisibleRowPrice === null) {
+                        firstVisibleRowPrice = price;
+                    }
+                    lastVisibleRowPrice = price;
+
+                    visibleRowCount++;
+                }
+            }
+        });
+
+        if (firstVisibleRowPrice !== null && lastVisibleRowPrice !== null) {
+            DOTNET_JSINTEROPSERVICE_REFERENCE.invokeMethodAsync(
+                "OnScroll", gridTableId,
+                firstVisibleRowPrice,
+                lastVisibleRowPrice,
+                visibleRowCount
+            ).catch((error) => {
+                console.error("Ошибка вызова метода OnScroll:", error);
+            });
+        }
+    }
+}
+
+function getScrollEvent(gridTableId)
+{
     const parent = document.getElementById(gridTableId);
     if (!parent) {
         console.log("Родительский элемент с ID " + gridTableId + " не найден");
