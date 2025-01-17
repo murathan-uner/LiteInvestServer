@@ -101,7 +101,7 @@ namespace BlazorRenderAuto.Client.Services
 		/// НАСТРОЙКА ИСПОЛЬЗУЕТСЯ ДЛЯ ВСЕГО ПРОЕКТА
 		/// TODO: вынеси настройки нормально
 		/// </summary>
-		public bool crypto { get; set; } = true;
+		public bool crypto { get; set; } = false;
 
 		public ApiDataService()
 		{
@@ -444,17 +444,17 @@ namespace BlazorRenderAuto.Client.Services
 						}
 						catch (Exception ex)
 						{
-
+							Console.WriteLine($" SOCKET EXCEPTION -> {ex.Message}");
 						}
 					});
 
-
+					Console.WriteLine($"Subscribing Order book {secid}");
 					Console.WriteLine(webscoketrequest);
 
 					var hash = websocketClient.GetHashCode();
 					AllWebSockets.TryAdd(hash, websocketClient);
 
-					await websocketClient.Start();
+					await websocketClient.StartOrFail();
 					return hash;
 				}
 				else

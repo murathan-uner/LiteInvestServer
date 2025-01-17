@@ -88,6 +88,8 @@
     private int prevbuildScale { get; set; }
 
     private int _oldScale;//для первой отрисовки
+
+    [Parameter]
     public int Scale
     {
         get => _oldScale;
@@ -109,12 +111,22 @@
         }
     }
 
+
+    bool _firstrender;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
 
         if (firstRender)
         {
             await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
+
+            Scale = 1;
+
+            ApiDataService.NewQuotes += OnNewMarketDepth; 
+            jsInteropService.OnScroll += OnScroll;
+
+            _firstrender = true;
+
         }
 
         base.OnAfterRender(firstRender);
@@ -133,10 +145,8 @@
 
     protected override Task OnInitializedAsync()
     {
-        Scale = 1;
+      
 
-        ApiDataService.NewQuotes += OnNewMarketDepth;
-        jsInteropService.OnScroll += OnScroll;
 
         return base.OnInitializedAsync();
     }
@@ -337,6 +347,9 @@
     //if (prevbuildScale != Scale)
     private void AlgoQuotesScale(ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes, decimal bestbbid, bool crypto, decimal agregatedBestbid)
     {
+        // if(!_firstrender)
+        //    return;
+
         //поменялся масштаб
         if (Scale != prevbuildScale)
         {
@@ -351,25 +364,26 @@
             Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, initialquotes, crypto);
             ApiDataService.SendInitialQuotes(secutityMain, initialquotes, IndexesQuotes);
 
-            UpdateQuotesGrid();
 
             UpdateBestBidIndex(agregatedBestbid);
 
-            //NOTE: Почему тоесли мы скроллим сразу, его перекрывает..
+            InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
+            WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
+            InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
 
+            ApiDataService.ScrollClustes(secutityMain, bestbidIndex);
             Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
 
 
-            Helper.CreateTimerAndStart(() =>
-            {
-                //Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
+            // Helper.CreateTimerAndStart(() =>
+            // {
+            //     //Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
 
-                WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
-                ApiDataService.ScrollClustes(secutityMain,bestbidIndex);
-                UpdateQuotesGrid();
-                //InvokeAsync(StateHasChanged);
+            //      // WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
+            //      // ApiDataService.ScrollClustes(secutityMain,bestbidIndex);
+            //      // UpdateQuotesGrid();
 
-            }, 200, false);
+            // }, 400, false);
 
 
         }
@@ -632,6 +646,13 @@
     public double minchart { get; set; }// = 0;
     public double maxchart { get; set; }// = 10;
 
+    static string plusHotKey = "Equal";
+    static string minusHotKey = "Minus";
+    static string cancelHotKey = "KeyC";
+
+
+   
+
     private void OnScroll(string gridTableId, string firstVisibleRowPrice, string lastVisibleRowPrice, int visibleRowCount)
     {
 
@@ -719,6 +740,7 @@
     {
         jsInteropService.OnScroll -= OnScroll;
         ApiDataService.NewQuotes -= OnNewMarketDepth;
+       
     }
 
 }

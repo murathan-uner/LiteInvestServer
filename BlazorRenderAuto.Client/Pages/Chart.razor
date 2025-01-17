@@ -72,6 +72,7 @@
     public List<TradeApi> Ticks { get; set; }
 
     public int maxamount { get; set; } = 30; //надо разделить на шаг и получится реальное количество отображаемых элементов
+
     static int maxStaticValue { get; set; } = 30;
     public int maxScaleForChart { get; set; } = 200;
 
@@ -101,7 +102,9 @@
             basicvolume = secutityMain.Lot * maxScaleForChart;
             Ticks.Add(new TradeApi() { IndexForChart = -3 * maxStaticValue, Volume = basicvolume, });
 
-            Console.WriteLine($"{secutityMain.Isin} max value for chart {secutityMain.Lot * 300}");
+            //Console.WriteLine($"{secutityMain.Isin} max value for chart {secutityMain.Lot * 300}");
+
+            ChangeScaleOfChart();
         }
 
         base.OnInitializedAsync();
@@ -139,7 +142,7 @@
 
         lastvalue = newvalue;
 
-        var res = maxStaticValue / (newvalue * 0.3m);
+        var res = maxStaticValue / (newvalue );
 
 
         if (Ticks!=null && Ticks.Count > 0)

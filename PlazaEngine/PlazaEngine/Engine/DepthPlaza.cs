@@ -85,7 +85,9 @@ namespace PlazaEngine.Depth
             {
                 throw new Exception($"Invalid isin_id specified for subscription. {isinId}");
             }
-            newSubscription = true;
+
+            Console.WriteLine($" [Plaza Engine] Request Order book {isinId}");
+			newSubscription = true;
         }
 
         public void UnSubscription(string isinId)
