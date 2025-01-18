@@ -400,13 +400,18 @@ PageSize="@pagesize">
         }
     }
 
+    bool shouldrender = true;
+    protected override bool ShouldRender()
+    {
+        return shouldrender;
+    }
+
     private void UpdateQuotesGrid()
     {
         //QuotesGrid?.Rebind();
 
         InvokeAsync(() =>
         {
-
             try
             {
                 QuotesGrid.Data = Quotes;
@@ -420,11 +425,18 @@ PageSize="@pagesize">
     }
 
     int i = 0;
+
+    bool busy = false;
     //if (prevbuildScale != Scale)
     private void AlgoQuotesScale(ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes, decimal bestbbid, bool crypto, decimal agregatedBestbid)
     {
         // if(!_firstrender)
         //    return;
+
+        if(busy)
+            return;
+
+        busy = true;
 
         //поменялся масштаб
         if (Scale != prevbuildScale)
@@ -453,13 +465,13 @@ PageSize="@pagesize">
             //     Console.WriteLine($" index={firstitem} MP {maxprice} minprice={minprice}");
 
             // }
-
+            shouldrender = true;
             UpdateQuotesGrid();
             //InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
             WorkWindow.ScrollTo(bestbidIndex, QuotesGrid).GetAwaiter().GetResult();
             //UpdateQuotesGrid();
-            UpdateQuotesGrid();
             //InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
+            shouldrender = false;
 
             //UpdateQuotesGrid();
 
@@ -488,6 +500,8 @@ PageSize="@pagesize">
         // {
 
         // }
+
+        busy = false;
 
     }
 
