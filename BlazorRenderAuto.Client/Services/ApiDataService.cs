@@ -101,7 +101,7 @@ namespace BlazorRenderAuto.Client.Services
 		/// НАСТРОЙКА ИСПОЛЬЗУЕТСЯ ДЛЯ ВСЕГО ПРОЕКТА
 		/// TODO: вынеси настройки нормально
 		/// </summary>
-		public bool crypto { get; set; } = false;
+		public bool crypto { get; set; } = true;
 
 		public ApiDataService()
 		{
