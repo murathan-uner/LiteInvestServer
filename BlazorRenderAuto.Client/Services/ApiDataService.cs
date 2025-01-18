@@ -101,7 +101,7 @@ namespace BlazorRenderAuto.Client.Services
 		/// НАСТРОЙКА ИСПОЛЬЗУЕТСЯ ДЛЯ ВСЕГО ПРОЕКТА
 		/// TODO: вынеси настройки нормально
 		/// </summary>
-		public bool crypto { get; set; } = false;
+		public bool crypto { get; set; } = true;
 
 		public ApiDataService()
 		{
@@ -122,7 +122,13 @@ namespace BlazorRenderAuto.Client.Services
 		{
 			NewMaxMin?.Invoke(security, max, min);
 		}
-		
+
+		public Action <int>? NewScale { get; set; }
+		public void UpdateMaxMinWithNewScale(int newscale)
+		{
+			NewScale?.Invoke(newscale);
+		}
+
 		public Action <SecurityApi,ICollection<MarketDepthLevel>, Dictionary<decimal, int>> BuildNewTable { get; set; }
 		//initialquotes
 		public void SendInitialQuotes(SecurityApi sec, ICollection<MarketDepthLevel> _initialOrderBook, Dictionary<decimal, int> indexesQuotes)
@@ -292,8 +298,8 @@ namespace BlazorRenderAuto.Client.Services
 
 			var clone = (SecurityApi)sec.Clone();
 
-			;
-			clone.SpecialHash = Guid.NewGuid().ToString();
+			
+			clone.SpecialHash = (Guid.NewGuid().ToString()) + DateTime.Now;
 			NewSecOpened?.Invoke(clone);
 
 			return Task.CompletedTask;

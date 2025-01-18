@@ -21,6 +21,7 @@ Height="100vh"
 Data="@Quotes"
 TItem="@MarketDepthLevel"
 ScrollMode="@GridScrollMode.Virtual"
+OnStateChanged="@OnStateChanged"
 Pageable="false"
 Sortable="false"
 PageSize="@pagesize">
@@ -154,7 +155,8 @@ PageSize="@pagesize">
             {
                 //двигаем в середину
 
-                //ScrollTo(bestbidIndex, QuotesGrid);
+                WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
+                GetPriceAfterScrollAndUpdateMaxMin();
             }
 
             if (keyCode == cancelHotKey)
@@ -260,11 +262,13 @@ PageSize="@pagesize">
         return Task.CompletedTask;
     }
 
+    static int orderbookLevels = 3000;
+
     private ObservableCollection<MarketDepthLevel> BuildInitialQuotes(decimal bestbid)
     {
         try
         {
-            int levels = 3000;
+            int levels = orderbookLevels;
 
             //округление
             // var min = (bestbid * 0.7m);
@@ -312,7 +316,7 @@ PageSize="@pagesize">
                 index++;
             }
 
-            Console.WriteLine($" {secutityMain.Isin} Created INITIAL EMPTY QUOTES SCALE {Scale}");
+            Console.WriteLine($" {secutityMain.Isin} INITIAL QUOTES Sc= {Scale} MAX={realmax} MIN={realmin}");
 
             //Quotes = localQuotesBuild;
 
@@ -437,23 +441,32 @@ PageSize="@pagesize">
             Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, initialquotes, crypto);
             ApiDataService.SendInitialQuotes(secutityMain, initialquotes, IndexesQuotes);
 
-            if(i>=2)
-                WorkWindow.ScrollTo(200, QuotesGrid);
-
             UpdateBestBidIndex(agregatedBestbid);
+            // if (i >= 2)
+            // {
+            //     var firstitem=bestbidIndex - 20;
+            //     Console.WriteLine($"Making adoptaion for chart ");
+
+            //     var maxprice = Quotes[firstitem].Price;
+            //     var minprice = Quotes[firstitem-itemsinorderbook].Price;
+
+            //     Console.WriteLine($" index={firstitem} MP {maxprice} minprice={minprice}");
+
+            // }
+
             UpdateQuotesGrid();
             //InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
-            WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
+            WorkWindow.ScrollTo(bestbidIndex, QuotesGrid).GetAwaiter().GetResult();
             //UpdateQuotesGrid();
-            InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
+            UpdateQuotesGrid();
+            //InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
 
             //UpdateQuotesGrid();
+
+            GetPriceAfterScrollAndUpdateMaxMin();
 
             ApiDataService.ScrollClustes(secutityMain, bestbidIndex);
             Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
-
-
-
         }
         else
         {
@@ -685,6 +698,56 @@ PageSize="@pagesize">
 
     }
 
+
+    object scrolllock = new object();
+    //SCROLL
+    private void OnStateChanged(GridStateEventArgs<MarketDepthLevel> gridStateEventArgs)
+    {
+        lock (scrolllock)
+        {
+            var skip = (int)gridStateEventArgs.GridState.Skip;
+            UpdateMaxMinFromScroll(skip);
+        }
+    }
+
+    private void GetPriceAfterScrollAndUpdateMaxMin()
+    {
+        lock (scrolllock)
+        {
+            var state = QuotesGrid.GetState();
+            var skip = (int)state.Skip;
+            UpdateMaxMinFromScroll(skip);
+        }
+
+    }
+
+    private void UpdateMaxMinFromScroll(int skip)
+    {
+
+        if (skip == 0)
+        {
+            return;
+        }
+
+        if (Quotes!=null && Quotes.Count >= skip)
+        {
+            var maxprice = (double)Quotes[skip].Price;
+            var visiblerange = itemsinorderbook * (double)secutityMain.PriceStep * Scale;
+            var minprice = maxprice - visiblerange;
+
+            if (visiblerange != 0)
+            {
+                Console.WriteLine($"SCROLL 1` max price = {Quotes[skip].Price} min = {minprice}");
+                ApiDataService.NewMaxMin(secutityMain, maxprice,minprice);
+            }
+
+        }
+    }
+
+
+
+    
+
     private void UpdateBestBidIndex(decimal _bestbid)
     {
         if (IndexesQuotes.ContainsKey(_bestbid))
@@ -719,10 +782,11 @@ PageSize="@pagesize">
     static string cancelHotKey = "KeyC";
 
 
-   
-
     private void OnScroll(string gridTableId, string firstVisibleRowPrice, string lastVisibleRowPrice, int visibleRowCount)
     {
+
+        if (itemsinorderbook != 0)
+            return;
 
         if (gridTableId == GridTableId)
         {
@@ -731,16 +795,18 @@ PageSize="@pagesize">
 
             minchart = double.Parse(lastVisibleRowPrice);
 
-            if (range == 0)
+            if (itemsinorderbook == 0)
             {
-                range = maxchart2 - minchart;
+               // itemsinorderbook = maxchart2 - minchart;
+                itemsinorderbook =(int)((maxchart2 - minchart) / ((double)secutityMain.PriceStep * Scale ));
             }
 
-            maxchart = minchart + range;
+            // maxchart = maxchart2;
+            maxchart = minchart + itemsinorderbook * (double)secutityMain.PriceStep * Scale;
             //найти в каком индекс у нас минимум...
 
-            //Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart2} min = {minchart} range ={range}");
-            Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart} min = {minchart} range ={range}");
+            //Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart2} min = {minchart} itemsinorderbook ={itemsinorderbook}");
+            Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart} min = {minchart} itemsinorderbook ={itemsinorderbook}");
 
 
            // ApiDataService.SetNewMaxMin(secutityMain, maxchart2, minchart);
@@ -751,7 +817,7 @@ PageSize="@pagesize">
 
     }
 
-    public double range { get; set; }
+    public int itemsinorderbook { get; set; }
 
     private async Task GridReadHandler(GridReadEventArgs args)
     {
@@ -823,7 +889,6 @@ PageSize="@pagesize">
         ApiDataService.NewQuotes -= OnNewMarketDepth;
        
     }
-
 
 
 }

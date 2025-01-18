@@ -88,10 +88,12 @@
 
     int lastvalue = 0;
 
+
     protected override async Task OnInitializedAsync()
     {
         ApidataService.NewTicks += ProcessTicks;
         ApidataService.NewMaxMin += ProcessNewMaxMin;
+       
 
         if (Ticks == null)
         {
@@ -202,6 +204,8 @@
         InvokeAsync(StateHasChanged);
     }
 
+    
+
     public void SetMaxMin(double max, double min)
     {
         try
@@ -216,6 +220,8 @@
             Console.WriteLine(ex.Message);
         }
     }
+
+ 
 
     private void UpdateChart()
     {
@@ -234,6 +240,7 @@
 
     public void Dispose()
     {
+       
         ApidataService.NewMaxMin -= ProcessNewMaxMin;
         ApidataService.NewTicks -= ProcessTicks;
     }
