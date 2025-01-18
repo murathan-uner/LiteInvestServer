@@ -5,10 +5,45 @@
 @using Telerik.Blazor.Components.RootComponent
 
 @inject ApiDataService ApiDataService
+@inject IJSRuntime js
 
 @implements IDisposable
 
+<TelerikWindow @bind-Visible=poswindowVisible
+               Resizable="true"
+               Draggable="true"
+               MinWidth="30%"
+               MinHeight="30%"
+               MaxHeight="90%"
+               MaxWidth="90%">
+    <WindowContent>
+        <Positions />
+    </WindowContent>
+    <WindowTitle>
+        Активные позиции
+    </WindowTitle>
+    <WindowActions>
+        <WindowAction Name="Close" />
+    </WindowActions>
 
+</TelerikWindow>
+<TelerikWindow @bind-Visible=orderswindowsVisible
+               Resizable="true"
+               Draggable="true"
+               MinWidth="30%"
+               MinHeight="30%"
+               MaxHeight="90%"
+               MaxWidth="90%">
+    <WindowContent>
+        <Orders />
+    </WindowContent>
+    <WindowTitle>
+        Активные ордера
+    </WindowTitle>
+    <WindowActions>
+        <WindowAction Name="Close" />
+    </WindowActions>
+</TelerikWindow>
 
 <TelerikWindow @bind-Visible=windowVisible
 Resizable="true"
@@ -75,10 +110,12 @@ MaxHeight="500">
             <span class="navbar-toggler-icon"></span>
         </button> *@
 
-        <div>
-            <span>
-                Торговля
-            </span>
+        <div id="dropdown-toggle" class="dropdown-toggle" @onclick="ToggleDropdown">
+            <span>Торговля</span>
+            <div class="dropdown-items" id="dropdown-items">
+                <span @onclick="() => {orderswindowsVisible = !orderswindowsVisible;}">Активные ордера</span>
+                <span @onclick="() => {poswindowVisible = !poswindowVisible;}">Активные позиции</span>
+            </div>
         </div>
     </section>
 
@@ -112,6 +149,14 @@ MaxHeight="500">
 
 @code
 {
+    private bool poswindowVisible = false;
+    private bool orderswindowsVisible = false;
+    private async Task ToggleDropdown()
+    {
+        await js.InvokeVoidAsync("toggleDropdown");
+    }
+
+
     private async void LoginCLick(){
         if (textlogin == "Log In"){
             windowVisible = true;

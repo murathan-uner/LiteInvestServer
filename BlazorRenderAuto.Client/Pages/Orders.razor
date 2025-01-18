@@ -1,0 +1,91 @@
+﻿@using System.Timers
+@using LiteInvest.Entity.Helpers
+@using BlazorRenderAuto.Client.Services
+@using LiteInvest.Entity.PlazaEntity
+
+@inject ApiDataService apiDataService
+
+@implements IDisposable;
+
+<TelerikGrid Data="@OrdersData">
+
+    <GridColumns>
+        <GridColumn Width="1fr" Field="@nameof(Order.ExchangeOrderId)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Order.SecIsin)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Order.State)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Order.Side)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Order.PriceOrder)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Order.TypeOrder)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Order.Volume)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Order.VolumeExecuted)" HeaderClass="grid-header" />
+
+    </GridColumns>
+
+</TelerikGrid>
+
+@code {
+
+    List<Order> OrdersData { get; set; } = new List<Order>();
+    System.Timers.Timer timer;
+
+    protected override Task OnInitializedAsync()
+    {
+        StartTimer();
+        return base.OnInitializedAsync();
+    }
+
+    public void Dispose()
+    {
+        if (timer != null)
+        {
+            timer.Stop();
+            timer.Dispose();
+        }
+    }
+
+    public async void LoadData()
+    {
+        var orders = await apiDataService.GetActiveOrders();
+
+        //TODO: Апи посылает повторно один и тот же ордер.
+        //причем только первый
+        if (orders != null)
+        {
+            Dictionary<string, Order> OrdersDictionary = new();
+            foreach (var order in orders)
+                OrdersDictionary[order.ExchangeOrderId] = order;
+
+            OrdersData = OrdersDictionary.Values.ToList();
+        }
+
+        if (orders == null || orders.Count == 0)
+            OrdersData.Clear();
+
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async void StartTimer()
+    {
+        LoadData();
+        timer = Helper.CreateTimerAndStart(LoadData, 1500, true);
+        timer.Start();
+    }
+
+    public async void OnRowClicked(GridRowClickEventArgs e)
+    {
+        try
+        {
+            Order order = OrdersData.Find(o => o == (Order)e.Item);
+
+            if (order != null)
+            {
+                await apiDataService.CancelOrder(order);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+}

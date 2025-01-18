@@ -798,15 +798,7 @@ PageSize="@pagesize">
             }
             else if (percentage <= 200)
             {
-                int secondStripe = percentage - 100;
-
-                gradient = $"linear-gradient(to right, #f8d0c0 {secondStripe}%, #c7a805 {secondStripe}%)";
-            }
-            else
-            {
-                int thirdStripe = percentage - 200;
-
-                gradient = $"linear-gradient(to right, #c85dd9 {thirdStripe}%, #f8d0c0 {thirdStripe}%)";
+                gradient = $"#c85dd9";
             }
         }
 

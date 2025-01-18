@@ -246,3 +246,23 @@ function getWheelEvent(historyTableId) {
 //        }
 //    }
 //}
+
+let dropdownVisible = false;
+function toggleDropdown() {
+    console.log("1");
+    var dropdownItems = document.getElementById('dropdown-items');
+    if (dropdownItems) {
+        dropdownItems.classList.toggle('show');
+    }
+    dropdownVisible = !dropdownVisible;
+}
+// Закрыть дропдаун при клике вне его
+document.addEventListener('click', function (event) {
+    var dropdownToggle = document.getElementById('dropdown-toggle');
+    var dropdownItems = document.getElementById('dropdown-items');
+    // Проверяем, был ли клик вне дропдауна
+    if (dropdownVisible && !dropdownToggle.contains(event.target) && !dropdownItems.contains(event.target)) {
+        dropdownItems.classList.remove('show');
+        dropdownVisible = false;
+    }
+});

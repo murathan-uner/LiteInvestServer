@@ -1,0 +1,60 @@
+﻿@using LiteInvest.Entity.Helpers
+@using System.Timers
+@using BlazorRenderAuto.Client.Services
+@using LiteInvest.Entity.ServerEntity
+
+@inject ApiDataService apiDataService
+
+@implements IDisposable;
+
+<TelerikGrid Data="@OpenedPositions">
+    <GridColumns>
+        <GridColumn Width="1fr" Field="@nameof(Pos.secName)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Pos.Open)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Pos.PosValue)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Pos.MaxOpened)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Pos.Side)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Pos.AverageEntry)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Pos.RealizedPnl)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Pos.UnRealizedPnlPoints)" HeaderClass="grid-header" />
+    </GridColumns>
+
+</TelerikGrid>
+
+@code {
+
+    List<Pos> OpenedPositions { get; set; }
+    System.Timers.Timer timer;
+
+    protected override Task OnInitializedAsync()
+    {
+        LoadPoses();
+        return base.OnInitializedAsync();
+    }
+
+    public void Dispose()
+    {
+        if (timer != null)
+        {
+            timer.Stop();
+            timer.Dispose();
+        }
+    }
+
+    public async void LoadData()
+    {
+        var positions = await apiDataService.GetPositions();
+        if (positions != null)
+        {
+            OpenedPositions = positions;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async void LoadPoses()
+    {
+        LoadData();
+        timer = Helper.CreateTimerAndStart(LoadData, 1500, true);
+        timer.Start();
+    }
+}
