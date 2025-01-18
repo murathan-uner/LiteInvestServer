@@ -1,0 +1,22 @@
+﻿﻿.settings-icon {
+    cursor: pointer;
+}
+
+.workWindowSettings__content {
+    display: grid;
+    grid-template-columns: min-content 1fr;
+    grid-template-rows: 1fr;
+}
+
+.workWindowSettings__side-menu {
+    display: flex;
+    flex-direction: column;
+}
+
+.workWindowSettings__side-menu__item{
+    padding: 8px;
+    cursor: pointer;
+}
+
+.workWindowSettings__work-area {
+}
