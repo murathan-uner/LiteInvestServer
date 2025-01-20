@@ -15,6 +15,8 @@ using System.Diagnostics;
 using System.Transactions;
 using System.Reflection;
 using LiteInvest.Entity.PlazaEntity;
+using System.Dynamic;
+using System.Collections;
 
 namespace PlazaEngine.Depth
 {
@@ -306,6 +308,7 @@ namespace PlazaEngine.Depth
         {
             Dictionary<uint,MarketDepth> mdList = new Dictionary<uint,MarketDepth>();
             Int64 lastRevisionSended = 0;
+            int lastRevisionSendedRepeat = 0;   // если номер ревизии не изменился, то в цикле её еще раз надо повторно отправить её на сервер
             while (!token.IsCancellationRequested)
             {
                 Thread.Sleep(UpDateTimeMs);
@@ -315,13 +318,21 @@ namespace PlazaEngine.Depth
                     {
                         continue;
                     }
-                    if (lastRevisionSended == lastRevision && !newSubscription)
+                    if (lastRevisionSended == lastRevision && !newSubscription && lastRevisionSendedRepeat >= 1) // lastRevisionSendedRepeat >= 1 - сколько раз повторно неизмененную ревизию отправляем, 1 повтора достаточно.
                     {
                         continue;
                     }
+                    if (lastRevisionSended == lastRevision)
+                    {
+                        lastRevisionSendedRepeat++;
+                    }
+                    else
+                    {
+                        lastRevisionSendedRepeat = 0;
+                    }
                     lastRevisionSended = lastRevision;
 
-                    List<uint> _allIsin = subscriptedIsin.ToList();
+                    List<uint> _allIsin = subscriptedIsin?.ToList() ?? new List<uint>();
                     for (int i = 0; i < _allIsin.Count; i++)
                     {
                         uint isin = _allIsin[i];
@@ -350,6 +361,16 @@ namespace PlazaEngine.Depth
                     Debug.WriteLine(ex);
                 }
             }
+        }
+
+        public MarketDepth? GetOneMarketDepthForIsin(uint isin)
+        {
+            if (orderBooks.TryGetValue(isin, out var orderBook))
+            {
+                var md = orderBook.GetMarketDepth(null);
+                return md;
+            }
+            return null;
         }
 
         public void Dispose()
@@ -716,7 +737,11 @@ namespace PlazaEngine.Depth
 
 		public MarketDepth GetMarketDepth(MarketDepth? md)
 		{
-			if (md is null) md = new();
+			if (md is null)
+            {
+                md = new();
+            }
+
             md.Asks?.Clear();
             md.Bids?.Clear();
 

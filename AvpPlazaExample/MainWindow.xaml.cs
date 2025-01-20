@@ -146,7 +146,10 @@ namespace AvpPlazaExample
         private void Plaza_MarketDepthLoadedEvent()
         {
             depthLoaded = true;
+            var md = plaza.GetOneMarketDepthForIsin(2634183);
             LogMessage("Стаканы загружены и вышли в режим Онлайн");
+
+            LogMessage($"Стакан isin={md?.SecurityId} запросили. Результат Asks.Count={md?.Asks?.Count ?? 0}; Bids.Count={md?.Bids?.Count ?? 0}; Asks[0].Price={md?.Asks[0].Price??0}; Bids[0].Price={md?.Bids[0].Price??0} ");
         }
 
         public void SaveParametrs()

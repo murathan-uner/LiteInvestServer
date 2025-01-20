@@ -1767,6 +1767,18 @@ namespace PlazaEngine.Engine
             RegisteredSecurities.Add(security.Id, security);
         }
 
+
+        /// <summary>
+        /// Получить принудительно из Plaza один стакан по одному инструменту с кодом isin, или null если стакана нет.
+        /// </summary>
+        /// <param name="isin"></param>
+        /// <returns></returns>
+        public MarketDepth? GetOneMarketDepthForIsin(uint isin)
+        {
+            var md = depthPlaza?.GetOneMarketDepthForIsin(isin);
+            return md;
+        }
+
         /// <summary>
 		/// stop unloading depth on this instrument
         /// остановить выгрузку стакана по этому инструменту
