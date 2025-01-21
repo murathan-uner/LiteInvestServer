@@ -7,17 +7,20 @@
 
 @implements IDisposable;
 
-<TelerikGrid Data="@OrdersData">
+<TelerikGrid
+    Data="@OrdersData"
+    OnRowClick="@OnRowClicked"
+    RowHeight="30">
 
     <GridColumns>
-        <GridColumn Width="1fr" Field="@nameof(Order.ExchangeOrderId)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Order.SecIsin)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Order.State)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Order.Side)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Order.PriceOrder)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Order.TypeOrder)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Order.Volume)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Order.VolumeExecuted)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Order.ExchangeOrderId)"  />
+        <GridColumn Width="1fr" Field="@nameof(Order.SecIsin)"  />
+        <GridColumn Width="1fr" Field="@nameof(Order.State)" />
+        <GridColumn Width="1fr" Field="@nameof(Order.Side)"/>
+        <GridColumn Width="1fr" Field="@nameof(Order.PriceOrder)"  />
+        <GridColumn Width="1fr" Field="@nameof(Order.TypeOrder)"  />
+        <GridColumn Width="1fr" Field="@nameof(Order.Volume)"  />
+        <GridColumn Width="1fr" Field="@nameof(Order.VolumeExecuted)"/>
 
     </GridColumns>
 
@@ -68,7 +71,7 @@
     public async void StartTimer()
     {
         LoadData();
-        timer = Helper.CreateTimerAndStart(LoadData, 1500, true);
+        timer = Helper.CreateTimerAndStart(LoadData, 1000, true);
         timer.Start();
     }
 

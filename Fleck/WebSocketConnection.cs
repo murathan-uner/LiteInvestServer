@@ -233,6 +233,11 @@ namespace Fleck
                     FleckLog.Debug("Failed to send. Disconnecting.", e);
                 else
                     FleckLog.Info("Failed to send. Disconnecting.", e);
+
+                Console.WriteLine($"Failed to send. Disconnecting hash =  {Socket.GetHashCode()}");
+
+                //TODO: получается, что фронт пропускает сообщение и пизда
+                //Он сразу его к хуям отключает, что фаталити
                 CloseSocket();
             });
         }

@@ -196,10 +196,10 @@ namespace BlazorRenderAuto.Client.Services
 
 				return r;
 			}
-			catch (Exception ex) { Console.WriteLine(ex.Message); return null; }
-
-			//TODO: Сделать десериализацию нормальную 
-			//var answer = JsonConvert.DeserializeObject(response.Content);
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.Message); return null;
+			}
 		}
 
 		public async Task<ClientOrder?> CancelOrder(Order order)

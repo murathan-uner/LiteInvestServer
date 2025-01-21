@@ -308,7 +308,8 @@ namespace LiteInvestServer.WebScoketFactory
                 var stream = Streams[streamValue];
                 var KEY = ws.Key;
 
-                stream.Sockets[KEY].Remove(hash, out _);
+                
+				stream.Sockets[KEY].Remove(hash, out _);
 
                 //если нет больше подписантов и нет смысла держать маркет дату
                 if (stream.NeedDataRegistration && stream.Sockets[KEY].Count ==0)
@@ -316,6 +317,7 @@ namespace LiteInvestServer.WebScoketFactory
                     stream.Register_Unregister_MarketData?.Invoke(KEY, false);
                     Console.WriteLine($"Unregistering for {stream.Name} stream = {KEY} hash = {hash}");
                 }
+               
                 Console.WriteLine($"WebSocket for {stream.Name} hash = {hash}");
             }
         }

@@ -266,8 +266,8 @@ MaxHeight="500">
                 colorforlogin = "black";
                 textForLogin = "Входим";
 
-                //var res = await ApiDataService.LogIn(loginInfo.Login, loginInfo.Password);
-            var res = await ApiDataService.LogIn("samujan1@yandex.ru", "pass2");
+                var res = await ApiDataService.LogIn(loginInfo.Login, loginInfo.Password);
+            //var res = await ApiDataService.LogIn("samujan1@yandex.ru", "pass2");
 
 
                 //TODO по хорошему на сервере надо убрать ответ NULL 
@@ -335,7 +335,6 @@ MaxHeight="500">
                         var sec = Instruments.FirstOrDefault(s => s.Isin == coin.Key);
                         sec.Scale = coin.Value;
 
-                        Task.Delay(200);
                         ApiDataService.OpenInstrument(sec);
                     }
                 }

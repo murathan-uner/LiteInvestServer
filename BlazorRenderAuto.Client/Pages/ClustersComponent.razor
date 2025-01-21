@@ -18,19 +18,18 @@ ScrollMode="@GridScrollMode.Virtual"
 PageSize="@pagesize">
 
     <GridColumns>
-        <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Price)" HeaderClass="grid-header" />
+      @*   <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Price)" HeaderClass="grid-header" /> *@
         <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header" />
     </GridColumns>
 
     <RowTemplate Context="ClusterDatas">
-        <td class="@GetClassForClusters(ClusterDatas) price">
+       @*  <td class="@GetClassForClusters(ClusterDatas) price">
             @ClusterDatas.Price.ToString("G29")
-        </td>
+        </td> *@
         <td class="@GetClassForClusters(ClusterDatas)">
             @if (ClusterDatas.Volume != 0)
             {
                 @ClusterDatas.Volume.KiloFormat()
-                ;
             }
         </td>
     </RowTemplate>

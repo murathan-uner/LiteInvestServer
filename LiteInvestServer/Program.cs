@@ -200,6 +200,7 @@ builder.Services.AddSingleton(_ =>
                 //LogMessageAsync($"sec {secIdsubcription.Key}");
                 //в тиках есть тики, которые мы должны отправить
 
+                //
 
                 if (ticksDictionary.ContainsKey(secIdsubcription.Key) && ticksDictionary[secIdsubcription.Key].Count != 0)
                 {
@@ -220,7 +221,7 @@ builder.Services.AddSingleton(_ =>
         }
         catch (Exception ex)
         {
-            LogMessageAsync($"Problems with websocket {ex.Message}");
+            LogMessageAsync($"Problems with websocket TICKS {ex.Message}");
         }
 
     };
@@ -281,7 +282,7 @@ builder.Services.AddSingleton(_ =>
         }
         catch (Exception ex)
         {
-            LogMessageAsync(ex.Message);
+            LogMessageAsync("Order Websocket error ->" + ex.Message);
         }
 
         //далее по подпискам на сокеты мы должны отправить инфу о новом состоянии юзера..
@@ -317,7 +318,7 @@ builder.Services.AddSingleton(_ =>
         }
         catch (Exception ex)
         {
-            LogMessageAsync(ex.Message);
+            LogMessageAsync("Order Book WebSockets error->"+ ex.Message);
         }
     };
 
@@ -384,6 +385,9 @@ void CalculatePnls()
 
             foreach (var userPos in pos.Value)
             {
+                if(userPos.Value==null)
+                    continue;
+
                 userPos.Value.CalculateUnrealizedPnl(tickPrice);
                // LogMessageAsync($"PNL updated for {userPos.Key} sec_id ={pos.Key}");
             }
@@ -391,7 +395,7 @@ void CalculatePnls()
     }
     catch (Exception ex)
     {
-        LogMessageAsync(ex.Message);
+        LogMessageAsync("CalculatePnls error->"+ex.Message);
     }
 }
 void ProcessNewMyTrade(MyTrade newMytrade)
@@ -471,7 +475,7 @@ void ProcessNewMyTrade(MyTrade newMytrade)
     }
     catch (Exception ex)
     {
-        LogMessageAsync(ex.Message);
+        LogMessageAsync("Process new My Trade error ->" + ex.Message);
     }
 }
 
@@ -997,7 +1001,7 @@ void SaveDb()
         }
         catch (Exception ex)
         {
-            LogMessageAsync(ex.Message);
+            LogMessageAsync("DB ERROR ->" + ex.Message);
         }
     }
 }

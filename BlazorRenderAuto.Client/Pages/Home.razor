@@ -163,13 +163,15 @@
     public void Dispose()
     {
         try{
+
+
             // if (ApiDataService != null)
             //     ApiDataService.StopPrivateOrderSubscription();
 
             if (ApiDataService != null)
             {
-                //ApiDataService.StopPrivateWebSocket(ordersubscription);
-                //ApiDataService.Dispose();
+                ApiDataService.StopPrivateWebSocket(ordersubscription);
+                ApiDataService.Dispose();
                 ApiDataService = null;
             }
 

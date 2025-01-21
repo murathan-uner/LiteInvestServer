@@ -17,6 +17,7 @@
 
 <TelerikGrid @ref="QuotesGrid" Id="@GridTableId"
 OnRowClick="@OnRowClickHandler"
+OnRowContextMenu="@OnRowClickRight"
 OnRowRender="@RowRender"
 EnableLoaderContainer="true"
 RowHeight="15"
@@ -29,8 +30,8 @@ Sortable="false"
 PageSize="@pagesize">
     <GridColumns>
         <GridColumn Width="40%" Field="@nameof(MarketDepthLevel.Volume)" HeaderClass="grid-header" />
-        <GridColumn Width="45" Field="@nameof(MarketDepthLevel.Price)" HeaderClass="grid-header" />
-        <GridColumn Width="15%" Field="@nameof(MarketDepthLevel.RestVolume)" HeaderClass="grid-header" />
+        <GridColumn Width="40%" Field="@nameof(MarketDepthLevel.Price)" HeaderClass="grid-header" />
+        <GridColumn Width="20%" Field="@nameof(MarketDepthLevel.RestVolume)" HeaderClass="grid-header" />
     </GridColumns>
     <RowTemplate Context="Quotes">
         <td style="@GetStyleForQuote(Quotes)" class="">
@@ -46,13 +47,13 @@ PageSize="@pagesize">
             <span class="restVolumeSpan">
                 @Quotes.RestVolume
             </span>
-            @if (Quotes.RestVolume.ToString() != string.Empty)
+             @if (Quotes.RestVolume.ToString() != string.Empty)
             {
-                <svg class="removeOrder" @onclick="() => RemoveOrderClick(Quotes)" xmlns="http://www.w3.org/2000/svg" width="22" height="15" viewBox="-2 -2 15 15">
+                <svg class="removeOrder" @onclick="() => RemoveOrderClick(Quotes)" xmlns="http://www.w3.org/2000/svg" width="15" height="7" viewBox="-2 -2 15 15">
                     <line x1="0" y1="0" x2="10" y2="10" stroke="red" stroke-width="2" />
                     <line x1="0" y1="10" x2="10" y2="0" stroke="red" stroke-width="2" />
                 </svg>
-            }
+            } 
         </td>
     </RowTemplate>
 </TelerikGrid>
@@ -247,7 +248,8 @@ PageSize="@pagesize">
             if (myorder.SecurityId != secutityMain.id)
                 return;
 
-            Console.WriteLine($"New Order {myorder.SecurityId} side = {myorder.Side} price {myorder.PriceOrder} state {myorder.State}");
+            var restvolume = myorder.Volume - myorder.VolumeExecuted;
+            Console.WriteLine($"New Order {myorder.SecurityId} side = {myorder.Side} price {myorder.PriceOrder} state {myorder.State} rv = {restvolume}");
 
             if (myorder.State == Order.OrderStateType.Activ || myorder.State == Order.OrderStateType.Partial)
             {
@@ -298,7 +300,17 @@ PageSize="@pagesize">
     /// </summary>
     /// <param name="arg"></param>
     /// <returns></returns>
-    private Task OnRowClickHandler(GridRowClickEventArgs arg)
+    private void OnRowClickHandler(GridRowClickEventArgs arg)
+    {
+        SendOrder(arg, Side.Buy);
+    }
+
+    private void OnRowClickRight(GridRowClickEventArgs arg)
+    {
+        SendOrder(arg, Side.Sell);
+    }
+
+    private void SendOrder(GridRowClickEventArgs arg, Side side)
     {
         try
         {
@@ -307,29 +319,28 @@ PageSize="@pagesize">
             if (Orders.ContainsKey(item.Price))
             {
                 RemoveOrderClick(item);
-                return Task.CompletedTask;
+                return;
             }
 
             var order = new ClientOrder()
-                {
-                    SecID = secutityMain.id,
-                    Side = item.Type,
-                    Volume = orderVolume,
-                    Price = item.Price,
-                    Market = false,
-                };
+            {
+                SecID = secutityMain.id,
+                    Side = side,
+                Volume = orderVolume,
+                Price = item.Price,
+                Market = false,
+            };
 
             Console.WriteLine($"Sending order price = {order.Price} side = {order.Side}");
 
-            //ApiDataService.SendOrder(order);
+            ApiDataService.SendOrder(order);
         }
         catch (Exception ex)
         {
             Console.WriteLine(ex.Message);
         }
-
-        return Task.CompletedTask;
     }
+
 
     static int orderbookLevels = 3000;
 
@@ -637,7 +648,7 @@ PageSize="@pagesize">
     /// <param name="newquotes"></param>
     private ConcurrentDictionary<decimal, MarketDepthLevel> ScaleBuilderQuotes(ConcurrentDictionary<decimal, MarketDepthLevel> newquotes)
     {
-        
+
         //здесь не может быть пустых уровней
         ConcurrentDictionary<decimal, MarketDepthLevel> QuotesAgregated = new();
         foreach (var level in newquotes)
@@ -811,6 +822,16 @@ PageSize="@pagesize">
 
                 }
             }
+
+            foreach (var order in Orders)
+            {
+               // var agregatedQuotePrice =  order.Key - order.Key % (secutityMain.PriceStep * Scale);
+               if (!IndexesQuotes.ContainsKey(order.Key))
+                   continue;
+
+                copy[IndexesQuotes[order.Key]].RestVolume = order.Value.Volume - order.Value.VolumeExecuted;
+
+            }
         }
         else
         {
@@ -847,29 +868,29 @@ PageSize="@pagesize">
         var skip= (int)QuotesGrid.GetState().Skip;
 
         if (skip != lastskip)
-        UpdateMaxMinFromScroll(skip);
+            UpdateMaxMinFromScroll(skip);
     }
 
-    
+
     //SCROLL
     /*private void OnStateChanged(GridStateEventArgs<MarketDepthLevel> gridStateEventArgs)
-    {
-       
-        {
+            {
+
+            {
             var skip = (int)gridStateEventArgs.GridState.Skip;
-            UpdateMaxMinFromScroll(skip);
-        }
+        UpdateMaxMinFromScroll(skip);
+    }
     }*/
 
     /*private void GetPriceAfterScrollAndUpdateMaxMin()
-    {
-       
-        {
+            {
+
+            {
             Console.WriteLine($"Check First Scroll");
             var state = QuotesGrid.GetState();
             var skip = (int)state.Skip;
             UpdateMaxMinFromScroll(skip);
-        }
+    }
 
     }*/
 
@@ -930,12 +951,12 @@ PageSize="@pagesize">
     private void RemoveOrderClick(MarketDepthLevel level)
     {
 
-        // Orders.TryGetValue(level.Price, out var _order);
+        Orders.TryGetValue(level.Price, out var _order);
 
-        // if (_order == null)
-        // 	Console.WriteLine("No Order Found in Row");
+         if (_order == null)
+         	Console.WriteLine("No Order Found in Row");
 
-        // ApiDataService.CancelOrder(_order);
+         ApiDataService.CancelOrder(_order);
     }
 
     public double minchart { get; set; }// = 0;
@@ -991,8 +1012,8 @@ PageSize="@pagesize">
 
     private async Task GridReadHandler(GridReadEventArgs args)
     {
-      // if(Quotes==null )
-       // return;
+        // if(Quotes==null )
+        // return;
 
         DataSourceResult result = Quotes.ToDataSourceResult(args.Request);
 
@@ -1002,11 +1023,11 @@ PageSize="@pagesize">
             Console.WriteLine($"skip = {args.Request.Skip} price= {r2.First().Price} ");
         }
 
-      //  args.Data = result.Data;
-      //  args.Total = result.Total;
-      //  args.AggregateResults = result.AggregateResults; // Grid only
+        //  args.Data = result.Data;
+        //  args.Total = result.Total;
+        //  args.AggregateResults = result.AggregateResults; // Grid only
 
-       
+
     }
 
     // ----- ---- ------------- графика ---------------------//
@@ -1014,9 +1035,11 @@ PageSize="@pagesize">
     private string GetStyleForQuote(MarketDepthLevel quote)
     {
         // Максимальное значение, соответствующее 100%
-        int maxVolume = 50000;
+        int maxVolume = 100;
+        int maxVolume2 = 200;
 
         int percentage = (int)((quote.Volume / (decimal)maxVolume) * 100);
+        int percentage2 = (int)((quote.Volume / (decimal)maxVolume2) * 100);
 
         string gradient = "";
 
@@ -1032,9 +1055,16 @@ PageSize="@pagesize">
                     ? $"linear-gradient(to right, #c7a805 {percentage}%, #edc6c6 {percentage}%)"
                     : $"linear-gradient(to right, #c7a805 {percentage}%, #a0dbc6 {percentage}%)";
             }
-            else if (percentage <= 200)
+            else //if (percentage <= 200)
             {
-                gradient = $"#c85dd9";
+
+                if (percentage2 > 100)
+                    percentage2 = 100;
+
+                //gradient = $"#c85dd9";
+                gradient = quote.Type == Side.Sell
+                    ? $"linear-gradient(to right, #c85dd9 {percentage2}%, #edc6c6 {percentage2}%)"
+                    : $"linear-gradient(to right, #c85dd9 {percentage2}%, #a0dbc6 {percentage2}%)";
             }
         }
 
@@ -1061,5 +1091,7 @@ PageSize="@pagesize">
        
     }
 
+
+   
 
 }

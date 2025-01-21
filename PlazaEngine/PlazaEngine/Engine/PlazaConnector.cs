@@ -345,8 +345,9 @@ namespace PlazaEngine.Engine
                 }
                 else
                 {
-
-                    UnRegisterMarketDepth(sec, Emulation);
+                    //TODO: вырубил потому что сокеты неправильно делают отписку
+                    //да и вообще непонятно нужна или нет
+                    //UnRegisterMarketDepth(sec, Emulation);
                 }
 
                 return ;
@@ -420,8 +421,9 @@ namespace PlazaEngine.Engine
                     TryRegisterTicks(sec,Emulation);
                 }
                 else
-                {
-                    UnRegisterTicks(sec, Emulation);
+                { 
+                    //TODO: плохо работает для сокетов
+	                //UnRegisterTicks(sec, Emulation);
                 }
 
             }

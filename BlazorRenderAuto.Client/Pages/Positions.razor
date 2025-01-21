@@ -7,16 +7,16 @@
 
 @implements IDisposable;
 
-<TelerikGrid Data="@OpenedPositions">
+<TelerikGrid Data="@OpenedPositions"  RowHeight="30">
     <GridColumns>
-        <GridColumn Width="1fr" Field="@nameof(Pos.secName)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Pos.Open)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Pos.PosValue)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Pos.MaxOpened)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Pos.Side)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Pos.AverageEntry)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Pos.RealizedPnl)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(Pos.UnRealizedPnlPoints)" HeaderClass="grid-header" />
+        <GridColumn Width="1fr" Field="@nameof(Pos.secName)" />
+        <GridColumn Width="1fr" Field="@nameof(Pos.Open)" />
+        <GridColumn Width="1fr" Field="@nameof(Pos.PosValue)"  />
+        <GridColumn Width="1fr" Field="@nameof(Pos.MaxOpened)" />
+        <GridColumn Width="1fr" Field="@nameof(Pos.Side)"/>
+        <GridColumn Width="1fr" Field="@nameof(Pos.AverageEntry)"  />
+        <GridColumn Width="1fr" Field="@nameof(Pos.RealizedPnl)" />
+        <GridColumn Width="1fr" Field="@nameof(Pos.UnRealizedPnlPoints)" />
     </GridColumns>
 
 </TelerikGrid>
