@@ -34,6 +34,11 @@ namespace LiteInvest.Entity.ServerEntity
         [JsonIgnore]
 		public string SpecialHash { get; set; }
 
+		/// <summary>
+		/// Масштаб инстурмента. 
+		/// </summary>
+		public int Scale { get; set; } = 1;
+
 		public object Clone()
 		{
             return new SecurityApi()
@@ -49,6 +54,7 @@ namespace LiteInvest.Entity.ServerEntity
                 Decimals = Decimals,
                 PriceLimitLow = PriceLimitLow,
                 PriceLimitHigh = PriceLimitHigh,
+                Scale = Scale,
              
             };
 		}

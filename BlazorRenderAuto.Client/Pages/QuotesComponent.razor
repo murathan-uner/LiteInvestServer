@@ -12,23 +12,25 @@
 @inject JsInteropService jsInteropService
 @inject IJSRuntime JSRuntime
 
+@*  *@
+@* *@
+
 <TelerikGrid @ref="QuotesGrid" Id="@GridTableId"
 OnRowClick="@OnRowClickHandler"
-
+OnRowRender="@RowRender"
 EnableLoaderContainer="true"
 RowHeight="15"
 Height="100vh"
 Data="@Quotes"
 TItem="@MarketDepthLevel"
 ScrollMode="@GridScrollMode.Virtual"
-OnStateChanged="@OnStateChanged"
 Pageable="false"
 Sortable="false"
 PageSize="@pagesize">
     <GridColumns>
-        <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Volume)" HeaderClass="grid-header" />
-        <GridColumn Width="1fr" Field="@nameof(MarketDepthLevel.Price)" HeaderClass="grid-header" />
-        <GridColumn Width="50px" Field="@nameof(MarketDepthLevel.RestVolume)" HeaderClass="grid-header" />
+        <GridColumn Width="40%" Field="@nameof(MarketDepthLevel.Volume)" HeaderClass="grid-header" />
+        <GridColumn Width="45" Field="@nameof(MarketDepthLevel.Price)" HeaderClass="grid-header" />
+        <GridColumn Width="15%" Field="@nameof(MarketDepthLevel.RestVolume)" HeaderClass="grid-header" />
     </GridColumns>
     <RowTemplate Context="Quotes">
         <td style="@GetStyleForQuote(Quotes)" class="">
@@ -86,32 +88,48 @@ PageSize="@pagesize">
     bool logquotes = false;
 
     object scalelocker = new object();
+    object scrolllock = new object();
+
+
     /// <summary>
     /// Последний собранный масштаб
     /// </summary>
     private int prevbuildScale { get; set; }
 
-    private int _oldScale;//для первой отрисовки
+    private int _scale;//для первой отрисовки
 
     [Parameter]
     public int Scale
     {
-        get => _oldScale;
+        get => _scale;
         set
         {
-            if (_oldScale != value)
+            if (_scale != value)
                 OnScaleChanged(value);
 
-            _oldScale = value;
+            _scale = value;
         }
     }
 
+    bool busyscroll = false;
     private void OnScaleChanged(int newscale)
     {
-        lock (scalelocker)
+        Console.WriteLine($"New {secutityMain.Isin} Scale = {newscale}");
+
+        //lock (scalelocker)
         {
+            // if (busyscroll)
+            // {
+            //     Console.WriteLine("SCROLL BUSY");
+            //     return;
+            // }
+
+            // busyscroll = true;
+
             if (newdictionaryQuotes != null && newdictionaryQuotes.Count != 0)
-                AlgoQuotesScale(newdictionaryQuotes, usualbestbid, ApiDataService.crypto, savedAgregatedBestbid); // TODO: временно прописал напрямую
+                AlgoQuotesScale(newdictionaryQuotes, usualbestbid, ApiDataService.crypto,false); // TODO: временно прописал напрямую
+
+
         }
     }
 
@@ -127,13 +145,14 @@ PageSize="@pagesize">
             jsInteropService.OnKeyDown += OnKeyDown;
 
             //getScrollEvent2
-            await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
+            //await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
             await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
 
 
-            Scale = 1;
+            Scale = secutityMain.Scale;
 
             ApiDataService.NewQuotes += OnNewMarketDepth; 
+            ApiDataService.NewMyOrder += NewMyOrder;
 
 
             _firstrender = true;
@@ -151,12 +170,19 @@ PageSize="@pagesize">
                 return;
 
 
+
+            if (keyCode == "KeyS")
+            {
+                middlescroll = false;
+            }
+
             if (keyCode == "KeyM")
             {
                 //двигаем в середину
 
                 WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
-                GetPriceAfterScrollAndUpdateMaxMin();
+                middlescroll = true;
+                //GetPriceAfterScrollAndUpdateMaxMin();
             }
 
             if (keyCode == cancelHotKey)
@@ -211,6 +237,49 @@ PageSize="@pagesize">
 
         return 0;
 
+    }
+
+
+    private void NewMyOrder(Order myorder)
+    {
+        try
+        {
+            if (myorder.SecurityId != secutityMain.id)
+                return;
+
+            Console.WriteLine($"New Order {myorder.SecurityId} side = {myorder.Side} price {myorder.PriceOrder} state {myorder.State}");
+
+            if (myorder.State == Order.OrderStateType.Activ || myorder.State == Order.OrderStateType.Partial)
+            {
+
+                Orders[myorder.PriceOrder] = myorder;
+
+                if (IndexesQuotes.ContainsKey(myorder.PriceOrder) && Quotes.Count > IndexesQuotes[myorder.PriceOrder])
+                {
+                    Quotes[IndexesQuotes[myorder.PriceOrder]].RestVolume = myorder.Volume - myorder.VolumeExecuted;
+                    UpdateQuotesGrid();
+                }
+
+            }
+
+            else if (myorder.State == Order.OrderStateType.Done || myorder.State == Order.OrderStateType.Fail || myorder.State == Order.OrderStateType.Cancel)
+            {
+
+                Console.WriteLine($"Removing Order {myorder.SecurityId} price {myorder.PriceOrder} state {myorder.State}");
+                Orders.Remove(myorder.PriceOrder, out var _);
+
+                if (IndexesQuotes.ContainsKey(myorder.PriceOrder) && Quotes.Count > IndexesQuotes[myorder.PriceOrder])
+                {
+                    Quotes[IndexesQuotes[myorder.PriceOrder]].RestVolume = null;
+                    UpdateQuotesGrid();
+                }
+
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
     }
 
 
@@ -275,19 +344,11 @@ PageSize="@pagesize">
 
             decimal agrregatedlevel = bestbid - bestbid % (secutityMain.PriceStep * Scale);
 
-
-            //previous
-            // var min = bestbid - levels * secutityMain.PriceStep * Scale;
-            // var realmin = min - min % secutityMain.PriceStep * Scale;
-            // var max = bestbid + levels * secutityMain.PriceStep;
-            // var realmax = max - max % secutityMain.PriceStep;
-
             //new
             var realmin = agrregatedlevel - levels * secutityMain.PriceStep * Scale;
             var realmax = agrregatedlevel + levels * secutityMain.PriceStep * Scale;
 
-            Console.WriteLine($"secid={secutityMain.id} maxSEC ={secutityMain.PriceLimitHigh} minSEC= {secutityMain.PriceLimitLow} ");
-            Console.WriteLine($"secid={secutityMain.id} BESTBID ={bestbid} MIN {realmin} MAX {realmax}");
+            Console.WriteLine($"BUILDIND NEW DEPTH {secutityMain.Isin} maxSEC ={secutityMain.PriceLimitHigh} minSEC= {secutityMain.PriceLimitLow} ");
 
             int index = 0;
 
@@ -344,22 +405,30 @@ PageSize="@pagesize">
 
     private ConcurrentDictionary<decimal, MarketDepthLevel> BuildMarketDepthDictionary(List<MarketDepthLevel> bids, List<MarketDepthLevel> asks)
     {
-        var newdictionaryQuotes = new ConcurrentDictionary<decimal, MarketDepthLevel>();
-        foreach (var bid in bids)
+        try
         {
-            newdictionaryQuotes.TryAdd(bid.Price, bid);
-        }
+            var newdictionaryQuotes = new ConcurrentDictionary<decimal, MarketDepthLevel>();
+            foreach (var bid in bids)
+            {
+                newdictionaryQuotes.TryAdd(bid.Price, bid);
+            }
 
-        foreach (var ask in asks)
+            foreach (var ask in asks)
+            {
+                newdictionaryQuotes.TryAdd(ask.Price, ask);
+            }
+
+            return newdictionaryQuotes;
+        }
+        catch (Exception ex)
         {
-            newdictionaryQuotes.TryAdd(ask.Price, ask);
+            Console.WriteLine(ex.Message);
+            return null;
         }
-
-        return newdictionaryQuotes;
     }
 
 
-    public decimal savedAgregatedBestbid { get; set; }
+    public decimal savedAgregatedMiddle { get; set; }
 
     public decimal usualbestAsk { get; set; }
 
@@ -388,22 +457,48 @@ PageSize="@pagesize">
             usualbestbid = bids[0].Price;
 
         if (asks.Count != 0)
-            usualbestAsk = asks[0].Price;
+            usualbestAsk = asks[asks.Count-1].Price;
 
-        lock (scalelocker)
+        //lock (scalelocker)
         {
-            savedAgregatedBestbid = usualbestbid - usualbestbid % (secutityMain.PriceStep * Scale);
-            var easyDictionaryCurrent = BuildMarketDepthDictionary(bids, asks);
+            try
+            {
 
-            newdictionaryQuotes = ScaleBuilderQuotes(easyDictionaryCurrent);
-            AlgoQuotesScale(newdictionaryQuotes, usualbestbid, ApiDataService.crypto, savedAgregatedBestbid);
+                //TODO не зашел код
+                bestbidagregated = usualbestbid - usualbestbid % (secutityMain.PriceStep * Scale); 
+                bestaskagregated = usualbestAsk - usualbestAsk % (secutityMain.PriceStep * Scale);
+
+                // var savedAgregatedMiddle1 = (bestaskagregated + bestbidagregated) / 2;
+                // savedAgregatedMiddle = savedAgregatedMiddle1 - savedAgregatedMiddle1 % (secutityMain.PriceStep * Scale);
+
+                savedAgregatedMiddle = bestbidagregated;
+
+                var easyDictionaryCurrent = BuildMarketDepthDictionary(bids, asks);
+
+                newdictionaryQuotes = ScaleBuilderQuotes(easyDictionaryCurrent);
+                AlgoQuotesScale(newdictionaryQuotes, usualbestbid, ApiDataService.crypto);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
     }
 
-    bool shouldrender = true;
+    public decimal bestaskagregated { get; set; }
+
+
     protected override bool ShouldRender()
     {
-        return shouldrender;
+        if (_firstrender)
+        {
+            Console.WriteLine($"PASS {secutityMain.Isin} QUOTES RENDER {DateTime.Now}");
+            return false;
+        }
+
+        Console.WriteLine($"SHOULD {secutityMain.Isin} QUOTES RENDER {DateTime.Now}");
+
+        return base.ShouldRender();
     }
 
     private void UpdateQuotesGrid()
@@ -428,12 +523,13 @@ PageSize="@pagesize">
 
     bool busy = false;
     //if (prevbuildScale != Scale)
-    private void AlgoQuotesScale(ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes, decimal bestbbid, bool crypto, decimal agregatedBestbid)
+    private void AlgoQuotesScale(ConcurrentDictionary<decimal, MarketDepthLevel> newdictionaryQuotes, decimal bestbbid, bool crypto, bool scroll = true)
     {
         // if(!_firstrender)
         //    return;
 
-        if(busy)
+
+        if (busy)
             return;
 
         busy = true;
@@ -449,61 +545,90 @@ PageSize="@pagesize">
             var initialquotes = BuildInitialQuotes(bestbbid);
             QuotesDictionary.Clear();
 
-            //TODO: исправить временная фикса
             Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, initialquotes, crypto);
             ApiDataService.SendInitialQuotes(secutityMain, initialquotes, IndexesQuotes);
 
-            UpdateBestBidIndex(agregatedBestbid);
-            // if (i >= 2)
-            // {
-            //     var firstitem=bestbidIndex - 20;
-            //     Console.WriteLine($"Making adoptaion for chart ");
+            UpdateBestBidIndex(bestbidagregated);
 
-            //     var maxprice = Quotes[firstitem].Price;
-            //     var minprice = Quotes[firstitem-itemsinorderbook].Price;
-
-            //     Console.WriteLine($" index={firstitem} MP {maxprice} minprice={minprice}");
-
-            // }
-            shouldrender = true;
             UpdateQuotesGrid();
-            //InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
-            WorkWindow.ScrollTo(bestbidIndex, QuotesGrid).GetAwaiter().GetResult();
-            //UpdateQuotesGrid();
-            //InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
-            shouldrender = false;
 
-            //UpdateQuotesGrid();
+            //при изменении масштаба скролл не нужен, тем более у нас и так цена будет выше макс
 
-            GetPriceAfterScrollAndUpdateMaxMin();
+            if (scroll)
+                Helper.CreateTimerAndStart(() =>
+                {
+
+                    JSRuntime.InvokeVoidAsync("getScrollEvent2", GridTableId);
+
+                    WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
+                    UpdateQuotesGrid();
+
+                    busy = false;
+                    busyscroll = false;
+
+                    middlescroll = true;
+
+                }, 500, false);
+
 
             ApiDataService.ScrollClustes(secutityMain, bestbidIndex);
-            Console.WriteLine($"scrolling {secutityMain.Isin} to {agregatedBestbid}");
+
+            if (scroll)
+                return;
         }
         else
         {
-            //TODO: Крипта пока что вшита напрямую,
             Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, Quotes, ApiDataService.crypto);
             UpdateQuotesGrid();
+            UpdateBestBidIndex(bestbidagregated);
         }
 
-        UpdateBestBidIndex(agregatedBestbid);
+
+        //TODO: проверить на фортс
+        //--------------------
+
+        if (middlescroll)
+        {
+            if (bestaskagregated > (decimal)maxpriceGRID && maxpriceGRID != 0)
+            {
+
+                Console.WriteLine($"{secutityMain.Isin} Scrolling to Middle MAX ");
+                Helper.CreateTimerAndStart(() =>
+                {
+
+                    WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
+                    UpdateQuotesGrid();
+                    busy = false;
+
+                }, 500, false);
 
 
-        // if (agregatedBestbid > (decimal)maxchart && maxchart != 0)
-        // {
+                return;
+            }
 
-        // }
 
-        // //TODO: тут по хорошему вообще брать бест аск
-        // if (agregatedBestbid < (decimal)minchart && minchart != 0)
-        // {
 
-        // }
+            if (bestbidagregated < (decimal)minpriceGrid && minchart != 0)
+            {
+                Console.WriteLine($"{secutityMain.Isin} Scrolling to MIN ");
+                Helper.CreateTimerAndStart(() =>
+                {
+
+                    WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
+                    UpdateQuotesGrid();
+                    busy = false;
+
+                }, 500, false);
+
+                return;
+            }
+        }
 
         busy = false;
 
     }
+
+    public bool middlescroll { get; set; } = false;
 
 
     /// <summary>
@@ -512,7 +637,7 @@ PageSize="@pagesize">
     /// <param name="newquotes"></param>
     private ConcurrentDictionary<decimal, MarketDepthLevel> ScaleBuilderQuotes(ConcurrentDictionary<decimal, MarketDepthLevel> newquotes)
     {
-
+        
         //здесь не может быть пустых уровней
         ConcurrentDictionary<decimal, MarketDepthLevel> QuotesAgregated = new();
         foreach (var level in newquotes)
@@ -712,28 +837,41 @@ PageSize="@pagesize">
 
     }
 
+    int lastskip = 0;
 
-    object scrolllock = new object();
-    //SCROLL
-    private void OnStateChanged(GridStateEventArgs<MarketDepthLevel> gridStateEventArgs)
+    private decimal bestbidagregated;
+
+    private void RowRender(GridRowRenderEventArgs row)
     {
-        lock (scrolllock)
+        //Console.WriteLine($"Row Render {secutityMain.Isin} {(row.Item as MarketDepthLevel).Price}");
+        var skip= (int)QuotesGrid.GetState().Skip;
+
+        if (skip != lastskip)
+        UpdateMaxMinFromScroll(skip);
+    }
+
+    
+    //SCROLL
+    /*private void OnStateChanged(GridStateEventArgs<MarketDepthLevel> gridStateEventArgs)
+    {
+       
         {
             var skip = (int)gridStateEventArgs.GridState.Skip;
             UpdateMaxMinFromScroll(skip);
         }
-    }
+    }*/
 
-    private void GetPriceAfterScrollAndUpdateMaxMin()
+    /*private void GetPriceAfterScrollAndUpdateMaxMin()
     {
-        lock (scrolllock)
+       
         {
+            Console.WriteLine($"Check First Scroll");
             var state = QuotesGrid.GetState();
             var skip = (int)state.Skip;
             UpdateMaxMinFromScroll(skip);
         }
 
-    }
+    }*/
 
     private void UpdateMaxMinFromScroll(int skip)
     {
@@ -743,24 +881,36 @@ PageSize="@pagesize">
             return;
         }
 
-        if (Quotes!=null && Quotes.Count >= skip)
+        if (Quotes!=null && Quotes.Count > skip)
         {
-            var maxprice = (double)Quotes[skip].Price;
+
+            if (maxpriceGRID==0)
+                Console.WriteLine($"SCROLL | max price FOUND | = {Quotes[skip].Price}");
+
+            if ((double)Quotes[skip].Price==maxpriceGRID)
+                return;
+
+            maxpriceGRID = (double)Quotes[skip].Price;
+
             var visiblerange = itemsinorderbook * (double)secutityMain.PriceStep * Scale;
-            var minprice = maxprice - visiblerange;
+            minpriceGrid = maxpriceGRID - visiblerange;
 
             if (visiblerange != 0)
             {
-                Console.WriteLine($"SCROLL 1` max price = {Quotes[skip].Price} min = {minprice}");
-                ApiDataService.NewMaxMin(secutityMain, maxprice,minprice);
+                Console.WriteLine($"SCROLL 1` max price = {Quotes[skip].Price} min = {minpriceGrid}");
+                ApiDataService.SetNewMaxMin(secutityMain, maxpriceGRID,minpriceGrid);
             }
 
         }
     }
 
+    public double minpriceGrid { get; set; }
 
+    /// <summary>
+    /// Максимальное значение определенное скипом!
+    /// </summary>
+    public double maxpriceGRID { get; set; }
 
-    
 
     private void UpdateBestBidIndex(decimal _bestbid)
     {
@@ -811,8 +961,8 @@ PageSize="@pagesize">
 
             if (itemsinorderbook == 0)
             {
-               // itemsinorderbook = maxchart2 - minchart;
-                itemsinorderbook =(int)((maxchart2 - minchart) / ((double)secutityMain.PriceStep * Scale ));
+                // itemsinorderbook = maxchart2 - minchart;
+                itemsinorderbook = (int)((maxchart2 - minchart) / ((double)secutityMain.PriceStep * Scale));
             }
 
             // maxchart = maxchart2;
@@ -822,10 +972,16 @@ PageSize="@pagesize">
             //Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart2} min = {minchart} itemsinorderbook ={itemsinorderbook}");
             Console.WriteLine($"Scrolled!!! {secutityMain.Isin} max = {maxchart} min = {minchart} itemsinorderbook ={itemsinorderbook}");
 
+            if (maxpriceGRID != 0)
+            {
+                var visiblerange = itemsinorderbook * (double)secutityMain.PriceStep * Scale;
+                var minprice = maxpriceGRID - visiblerange;
 
-           // ApiDataService.SetNewMaxMin(secutityMain, maxchart2, minchart);
-            ApiDataService.SetNewMaxMin(secutityMain, maxchart, minchart);
-           
+                Console.WriteLine($"SCROLL SCRIPT` max price = {maxpriceGRID} min = {minprice}");
+                ApiDataService.SetNewMaxMin(secutityMain, maxpriceGRID, minprice);
+
+            }
+
 
         }
 
@@ -901,6 +1057,7 @@ PageSize="@pagesize">
         jsInteropService.OnKeyDown -= OnKeyDown;
         jsInteropService.OnScroll -= OnScroll;
         ApiDataService.NewQuotes -= OnNewMarketDepth;
+        ApiDataService.NewMyOrder -= NewMyOrder;
        
     }
 

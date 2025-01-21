@@ -26,7 +26,7 @@ OnReorder="@OnReorder">
 				<HeaderTemplate>
                     <div id="header" class="instrument-header" @onclick="() => focusWindowByHeaderClick(security.SpecialHash)">
 						<div class="instrument-header__content">
-							@security.Isin
+							@security.ShortName
 							<WorkWindowSettings securityApi="security"></WorkWindowSettings>
 						</div>
 						<svg class="buttonclose" @onclick="() => OnClosingMain(security)" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">

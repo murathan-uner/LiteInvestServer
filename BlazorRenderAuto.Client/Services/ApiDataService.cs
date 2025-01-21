@@ -101,7 +101,7 @@ namespace BlazorRenderAuto.Client.Services
 		/// НАСТРОЙКА ИСПОЛЬЗУЕТСЯ ДЛЯ ВСЕГО ПРОЕКТА
 		/// TODO: вынеси настройки нормально
 		/// </summary>
-		public bool crypto { get; set; } = true;
+		public bool crypto { get; set; } = false;
 
 		public ApiDataService()
 		{
@@ -123,10 +123,10 @@ namespace BlazorRenderAuto.Client.Services
 			NewMaxMin?.Invoke(security, max, min);
 		}
 
-		public Action <int>? NewScale { get; set; }
-		public void UpdateMaxMinWithNewScale(int newscale)
+		public Action <SecurityApi,int>? NewScale { get; set; }
+		public void UpdateMaxMinWithNewScale(SecurityApi sec,int newscale)
 		{
-			NewScale?.Invoke(newscale);
+			NewScale?.Invoke(sec,newscale);
 		}
 
 		public Action <SecurityApi,ICollection<MarketDepthLevel>, Dictionary<decimal, int>> BuildNewTable { get; set; }
@@ -367,7 +367,7 @@ namespace BlazorRenderAuto.Client.Services
 							.AddParameter("liteinvest", token);
 
 
-					var websocketClient = new WebsocketClient(webscoketrequest);
+					var websocketClient = new WebsocketClient(webscoketrequest) { IsReconnectionEnabled = true };
 
 					websocketClient.MessageReceived.Subscribe(msg =>
 					{
@@ -416,11 +416,56 @@ namespace BlazorRenderAuto.Client.Services
 				Price = tick.Data.Price,
 				SecurityId = tick.Symbol.ToUpper(),
 				Volume = tick.Data.Quantity, 
-				Time = tick.Data.TradeTime, 
+				Time = DateTime.Now,// tick.Data.TradeTime, 
 				Side = tick.Data.BuyerIsMaker ? Side.Buy:Side.Sell
 			});
 			NewTicks?.Invoke(tick.Symbol.ToUpper(), tradeTicks);
 		}
+
+		public async Task<int?> SubscribePrivateOrders()
+		{
+			try
+			{
+
+				var webscoketrequest =
+					websocketurl
+						.AddParameter("stream", "my_orders")
+						.AddParameter("liteinvest", token);
+
+				orderwebcocketclient = new WebsocketClient(webscoketrequest){IsReconnectionEnabled = true,};
+
+				Console.WriteLine("Order socket " + webscoketrequest);
+
+				orderwebcocketclient.MessageReceived.Subscribe(async msg =>
+				{
+					try
+					{
+						//почему то не хочет десериализовывать стакан нормальнь
+						var order = JsonConvert.DeserializeObject<Order>(msg.Text, new JsonSerializerSettings() { CheckAdditionalContent = true, });
+						NewMyOrder?.Invoke(order);
+
+					}
+					catch (Exception ex)
+					{
+						Console.WriteLine(ex.Message);
+					}
+				});
+
+				var hash = orderwebcocketclient.GetHashCode();
+				AllWebSockets.TryAdd(hash, orderwebcocketclient);
+
+				Console.WriteLine("Subcribing ORDERS ->" + webscoketrequest);
+
+				await orderwebcocketclient.Start();
+				return hash;
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.Message);
+				return null;
+			}
+		}
+
 
 		public async Task<int?> SubscribeOrderBook(string secid)
 		{
@@ -435,7 +480,7 @@ namespace BlazorRenderAuto.Client.Services
 							.AddParameter("sec_id", secid)
 							.AddParameter("liteinvest", token);
 
-					var websocketClient = new WebsocketClient(webscoketrequest);
+					var websocketClient = new WebsocketClient(webscoketrequest){IsReconnectionEnabled = true, };
 
 					websocketClient.MessageReceived.Subscribe(async msg =>
 					{
@@ -454,13 +499,18 @@ namespace BlazorRenderAuto.Client.Services
 						}
 					});
 
+					websocketClient.ReconnectionHappened.Subscribe(info =>
+					{
+						Console.WriteLine($" Reconnection Happened! -> {info.ToString()}");
+					});
+
 					Console.WriteLine($"Subscribing Order book {secid}");
 					Console.WriteLine(webscoketrequest);
 
 					var hash = websocketClient.GetHashCode();
 					AllWebSockets.TryAdd(hash, websocketClient);
 
-					await websocketClient.StartOrFail();
+					await websocketClient.Start();
 					return hash;
 				}
 				else
@@ -528,9 +578,33 @@ namespace BlazorRenderAuto.Client.Services
 			NewQuotes?.Invoke(bids.OrderByDescending(s => s.Price).ToList(), asks, symbol.ToUpperInvariant());
 		}
 
+		public async void StopPrivateWebSocket(int? websocketId)
+		{
+			if (websocketId == null && !crypto)
+			{
+				Console.WriteLine("NUll PRIVATE WEBSOCKET FOR CLOSE !");
+				return;
+			}
+
+			var websocket = AllWebSockets.TryGetValue((int)websocketId, out var foundwebsocket);
+
+			if (foundwebsocket == null)
+			{
+				Console.WriteLine("No WEBSOCKET FOUND With HASH!");
+				return;
+			}
+
+			var res = await foundwebsocket.StopOrFail(status: WebSocketCloseStatus.NormalClosure, "");
+
+			Console.WriteLine(!res
+				? $"Problems with closing websocket ID {websocketId}"
+				: $"Closed success {websocketId}");
+
+			AllWebSockets.Remove((int)websocketId, out var _);
+		}
+
 		public async void StopWebSocket(int? websocketId)
 		{
-
 			if (crypto)
 			{
 				if (AllCryptoSockets.ContainsKey((int) websocketId))

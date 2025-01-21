@@ -331,17 +331,14 @@
         Console.WriteLine($"{DateTime.Now} On Initialized secID{secutityMain.id} set WorkWindow");
 
 
-        ApiDataService.NewMyOrder += NewMyOrder;
-
-
-    
 
         //TODO: Сделать нормальную подписку на частные ордера
 
         WebSockets =
         [
             await ApiDataService.SubscribeOrderBook(secutityMain.id),
-    await ApiDataService.SubcribeTick(secutityMain.id)
+            await ApiDataService.SubcribeTick(secutityMain.id),
+
         ];
 
         return base.OnInitializedAsync();
@@ -418,7 +415,8 @@
         {
             var state = _grid.GetState();
             //TODO по хорошему надо выяснить сколько элементов показывается на экране...
-            var scrollindex = index - 20;
+
+            var scrollindex = index - 23;
             state.Skip = scrollindex;
 
             //TODO: Может выскочить ошибка
@@ -439,46 +437,7 @@
     //Половина видимых индексов
     public decimal middleamountofitems { get; set; } = 20;
     public Chart ChartComponent { get; set; }
-    public int pagesize { get; set; } = 150;
-
-
-    private void NewMyOrder(Order myorder)
-    {
-        try
-        {
-            /*if (myorder.SecurityId != secutityMain.id)
-            return;
-
-            Console.WriteLine($"New Order {myorder.SecurityId} side = {myorder.Side} price {myorder.PriceOrder} state {myorder.State}");
-
-                    if (myorder.State == Order.OrderStateType.Activ || myorder.State == Order.OrderStateType.Partial)
-                        {
-                        Orders[myorder.PriceOrder] = myorder;
-                        Quotes[IndexesQuotes[myorder.PriceOrder]];
-
-                        UpdateOrdersAndGrid();
-                        }
-                        else if (myorder.State == Order.OrderStateType.Done
-                        || myorder.State == Order.OrderStateType.Fail
-                    || myorder.State == Order.OrderStateType.Cancel)
-                                {
-
-                                Console.WriteLine($"Removing Order {myorder.SecurityId} price {myorder.PriceOrder} state {myorder.State}");
-
-                        Orders.Remove(myorder.PriceOrder, out var _);
-
-                        if (LastCalculatedQuotesDictionary.ContainsKey(myorder.PriceOrder))
-                        LastCalculatedQuotesDictionary[myorder.PriceOrder].RestVolume = null;
-
-                            UpdateOrdersAndGrid();
-
-                    }*/
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-        }
-    }
+    public int pagesize { get; set; } = 100;
 
 
 
@@ -490,11 +449,6 @@
     public void Dispose()
     {
         Console.WriteLine($"Disposing {secutityMain.id}");
-
-        
-       
-
-        ApiDataService.NewMyOrder -= NewMyOrder;
 
 
         if (WebSockets != null)

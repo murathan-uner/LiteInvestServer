@@ -10,12 +10,12 @@
 @implements IDisposable
 
 <TelerikWindow @bind-Visible=poswindowVisible
-               Resizable="true"
-               Draggable="true"
-               MinWidth="30%"
-               MinHeight="30%"
-               MaxHeight="90%"
-               MaxWidth="90%">
+Resizable="true"
+Draggable="true"
+MinWidth="30%"
+MinHeight="30%"
+MaxHeight="90%"
+MaxWidth="90%">
     <WindowContent>
         <Positions />
     </WindowContent>
@@ -28,12 +28,12 @@
 
 </TelerikWindow>
 <TelerikWindow @bind-Visible=orderswindowsVisible
-               Resizable="true"
-               Draggable="true"
-               MinWidth="30%"
-               MinHeight="30%"
-               MaxHeight="90%"
-               MaxWidth="90%">
+Resizable="true"
+Draggable="true"
+MinWidth="30%"
+MinHeight="30%"
+MaxHeight="90%"
+MaxWidth="90%">
     <WindowContent>
         <Orders />
     </WindowContent>
@@ -59,10 +59,10 @@ MaxHeight="500">
         <TelerikForm Model="@loginInfo">
             <FormItems>
                 <FormItem Field="@nameof(UserLoginData.Login)">
-                   
+
                 </FormItem>
                 <FormItem Field="@nameof(UserLoginData.Password)">
-                    
+
                 </FormItem>
             </FormItems>
 
@@ -76,7 +76,7 @@ MaxHeight="500">
         </TelerikForm>
         @if (!string.IsNullOrWhiteSpace(@textForLogin))
         {
-                <p style="color: @colorforlogin;">@textForLogin</p>
+            <p style="color: @colorforlogin;">@textForLogin</p>
         }
     </WindowContent>
 </TelerikWindow>
@@ -182,13 +182,14 @@ MaxHeight="500">
     {
         string currValue = theUserInput as string;
 
-        if (currValue != lastOnChangeValue)
+        //if (currValue != lastOnChangeValue)
         {
-            lastOnChangeValue = currValue;
+           // lastOnChangeValue = currValue;
 
             if (Instruments.FirstOrDefault(i => i.Isin == AutoComplete) != null)
             {
                 SecuritySelected = Instruments.FirstOrDefault(i => i.Isin == AutoComplete);
+                AutoComplete = "";
             }
         }
     }
@@ -229,6 +230,32 @@ MaxHeight="500">
     public TelerikAutoComplete<SecurityApi> TelerikComboBox { get; set; }
 
     //Entity.LoginInfo? res;
+
+    List<string> coins = new List<string>()
+    {
+        { "SOLUSDT" },
+        { "AVAUSDT" },
+        { "TRXUSDT" },
+        { "ARCUSDT" }
+    };
+
+
+    List<string> FortsCoins = new List<string>()
+    {
+        { "Si-3.25" },
+        { "AFLT-3.25" },
+        { "LKOH-3.25" },
+        { "VTBR-3.25" }
+    };
+
+    Dictionary<string, int> FortsCoins2 = new()
+    {
+        { "Si-3.25", 1 },
+        { "AFLT-3.25",1 },
+        { "LKOH-3.25",5},
+        { "VTBR-3.25",1},
+        {"SBRF-3.25",1}
+    };
 
     private async Task<Task> OnLoginClick(MouseEventArgs obj)
     {
@@ -292,6 +319,26 @@ MaxHeight="500">
                 windowVisible = false;
 
                 LoginClicked?.Invoke();
+
+                if (ApiDataService.crypto)
+                {
+                    foreach (var coin in coins)
+                    {
+                        var sec = Instruments.FirstOrDefault(s => s.Isin == coin);
+                        ApiDataService.OpenInstrument(sec);
+                    }
+                }
+                else
+                {
+                    foreach (var coin in FortsCoins2)
+                    {
+                        var sec = Instruments.FirstOrDefault(s => s.Isin == coin.Key);
+                        sec.Scale = coin.Value;
+
+                        Task.Delay(200);
+                        ApiDataService.OpenInstrument(sec);
+                    }
+                }
 
                 return Task.CompletedTask;
         }

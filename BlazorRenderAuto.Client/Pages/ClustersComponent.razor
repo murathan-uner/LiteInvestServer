@@ -1,5 +1,6 @@
 ﻿@using BlazorRenderAuto.Client.Entity
 @using BlazorRenderAuto.Client.Services
+@using LiteInvest.Entity.Helpers
 @using LiteInvest.Entity.PlazaEntity
 @using LiteInvest.Entity.ServerEntity
 
@@ -59,7 +60,7 @@ PageSize="@pagesize">
     {
 
         //ScrollClusters
-       
+
 
         //TODO: развернуть.
         // ApiDataService.BuildNewTable += BuildNewTable;
@@ -68,19 +69,24 @@ PageSize="@pagesize">
         base.OnInitialized();
     }
 
+    bool rendered = false;
+
     protected override async void OnAfterRender(bool firstRender)
     {
         if (firstRender)
         {
+            rendered = true;
             await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
 
-             ApiDataService.NewTicks += ProcessClusterTick;
-             ApiDataService.BuildNewTable += BuildEmptyClusterLevels;
-             ApiDataService.ScrollClusters+= ScrollClusters;
+            ApiDataService.NewTicks += ProcessClusterTick;
+            ApiDataService.BuildNewTable += BuildEmptyClusterLevels;
+            ApiDataService.ScrollClusters+= ScrollClusters;
         }
 
         base.OnAfterRender(firstRender);
     }
+
+
 
     private void ScrollClusters(SecurityApi sec, int bestbidindex)
     {
@@ -88,11 +94,21 @@ PageSize="@pagesize">
         if (sec.SpecialHash != secutityMain.SpecialHash)
             return;
 
-        Console.WriteLine($"Scrolling {bestbidindex} Clusters {secutityMain.SpecialHash} ");
 
-        InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
-        WorkWindow.ScrollTo(bestbidindex, ClustersGrid);
-        InvokeAsync(StateHasChanged).GetAwaiter().GetResult();
+        Console.WriteLine($"Scrolling {bestbidindex} Clusters {secutityMain.SpecialHash} ");
+        busy = true;
+        UpdateClastersGrid();
+
+        //не скроллит сразу почему то. а почему я не знаю
+        Helper.CreateTimerAndStart(() =>
+        {
+            WorkWindow.ScrollTo(bestbidindex, ClustersGrid);
+            UpdateClastersGrid();
+            busy = false;
+
+        }, 500, false);
+
+        
     }
 
     private void BuildEmptyClusterLevels(SecurityApi sec, ICollection<MarketDepthLevel> _initialOrderBook, Dictionary<decimal, int> initDictionary)
@@ -111,14 +127,16 @@ PageSize="@pagesize">
         IndexesQuotes = initDictionary;
 
         UpdateClastersGrid();
-      
+
         Console.WriteLine($"Build New Clusters {secutityMain.SpecialHash}");
     }
+
+    bool busy = false;
 
     private void ProcessClusterTick(string sec, List<TradeApi> ticks)
     {
 
-        if(sec!=secutityMain.id)
+        if (sec != secutityMain.id)
             return;
 
         var copyclusters = ClusterDatas.ToList();
@@ -139,14 +157,14 @@ PageSize="@pagesize">
                     cluster.BidVolume = 0;
                 }
 
-                Console.WriteLine($"Cluster Table Empty");
+                Console.WriteLine($"Cluster Table BUILDING ");
 
                 lasttradetickTime = agregatingTime;
             }
 
             decimal tickAgregatedLevel = tick.Price - tick.Price % (secutityMain.PriceStep * Scale);
 
-            if (IndexesQuotes!=null && IndexesQuotes.ContainsKey(tickAgregatedLevel) && copyclusters.Count != 0)
+            if (IndexesQuotes != null && IndexesQuotes.ContainsKey(tickAgregatedLevel) && copyclusters.Count != 0)
             {
                 var index = IndexesQuotes[tickAgregatedLevel];
 
@@ -159,12 +177,19 @@ PageSize="@pagesize">
 
                 copyclusters[index] = lastclusterItem;
 
-               // Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
+                // Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
             }
         }
 
         ClusterDatas = copyclusters;
+
+        if (busy)
+            return;
+
+
+        busy = true;
         UpdateClastersGrid();
+        busy = false;
     }
 
     private string GetClassForClusters(ClusterLevel _clusterLevel)
@@ -181,6 +206,13 @@ PageSize="@pagesize">
     {
         ApiDataService.NewTicks -= ProcessClusterTick;
         ApiDataService.ScrollClusters -= ScrollClusters;
+    }
+
+    protected override bool ShouldRender()
+    {
+        Console.WriteLine($"Clusters Should Render {secutityMain.Isin} {DateTime.Now}");
+
+        return base.ShouldRender();
     }
 
     private void UpdateClastersGrid()

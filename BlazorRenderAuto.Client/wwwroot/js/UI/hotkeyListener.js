@@ -2,7 +2,8 @@
 function setDonNetObjectReference(obj) {
     DOTNET_JSINTEROPSERVICE_REFERENCE = obj;
 }
-function keyDownHandler(e, windowId) {
+function keyDownHandler(e, windowId)
+{
     const windowElement = document.getElementById(windowId);
     console.log(e.code, windowElement);
     if (e.target && (e.target.nodeName != "INPUT") && e.target.nodeName != "TEXTAREA") {

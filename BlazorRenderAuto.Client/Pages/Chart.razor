@@ -55,7 +55,7 @@
     <ChartYAxes>
         <ChartYAxis Min="@minchart" Max="@maxchart" Visible="false">
         </ChartYAxis>
-    </ChartYAxes>
+    </ChartYAxes> 
 
 </TelerikChart>
 
@@ -91,9 +91,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        ApidataService.NewTicks += ProcessTicks;
-        ApidataService.NewMaxMin += ProcessNewMaxMin;
-       
 
         if (Ticks == null)
         {
@@ -124,7 +121,10 @@
     {
         if (firstRender)
         {
-            Chart2.Refresh();
+
+            ApidataService.NewTicks += ProcessTicks;
+            ApidataService.NewMaxMin += ProcessNewMaxMin;
+
         }
 
         base.OnAfterRender(firstRender);
@@ -161,6 +161,11 @@
 
     decimal basicvolume = 0;
 
+
+    int chartcount = 0;
+
+    DateTime lasttickupdate;
+
     public void ProcessTicks(string sec, List<TradeApi> ticks)
     {
 
@@ -169,6 +174,12 @@
 
         if(ticks==null)
             return;
+
+        if (ApidataService.crypto)
+        {
+          //  if (!(ticks[0].Time > lasttickupdate + TimeSpan.FromMilliseconds(200)))
+            //    return;
+        }
 
         try
         {
@@ -194,6 +205,7 @@
             Console.WriteLine(ex.Message);
         }
 
+        
         InvokeAsync(StateHasChanged);
     }
 
@@ -204,7 +216,13 @@
         InvokeAsync(StateHasChanged);
     }
 
-    
+    protected override bool ShouldRender()
+    {
+        //Console.WriteLine($"CHART Should Render {secutityMain.Isin}  {DateTime.Now}");
+
+        return base.ShouldRender();
+    }
+
 
     public void SetMaxMin(double max, double min)
     {
@@ -220,8 +238,6 @@
             Console.WriteLine(ex.Message);
         }
     }
-
- 
 
     private void UpdateChart()
     {

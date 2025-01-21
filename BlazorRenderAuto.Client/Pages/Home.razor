@@ -89,8 +89,8 @@
 
 
 
-	<Menu NewSecSelected="@NewSecAdded" LoginClicked="LogInClicked"></Menu>
-	<WindowsRenderer/>
+<Menu NewSecSelected="@NewSecAdded" LoginClicked="LogInClicked"></Menu>
+<WindowsRenderer/>
 
 
 
@@ -137,21 +137,23 @@
 
         Console.WriteLine($"{DateTime.Now} Основное - OnAfterRender");
 
-	    base.OnAfterRender(firstRender);
+        base.OnAfterRender(firstRender);
     }
 
     protected override void OnParametersSet()
     {
         Console.WriteLine($"{DateTime.Now} Основное - ParametersSet!");
 
-		base.OnParametersSet();
-	}
+        base.OnParametersSet();
+    }
 
 
     private async void LogInClicked()
-    {
-        //await windowRef.ShowAtAsync();
+    { 
+        ordersubscription = await ApiDataService.SubscribePrivateOrders();
     }
+
+    public int? ordersubscription { get; set; }
 
     private void NewSecAdded(SecurityApi sec)
     {
@@ -165,7 +167,13 @@
             //     ApiDataService.StopPrivateOrderSubscription();
 
             if (ApiDataService != null)
+            {
+                //ApiDataService.StopPrivateWebSocket(ordersubscription);
+                //ApiDataService.Dispose();
                 ApiDataService = null;
+            }
+
+
         }
         catch (Exception ex)
         {
