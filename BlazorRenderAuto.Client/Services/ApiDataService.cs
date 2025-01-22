@@ -659,7 +659,8 @@ namespace BlazorRenderAuto.Client.Services
 		{
 			ScrollClusters?.Invoke(secmain,bestbidIndex);
 		}
-	}
 
-	
+		public string SelectedSecurityHash = "";
+		public Action SelectedSecurityHashChanged;
+	}
 }

@@ -690,7 +690,7 @@ common.MapPost("/Login", async(string login, string pass, HttpContext httpContex
     if (!UsersContext.ContainsKey(login))
     {
 		return Results.Json(new LoginInfo()
-			{ errorMessage = "Users doesn`t exist" });
+			{ errorMessage = "User doesn`t exist" });
 	}
 
     var user = UsersContext[login];

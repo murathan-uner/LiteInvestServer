@@ -18,10 +18,10 @@
     padding: 12px;
 }
 
-.top-menu__login span {
-    cursor: pointer;
-    color: #FFFFFF;
-}
+    .top-menu__login span {
+        cursor: pointer;
+        color: #FFFFFF;
+    }
 
 .brand {
     margin: 12px;
@@ -32,13 +32,22 @@
 
 .instrument-header {
     display: flex;
+    box-sizing: border-box;
     justify-content: space-between;
 }
+
+    .instrument-header.picked {
+        background-color: #f0f0f0;
+    }
 
 .instrument-header__content {
     display: grid;
     grid-template-columns: min-content min-content;
 }
+
+    .instrument-header__content svg {
+        cursor: pointer;
+    }
 
 .dropdown-toggle {
     cursor: pointer;
