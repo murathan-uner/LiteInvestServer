@@ -6,7 +6,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddTelerikBlazor();
 
 //builder.Services.AddBlazorBootstrap();
-builder.Services.AddSingleton<ApiDataService>();
+builder.Services.AddScoped<ApiDataService>();
 
 //builder.Services.AddScoped<ApiDataServiceTest>();
 
