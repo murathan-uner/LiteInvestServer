@@ -17,7 +17,7 @@ function getScrollEventForAllTables(gridTableId) {
 
                 targetElements.forEach((otherElement) => {
                     if (otherElement !== e.target) {
-                        console.log(otherElement);
+                        //console.log(otherElement);
                         otherElement.scrollTop = scrollTop;
                     }
                 });

@@ -41,6 +41,7 @@
     }
 
 .instrument-header__content {
+    white-space: nowrap;
     display: grid;
     grid-template-columns: min-content min-content;
 }

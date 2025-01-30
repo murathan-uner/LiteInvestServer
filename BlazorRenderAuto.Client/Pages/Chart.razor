@@ -6,7 +6,7 @@
 @inject ApiDataService ApidataService
 @implements IDisposable
 
-<TelerikChart Height="100vh" @ref="Chart2" Class="chart" Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%">
+<TelerikChart Height="calc(100vh - 100px)" @ref="Chart2" Class="chart" Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%">
 
     <ChartLegend Visible="false"></ChartLegend>
     <ChartPannable Enabled="false"></ChartPannable>

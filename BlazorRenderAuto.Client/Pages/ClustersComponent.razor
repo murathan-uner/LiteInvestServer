@@ -8,7 +8,114 @@
 @implements IDisposable
 @inject IJSRuntime JSRuntime
 
-<TelerikGrid @ref="ClustersGrid"
+<style>
+    .clustersColumn {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+
+</style>
+
+<div class="clustersColumn">
+    <TelerikGrid @ref="ClustersGrid3"
+                 EnableLoaderContainer="true"
+                 RowHeight="15"
+                 Height="calc(100vh - 100px)"
+                 Data="@ClusterDatas"
+                
+                 TItem="@ClusterLevel"
+                 ScrollMode="@GridScrollMode.Virtual"
+                 PageSize="@pagesize">
+
+        <GridColumns>
+            <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
+                <FooterTemplate>
+                    @if (times?.Count == 3)
+                    {
+                        @times[2];
+                    }
+                </FooterTemplate>
+            </GridColumn>
+        </GridColumns>
+
+        <RowTemplate Context="ClusterDatas">
+            <td class="@GetClassForClusters(ClusterDatas)">
+                @if (ClusterDatas.Volume != 0)
+                {
+                    @ClusterDatas.Volume.KiloFormat()
+                }
+            </td>
+        </RowTemplate>
+
+    </TelerikGrid>
+
+    <TelerikGrid @ref="ClustersGrid2"
+                 EnableLoaderContainer="true"
+                 RowHeight="15"
+                 Height="calc(100vh - 100px)"
+                 Data="@ClusterDatas"
+                 TItem="@ClusterLevel"
+                 ScrollMode="@GridScrollMode.Virtual"
+                 PageSize="@pagesize">
+
+        <GridColumns>
+            <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
+                <FooterTemplate>
+                    @if (times?.Count == 3)
+                    {
+                        @times[1]
+                        ;
+                    }
+                </FooterTemplate>
+            </GridColumn>
+        </GridColumns>
+
+        <RowTemplate Context="ClusterDatas">
+            <td class="@GetClassForClusters(ClusterDatas)">
+                @if (ClusterDatas.Volume != 0)
+                {
+                    @ClusterDatas.Volume.KiloFormat()
+                }
+            </td>
+        </RowTemplate>
+
+    </TelerikGrid>
+
+    <TelerikGrid @ref="ClustersGrid1"
+                 EnableLoaderContainer="true"
+                 RowHeight="15"
+                 Height="calc(100vh - 100px)"
+                 Data="@ClusterDatas"
+                 TItem="@ClusterLevel"
+                 ScrollMode="@GridScrollMode.Virtual"
+                 PageSize="@pagesize">
+
+        <GridColumns>
+            <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
+                <FooterTemplate>
+                    @if (times?.Count == 3)
+                    {
+                        @times[0]
+                        ;
+                    }
+                </FooterTemplate>
+            </GridColumn>
+        </GridColumns>
+
+        <RowTemplate Context="ClusterDatas">
+            <td class="@GetClassForClusters(ClusterDatas)">
+                @if (ClusterDatas.Volume != 0)
+                {
+                    @ClusterDatas.Volume.KiloFormat()
+                }
+            </td>
+        </RowTemplate>
+
+    </TelerikGrid>
+
+</div>
+
+@* <TelerikGrid @ref="ClustersGrid"
 EnableLoaderContainer="true"
 RowHeight="15"
 Height="100vh"
@@ -18,14 +125,10 @@ ScrollMode="@GridScrollMode.Virtual"
 PageSize="@pagesize">
 
     <GridColumns>
-      @*   <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Price)" HeaderClass="grid-header" /> *@
         <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header" />
     </GridColumns>
 
     <RowTemplate Context="ClusterDatas">
-       @*  <td class="@GetClassForClusters(ClusterDatas) price">
-            @ClusterDatas.Price.ToString("G29")
-        </td> *@
         <td class="@GetClassForClusters(ClusterDatas)">
             @if (ClusterDatas.Volume != 0)
             {
@@ -34,14 +137,14 @@ PageSize="@pagesize">
         </td>
     </RowTemplate>
 
-</TelerikGrid>
+</TelerikGrid> *@
 
 @code {
 
     [Parameter]
     public int pagesize { get; set; }
 
-    [Parameter] 
+    [Parameter]
     public SecurityApi secutityMain { get; set; }
 
 
@@ -50,14 +153,35 @@ PageSize="@pagesize">
 
 
     public TelerikGrid<ClusterLevel> ClustersGrid { get; set; }
+
+    public TelerikGrid<ClusterLevel> ClustersGrid3 { get; set; }
+    public TelerikGrid<ClusterLevel> ClustersGrid2 { get; set; }
+    public TelerikGrid<ClusterLevel> ClustersGrid1 { get; set; }
+
     List<ClusterLevel> ClusterDatas { get; set; } = new List<ClusterLevel>();
+
+    List<ClusterLevel> ClusterDatas3 { get; set; } = new List<ClusterLevel>();
+    List<ClusterLevel> ClusterDatas2 { get; set; } = new List<ClusterLevel>();
+    List<ClusterLevel> ClusterDatas1 { get; set; } = new List<ClusterLevel>();
+
     int lasttradetickTime { get; set; } = -1;
 
     Dictionary<decimal, int> IndexesQuotes = new Dictionary<decimal, int>();
 
+    List<string> times = new List<string>();
+
+    private void GetTimeFooter()
+    {
+        DateTime currentTime = DateTime.Now;
+
+        times.Add(currentTime.ToString("HH:mm"));
+        times.Add(currentTime.AddMinutes(-5).ToString("HH:mm"));
+        times.Add(currentTime.AddMinutes(-5).ToString("HH:mm"));
+    }
+
     protected override void OnInitialized()
     {
-
+        GetTimeFooter();
         //ScrollClusters
 
 
@@ -79,7 +203,7 @@ PageSize="@pagesize">
 
             ApiDataService.NewTicks += ProcessClusterTick;
             ApiDataService.BuildNewTable += BuildEmptyClusterLevels;
-            ApiDataService.ScrollClusters+= ScrollClusters;
+            ApiDataService.ScrollClusters += ScrollClusters;
         }
 
         base.OnAfterRender(firstRender);
@@ -107,13 +231,13 @@ PageSize="@pagesize">
 
         }, 500, false);
 
-        
+
     }
 
     private void BuildEmptyClusterLevels(SecurityApi sec, ICollection<MarketDepthLevel> _initialOrderBook, Dictionary<decimal, int> initDictionary)
     {
 
-        if(sec.SpecialHash!=secutityMain.SpecialHash)
+        if (sec.SpecialHash != secutityMain.SpecialHash)
             return;
 
         ClusterDatas.Clear();
@@ -220,8 +344,14 @@ PageSize="@pagesize">
         {
             try
             {
-                ClustersGrid.Data = ClusterDatas;
-                ClustersGrid?.Rebind();
+                ClustersGrid3.Data = ClusterDatas;
+                ClustersGrid3?.Rebind();
+
+                ClustersGrid2.Data = ClusterDatas;
+                ClustersGrid2?.Rebind();
+
+                ClustersGrid1.Data = ClusterDatas;
+                ClustersGrid1?.Rebind();
             }
             catch (Exception ex)
             {
