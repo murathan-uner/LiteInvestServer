@@ -14,14 +14,13 @@ RowHeight="100vh"
 Reorderable="true"
 ColumnSpacing="0px"
 RowSpacing="0px"
-Resizable="true"
-OnReorder="@OnReorder">
+Resizable="true">
 	<TileLayoutItems>
 		@foreach (var security in OpenedInstruments)
 		{
 			<TileLayoutItem @key="security.SpecialHash">
 				<HeaderTemplate>
-					<WorkWindowHeader Security="security" OnHeaderClick="(e) => focusWindowByHeaderClick(e)" OnClosingMain="(e) => {OnClosingMain(e);}"></WorkWindowHeader>
+					<WorkWindowHeader Security="security" OnHeaderClick="(e) => focusWindowByHeaderClick(e)" OnClosingMain="OnClosingMain"></WorkWindowHeader>
 				</HeaderTemplate>
 				<Content>
 					<div class="tile-content">
@@ -103,31 +102,34 @@ OnReorder="@OnReorder">
 
 	protected override bool ShouldRender()
 	{
-		if (shouldNOTrenderafterclick)
-		{
-			Console.WriteLine("Pass Render Windows");
-			shouldNOTrenderafterclick = false;
-			return false;
-		}
+		// if (shouldNOTrenderafterclick)
+		// {
+		// 	Console.WriteLine("Pass Render Windows");
+		// 	shouldNOTrenderafterclick = false;
+		// 	return false;
+		// }
 
 		return base.ShouldRender();
 	}
 
-	public Task OnClosingMain(SecurityApi sec)
+	public void OnClosingMain(SecurityApi sec)
 	{
-        try
-        {
-            //await _apidataservice.CloseInstrument(sec);
-            // var index = OpenedInstruments.FindIndex(s => s.SpecialHash == sec.SpecialHash);
-            // OpenedInstruments.RemoveAt(index);
-            OpenedInstruments.Remove(sec);
-            _apidataService.openedInstruments--;
-            return Task.CompletedTask;
+		try
+		{
+	//await _apidataservice.CloseInstrument(sec);
+			// var index = OpenedInstruments.FindIndex(s => s.SpecialHash == sec.SpecialHash);
+			// OpenedInstruments.RemoveAt(index);
+			OpenedInstruments.Remove(sec);
+			_apidataService.openedInstruments--;
+
+			InvokeAsync(StateHasChanged);
+
+            //return Task.CompletedTask;
 
         }
         catch (Exception ex)
         {
-            return Task.CompletedTask;
+            //return Task.CompletedTask;
         }
 
         // Remove tile with the given ID
