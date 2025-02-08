@@ -5,7 +5,7 @@ using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using BlazorRenderAuto.Client.Entity;
+using LiteInvestFront.Entity;
 using LiteInvest.Entity.ServerEntity;
 
 namespace LiteInvestServer

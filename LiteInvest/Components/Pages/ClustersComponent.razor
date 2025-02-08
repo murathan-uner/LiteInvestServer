@@ -1,0 +1,364 @@
+﻿@using LiteInvestFront.Entity
+@using LiteInvestFront.Services
+@using LiteInvest.Entity.Helpers
+@using LiteInvest.Entity.PlazaEntity
+@using LiteInvest.Entity.ServerEntity
+
+@inject ApiDataService ApiDataService
+@implements IDisposable
+@inject IJSRuntime JSRuntime
+
+<style>
+    .clustersColumn {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+
+</style>
+
+<div class="clustersColumn">
+    <TelerikGrid @ref="ClustersGrid3"
+                 EnableLoaderContainer="true"
+                 RowHeight="15"
+                 Height="calc(100vh - 100px)"
+                 Data="@ClusterDatas"
+                
+                 TItem="@ClusterLevel"
+                 ScrollMode="@GridScrollMode.Virtual"
+                 PageSize="@pagesize">
+
+        <GridColumns>
+            <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
+                <FooterTemplate>
+                    @if (times?.Count == 3)
+                    {
+                        @times[2];
+                    }
+                </FooterTemplate>
+            </GridColumn>
+        </GridColumns>
+
+        <RowTemplate Context="ClusterDatas">
+            <td class="@GetClassForClusters(ClusterDatas)">
+                @if (ClusterDatas.Volume != 0)
+                {
+                    @ClusterDatas.Volume.KiloFormat()
+                }
+            </td>
+        </RowTemplate>
+
+    </TelerikGrid>
+
+    <TelerikGrid @ref="ClustersGrid2"
+                 EnableLoaderContainer="true"
+                 RowHeight="15"
+                 Height="calc(100vh - 100px)"
+                 Data="@ClusterDatas"
+                 TItem="@ClusterLevel"
+                 ScrollMode="@GridScrollMode.Virtual"
+                 PageSize="@pagesize">
+
+        <GridColumns>
+            <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
+                <FooterTemplate>
+                    @if (times?.Count == 3)
+                    {
+                        @times[1]
+                        ;
+                    }
+                </FooterTemplate>
+            </GridColumn>
+        </GridColumns>
+
+        <RowTemplate Context="ClusterDatas">
+            <td class="@GetClassForClusters(ClusterDatas)">
+                @if (ClusterDatas.Volume != 0)
+                {
+                    @ClusterDatas.Volume.KiloFormat()
+                }
+            </td>
+        </RowTemplate>
+
+    </TelerikGrid>
+
+    <TelerikGrid @ref="ClustersGrid1"
+                 EnableLoaderContainer="true"
+                 RowHeight="15"
+                 Height="calc(100vh - 100px)"
+                 Data="@ClusterDatas"
+                 TItem="@ClusterLevel"
+                 ScrollMode="@GridScrollMode.Virtual"
+                 PageSize="@pagesize">
+
+        <GridColumns>
+            <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
+                <FooterTemplate>
+                    @if (times?.Count == 3)
+                    {
+                        @times[0]
+                        ;
+                    }
+                </FooterTemplate>
+            </GridColumn>
+        </GridColumns>
+
+        <RowTemplate Context="ClusterDatas">
+            <td class="@GetClassForClusters(ClusterDatas)">
+                @if (ClusterDatas.Volume != 0)
+                {
+                    @ClusterDatas.Volume.KiloFormat()
+                }
+            </td>
+        </RowTemplate>
+
+    </TelerikGrid>
+
+</div>
+
+@* <TelerikGrid @ref="ClustersGrid"
+EnableLoaderContainer="true"
+RowHeight="15"
+Height="100vh"
+Data="@ClusterDatas"
+TItem="@ClusterLevel"
+ScrollMode="@GridScrollMode.Virtual"
+PageSize="@pagesize">
+
+    <GridColumns>
+        <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header" />
+    </GridColumns>
+
+    <RowTemplate Context="ClusterDatas">
+        <td class="@GetClassForClusters(ClusterDatas)">
+            @if (ClusterDatas.Volume != 0)
+            {
+                @ClusterDatas.Volume.KiloFormat()
+            }
+        </td>
+    </RowTemplate>
+
+</TelerikGrid> *@
+
+@code {
+
+    [Parameter]
+    public int pagesize { get; set; }
+
+    [Parameter]
+    public SecurityApi secutityMain { get; set; }
+
+
+    //TODO: надо как то вынести нормально
+    [Parameter] public int Scale { get; set; } = 1;
+
+
+    public TelerikGrid<ClusterLevel> ClustersGrid { get; set; }
+
+    public TelerikGrid<ClusterLevel> ClustersGrid3 { get; set; }
+    public TelerikGrid<ClusterLevel> ClustersGrid2 { get; set; }
+    public TelerikGrid<ClusterLevel> ClustersGrid1 { get; set; }
+
+    List<ClusterLevel> ClusterDatas { get; set; } = new List<ClusterLevel>();
+
+    List<ClusterLevel> ClusterDatas3 { get; set; } = new List<ClusterLevel>();
+    List<ClusterLevel> ClusterDatas2 { get; set; } = new List<ClusterLevel>();
+    List<ClusterLevel> ClusterDatas1 { get; set; } = new List<ClusterLevel>();
+
+    int lasttradetickTime { get; set; } = -1;
+
+    Dictionary<decimal, int> IndexesQuotes = new Dictionary<decimal, int>();
+
+    List<string> times = new List<string>();
+
+    private void GetTimeFooter()
+    {
+        DateTime currentTime = DateTime.Now;
+
+        times.Add(currentTime.ToString("HH:mm"));
+        times.Add(currentTime.AddMinutes(-5).ToString("HH:mm"));
+        times.Add(currentTime.AddMinutes(-5).ToString("HH:mm"));
+    }
+
+    protected override void OnInitialized()
+    {
+        GetTimeFooter();
+        //ScrollClusters
+
+
+        //TODO: развернуть.
+        // ApiDataService.BuildNewTable += BuildNewTable;
+        // ClusterDatas = BuildEmptyClusterLevels(initialquotes);
+
+        base.OnInitialized();
+    }
+
+    bool rendered = false;
+
+    protected override async void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            rendered = true;
+            await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
+
+            ApiDataService.NewTicks += ProcessClusterTick;
+            ApiDataService.BuildNewTable += BuildEmptyClusterLevels;
+            ApiDataService.ScrollClusters += ScrollClusters;
+        }
+
+        base.OnAfterRender(firstRender);
+    }
+
+
+
+    private void ScrollClusters(SecurityApi sec, int bestbidindex)
+    {
+
+        if (sec.SpecialHash != secutityMain.SpecialHash)
+            return;
+
+
+        Console.WriteLine($"Scrolling {bestbidindex} Clusters {secutityMain.SpecialHash} ");
+        busy = true;
+        UpdateClastersGrid();
+
+        //не скроллит сразу почему то. а почему я не знаю
+        Helper.CreateTimerAndStart(() =>
+        {
+            WorkWindow.ScrollTo(bestbidindex, ClustersGrid);
+            UpdateClastersGrid();
+            busy = false;
+
+        }, 500, false);
+
+
+    }
+
+    private void BuildEmptyClusterLevels(SecurityApi sec, ICollection<MarketDepthLevel> _initialOrderBook, Dictionary<decimal, int> initDictionary)
+    {
+
+        if (sec.SpecialHash != secutityMain.SpecialHash)
+            return;
+
+        ClusterDatas.Clear();
+
+        foreach (var level in _initialOrderBook)
+        {
+            ClusterDatas.Add(new ClusterLevel() { Price = level.Price });
+        }
+
+        IndexesQuotes = initDictionary;
+
+        UpdateClastersGrid();
+
+        Console.WriteLine($"Build New Clusters {secutityMain.SpecialHash}");
+    }
+
+    bool busy = false;
+
+    private void ProcessClusterTick(string sec, List<TradeApi> ticks)
+    {
+
+        if (sec != secutityMain.id)
+            return;
+
+        var copyclusters = ClusterDatas.ToList();
+
+        foreach (var tick in ticks)
+        {
+            var agregatingTime = tick.Time.Minute - tick.Time.Minute % 5;
+
+            //Console.WriteLine($"real time {DateTime.Now} agreagatedtime = {agregatingTime}");
+
+            if (agregatingTime != lasttradetickTime)
+            {
+                Console.WriteLine($"Time For clusters Updated lastmintime={agregatingTime} timeNow = {lasttradetickTime}");
+
+                foreach (var cluster in copyclusters)
+                {
+                    cluster.AskVolume = 0;
+                    cluster.BidVolume = 0;
+                }
+
+                Console.WriteLine($"Cluster Table BUILDING ");
+
+                lasttradetickTime = agregatingTime;
+            }
+
+            decimal tickAgregatedLevel = tick.Price - tick.Price % (secutityMain.PriceStep * Scale);
+
+            if (IndexesQuotes != null && IndexesQuotes.ContainsKey(tickAgregatedLevel) && copyclusters.Count != 0)
+            {
+                var index = IndexesQuotes[tickAgregatedLevel];
+
+                var lastclusterItem = (ClusterLevel)copyclusters[index].Clone();
+
+                if (tick.Side == Side.Sell)
+                    lastclusterItem.AskVolume += tick.Volume;
+                if (tick.Side == Side.Buy)
+                    lastclusterItem.BidVolume += tick.Volume;
+
+                copyclusters[index] = lastclusterItem;
+
+                // Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
+            }
+        }
+
+        ClusterDatas = copyclusters;
+
+        if (busy)
+            return;
+
+
+        busy = true;
+        UpdateClastersGrid();
+        busy = false;
+    }
+
+    private string GetClassForClusters(ClusterLevel _clusterLevel)
+    {
+        if (_clusterLevel.Volume == 0 || _clusterLevel.Volume == null)
+        {
+            return "transparent-item";
+        }
+
+        return _clusterLevel.BidVolume < _clusterLevel.AskVolume ? "highlighted-item" : "highlighted-item2";
+    }
+
+    public void Dispose()
+    {
+        ApiDataService.NewTicks -= ProcessClusterTick;
+        ApiDataService.ScrollClusters -= ScrollClusters;
+    }
+
+    protected override bool ShouldRender()
+    {
+        Console.WriteLine($"Clusters Should Render {secutityMain.Isin} {DateTime.Now}");
+
+        return base.ShouldRender();
+    }
+
+    private void UpdateClastersGrid()
+    {
+        InvokeAsync(() =>
+        {
+            try
+            {
+                ClustersGrid3.Data = ClusterDatas;
+                ClustersGrid3?.Rebind();
+
+                ClustersGrid2.Data = ClusterDatas;
+                ClustersGrid2?.Rebind();
+
+                ClustersGrid1.Data = ClusterDatas;
+                ClustersGrid1?.Rebind();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }).GetAwaiter().GetResult();
+    }
+
+
+}

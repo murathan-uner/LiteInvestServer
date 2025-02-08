@@ -1,0 +1,461 @@
+﻿@using System.Collections.Concurrent
+@using System.Collections.ObjectModel
+@using System.Drawing
+@using System.Globalization
+@using LiteInvestFront.Entity
+@using LiteInvestFront.Services
+@using LiteInvest.Entity.Helpers
+
+@using LiteInvest.Entity.PlazaEntity
+@using LiteInvest.Entity.ServerEntity
+@using Telerik.Blazor.Components
+@using Telerik.DataSource
+@using Telerik.DataSource.Extensions
+@using _Imports = LiteInvestFront.Components._Imports
+@using GridRowClickEventArgs = Telerik.Blazor.Components.GridRowClickEventArgs
+
+@* @inject ApiDataServiceTest ApiDataServiceTest *@
+@inject ApiDataService ApiDataService
+@inject JsInteropService jsInteropService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+@rendermode InteractiveServer
+
+<style>
+    .cardnew {
+    height: 800px;
+    }
+    /* Общие стили для WorkWindow */
+    .workwindow-container {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    min-height: 250px;
+    }
+
+    .k-table-row {
+    font-size: 10px;
+    line-height: 10px;
+    }
+
+    .telerik-table {
+    padding: 0px;
+    }
+
+    .k-grid-md td, .k-grid-md .k-table-td {
+    padding-block: 0px !important;
+    padding-inline: 0px !important;
+    }
+
+    .small-row-height .k-placeholder-line {
+    display: none;
+    }
+
+    .small-row-height.k-grid td {
+    margin: 0;
+    padding: 0;
+    }
+
+
+    /* Стили для контейнера с таблицей */
+    .table-container {
+    height: 90vh;
+    scrollbar-width: thin;
+    overflow-y: auto; /* Включаем вертикальный скроллинг */
+    }
+
+    /* Стили для самой таблицы */
+    .telerik-grid {
+    width: 100%;
+    height: 100%;
+    }
+
+    /* Стили для контента таблицы */
+    .telerik-grid .k-grid-content {
+    overflow-y: auto; /* Включаем вертикальный скроллинг в таблице */
+    }
+
+    /* Заголовок WorkWindow */
+    .workwindow-container h3 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #333;
+    font-weight: bold;
+    }
+
+    /* Стили для TileLayout (если нужно стилизовать плитки) */
+    .telerik-tilelayout-item {
+    min-width: 285px;
+    min-height: 285px;
+    margin-bottom: 15px;
+    }
+
+    .tile-content {
+    background-color: #fff;
+    border-radius: 5px;
+    }
+
+    .k-grid-footer {
+    padding-inline-end: 0px !important;
+    }
+
+    .dxbl-chart-root .dxbl-chart {
+    padding: 0px !important;
+    }
+
+
+    .k-grid-content {
+    scrollbar-width: none;
+    }
+
+    .k-grid-header {
+    padding-inline-end: 0px !important;
+    }
+    /* Дополнительные улучшения для внешнего вида */
+    .telerik-grid .k-header {
+    background-color: #f0f0f0;
+    color: #333;
+    text-align: center;
+    font-weight: bold;
+    }
+
+    .telerik-grid .k-grid-header {
+    border-bottom: 1px solid #ddd;
+    }
+
+    .telerik-grid .k-grid-table {
+    border-spacing: 0;
+    border-collapse: collapse;
+    }
+
+    .telerik-grid .k-grid-table td,
+    .telerik-grid .k-grid-table th {
+    text-align: center;
+    border: 1px solid #ddd;
+    }
+
+    .k-card-body {
+    padding: 0px;
+    padding-block: 0 !important;
+    padding-inline: 0 !important;
+    }
+    /*.k-tilelayout-item-header{
+    display: none;
+    }*/
+    .k-grid-content {
+    padding: 0px;
+    }
+
+    .k-tilelayout-item-body k-card-body {
+    padding: 0px;
+    }
+    /* Убираем паддинги для всего TileLayout */
+    .telerik-tilelayout {
+    padding: 0;
+    }
+
+    .gridlayout-item {
+    font-size: 1.2em;
+    font-weight: 500;
+    text-align: center;
+    width: 100%;
+    height: 800px;
+    text-align: center;
+    position: relative;
+    z-index: 0;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    }
+
+    .gridlayout-item:before {
+    content: " ";
+    position: absolute;
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    opacity: 0.4;
+    }
+
+    .gridlayout-header:before {
+    background-color: var(--bs-red);
+    }
+
+    .gridlayout-content:before {
+    background-color: var(--bs-yellow);
+    }
+
+    .gridlayout-left-side-bar:before {
+    background-color: var(--bs-green);
+    }
+
+    .gridlayout-right-side-bar:before {
+    }
+
+    .gridlayout-footer:before {
+    background-color: var(--bs-blue);
+    opacity: 0.5;
+    }
+
+    .dxgrid {
+    height: 100%;
+    }
+
+
+    .dxbl-grid {
+    --dxbl-grid-font-size: 10px;
+    }
+
+    .chart {
+    height: 90vh;
+    }
+
+    .cell-text{
+    font-weight: 750 !important;
+    }
+
+    .highlighted-item {
+    background-color: #edc6c6
+    }
+
+    .highlighted-item2 {
+    background-color: #a0dbc6
+    }
+
+    .transparent-item {
+    background-color: transparent
+    }
+
+    .card-body {
+    padding: 0;
+    }
+
+    .removeOrder {
+    z-index: 201;
+    flex-shrink: 0;
+    cursor: pointer;
+    float: right;
+    }
+
+    .restVolume {
+    display: flex;
+    }
+
+    .restVolumeSpan {
+    flex-shrink: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis
+    }
+
+    .k-resize-handle {
+    width: 4px !important;
+    }
+
+    .grid-header{
+    display: none;
+    }
+
+</style>
+
+
+<div id="@secutityMain.SpecialHash" tabindex="0">
+
+    <TelerikGridLayout>
+        <GridLayoutColumns>
+            <Telerik.Blazor.Components.GridLayoutColumn Width="20%" />
+            <Telerik.Blazor.Components.GridLayoutColumn Width="47%" />
+            <Telerik.Blazor.Components.GridLayoutColumn Width="33%" />
+        </GridLayoutColumns>
+
+        <GridLayoutRows>
+            <Telerik.Blazor.Components.GridLayoutRow />
+        </GridLayoutRows>
+
+        <GridLayoutItems>
+            <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="1">
+
+                <ClustersComponent @key="secutityMain.SpecialHash" secutityMain="@secutityMain" pagesize="@pagesize"></ClustersComponent>
+
+            </Telerik.Blazor.Components.GridLayoutItem>
+            <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="2">
+
+                <Chart @key="secutityMain.SpecialHash" @ref="ChartComponent" secutityMain="secutityMain"> </Chart>
+
+            </Telerik.Blazor.Components.GridLayoutItem>
+            <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="3">
+
+                <QuotesComponent @key="secutityMain.SpecialHash" secutityMain="@secutityMain" pagesize="@pagesize"></QuotesComponent>
+
+            </Telerik.Blazor.Components.GridLayoutItem>
+        </GridLayoutItems>
+    </TelerikGridLayout>
+
+</div>
+
+
+
+@code {
+
+
+    [Parameter]
+    public int WindowsOpened {
+        set
+        {
+            if (ChartComponent != null)
+                ChartComponent.ChangeScaleOfChart();
+        }
+    }
+
+    static string plusHotKey = "Equal";
+    static string minusHotKey = "Minus";
+    static string cancelHotKey = "KeyC";
+
+    [Parameter] public string secHash { get; set; }
+    [Parameter] public SecurityApi secutityMain { get; set; }
+    [Parameter] public string lastsecHashOpened { get; set; }
+
+
+    private string WindowId { get; set; } = Guid.NewGuid().ToString();
+
+
+    public List<int?> WebSockets { get; set; }
+
+    protected override async Task<Task> OnInitializedAsync()
+    {
+        Console.WriteLine($"{DateTime.Now} On Initialized secID{secutityMain.id} set WorkWindow");
+
+
+
+        //TODO: Сделать нормальную подписку на частные ордера
+
+        WebSockets =
+        [
+            await ApiDataService.SubscribeOrderBook(secutityMain.id),
+            await ApiDataService.SubcribeTick(secutityMain.id),
+
+        ];
+
+        return base.OnInitializedAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            //TODO: вынуть из компонента? 
+            //await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
+
+            
+
+           
+        }
+
+    }
+
+    // public override Task SetParametersAsync(ParameterView parameters)
+    // {
+
+    // 	Console.WriteLine($"{DateTime.Now} Re Parameters set WorkWindow");
+
+    // 	return base.SetParametersAsync(parameters);
+    // }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Console.WriteLine($"{DateTime.Now} On Parameters {secutityMain.id} set WorkWindow");
+
+        base.OnParametersSet();
+    }
+
+    public int Scale = 1;
+
+   
+
+    bool firstrender = false;
+
+    protected override void OnAfterRender(bool _firstRender)
+    {
+        if (_firstRender)
+            firstrender = true;
+
+        base.OnAfterRender(_firstRender);
+    }
+
+    protected override bool ShouldRender()
+    {
+
+
+        // была попытка перевести
+        Console.WriteLine($"{DateTime.Now} Should {secutityMain.Isin} Render WorkWindow");
+
+        //TODO: вернуть
+
+        if (!firstrender)
+            return false;
+
+        return base.ShouldRender();
+    }
+
+    DateTime lasttime = DateTime.Now;
+    int counter = 0;
+
+
+    bool skipped = false;
+
+    public static async Task ScrollTo<T>(int index, TelerikGrid<T> _grid)
+    {
+
+        if (_grid != null)
+        {
+            var state = _grid.GetState();
+            //TODO по хорошему надо выяснить сколько элементов показывается на экране...
+
+            var scrollindex = index - 23;
+            state.Skip = scrollindex;
+
+            //TODO: Может выскочить ошибка
+            Console.WriteLine($"Scrolling to {scrollindex} {typeof(T)}");
+            await _grid.SetStateAsync(state);
+        }
+
+    }
+
+
+
+
+ 
+
+    //симуляция погано работает.
+    //TODO: вынести нормально в настройки или в самом обьекте передавать
+    bool real = true;
+    //Половина видимых индексов
+    public decimal middleamountofitems { get; set; } = 20;
+    public Chart ChartComponent { get; set; }
+    public int pagesize { get; set; } = 100;
+
+
+
+    int firstVisibleIndex;
+    int lastVisibleIndex;
+  
+
+
+    public void Dispose()
+    {
+        Console.WriteLine($"Disposing {secutityMain.id}");
+
+
+        if (WebSockets != null)
+            foreach (var websocketID in WebSockets)
+            {
+                ApiDataService.StopWebSocket(websocketID);
+            }
+
+    }
+
+
+}

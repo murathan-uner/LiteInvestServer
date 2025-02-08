@@ -1,0 +1,49 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35707.178
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteInvestFront", "LiteInvest\LiteInvestFront.csproj", "{C984C8DA-5782-4363-AFF1-00D913B04F6B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9DD9D5A7-E844-462C-A099-1CA3B8E20C08} = {9DD9D5A7-E844-462C-A099-1CA3B8E20C08}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteInvestServer", "LiteInvestServer\LiteInvestServer.csproj", "{5D65C18B-D135-4EB0-BC58-7F0B0F570AA3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlazaEngine", "PlazaEngine\PlazaEngine\PlazaEngine.csproj", "{3DD5819C-F123-49C5-B00B-583ED314DED4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteInvest.Entity", "LiteInvest.Entity\LiteInvest.Entity.csproj", "{9DD9D5A7-E844-462C-A099-1CA3B8E20C08}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fleck (websocket)", "Fleck\Fleck (websocket).csproj", "{221A6085-7446-4158-9046-312749086E86}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C984C8DA-5782-4363-AFF1-00D913B04F6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C984C8DA-5782-4363-AFF1-00D913B04F6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C984C8DA-5782-4363-AFF1-00D913B04F6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C984C8DA-5782-4363-AFF1-00D913B04F6B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D65C18B-D135-4EB0-BC58-7F0B0F570AA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D65C18B-D135-4EB0-BC58-7F0B0F570AA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D65C18B-D135-4EB0-BC58-7F0B0F570AA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D65C18B-D135-4EB0-BC58-7F0B0F570AA3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3DD5819C-F123-49C5-B00B-583ED314DED4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3DD5819C-F123-49C5-B00B-583ED314DED4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3DD5819C-F123-49C5-B00B-583ED314DED4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3DD5819C-F123-49C5-B00B-583ED314DED4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9DD9D5A7-E844-462C-A099-1CA3B8E20C08}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DD9D5A7-E844-462C-A099-1CA3B8E20C08}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9DD9D5A7-E844-462C-A099-1CA3B8E20C08}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9DD9D5A7-E844-462C-A099-1CA3B8E20C08}.Release|Any CPU.Build.0 = Release|Any CPU
+		{221A6085-7446-4158-9046-312749086E86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{221A6085-7446-4158-9046-312749086E86}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{221A6085-7446-4158-9046-312749086E86}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{221A6085-7446-4158-9046-312749086E86}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

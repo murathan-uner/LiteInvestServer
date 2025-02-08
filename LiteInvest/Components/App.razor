@@ -1,0 +1,32 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <script src="_content/Telerik.UI.for.Blazor/js/telerik-blazor.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="_content/Telerik.UI.for.Blazor/css/kendo-theme-default/all.css" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["LiteInvestFront.styles.css"]" />
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/menu.css" />
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/workWindowSettings.css" />
+    <ImportMap />
+    <HeadOutlet />
+</head>
+
+<body>
+    <Routes @rendermode=RenderMode.InteractiveServer />
+    <script src="_framework/blazor.web.js"></script>
+
+    <script src="/js/UI/hotkeyListener.js"></script>
+    <script src="/js/UI/scrollHandler.js"></script>
+    <script src="/js/main.js"></script>
+</body>
+
+</html>
