@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\dll\LiteInvestServerDll\LiteInvestServerDll.csproj" />
     <ProjectReference Include="..\Fleck\Fleck (websocket).csproj" />
     <ProjectReference Include="..\LiteInvest.Entity\LiteInvest.Entity.csproj" />
     <ProjectReference Include="..\PlazaEngine\PlazaEngine\PlazaEngine.csproj" />
