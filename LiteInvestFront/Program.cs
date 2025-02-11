@@ -1,5 +1,6 @@
 using LiteInvestFront.Services;
 using LiteInvestFront.Components;
+using LiteInvestServerDll;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,9 +10,14 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddScoped<ApiDataService>();
 builder.Services.AddScoped<JsInteropService>();
+
+builder.Services.AddSingleton<ServerService>();
+
+
 builder.Services.AddTelerikBlazor();
 
 var app = builder.Build();
+app.Services.GetRequiredService<ServerService>();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

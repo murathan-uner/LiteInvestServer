@@ -7,7 +7,6 @@ using LiteInvest.Entity.PlazaEntity;
 using LiteInvest.Entity.ServerEntity;
 
 using RestSharp;
-using BlazorRenderAuto.Client.Entity;
 using Websocket.Client;
 using System;
 using System.Collections.ObjectModel;

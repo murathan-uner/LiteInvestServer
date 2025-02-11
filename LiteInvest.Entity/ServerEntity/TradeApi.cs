@@ -2,7 +2,7 @@
 using Newtonsoft.Json;
 using System.Drawing;
 
-namespace BlazorRenderAuto.Client.Entity
+namespace LiteInvest.Entity.ServerEntity
 {
 	public class TradeApi
 	{
@@ -36,7 +36,7 @@ namespace BlazorRenderAuto.Client.Entity
 
 					return "red";
 
-					//return "#6CCCAC";
+				//return "#6CCCAC";
 				return "green";
 			}
 		}
@@ -50,10 +50,10 @@ namespace BlazorRenderAuto.Client.Entity
 			{
 
 				if (_size != null)
-					return (decimal) _size;
+					return (decimal)_size;
 
 				var vol = (int)Volume;
-				var res= vol.ToString().Length;
+				var res = vol.ToString().Length;
 				return res;
 			}
 			set

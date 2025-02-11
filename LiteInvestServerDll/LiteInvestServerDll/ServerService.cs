@@ -37,7 +37,7 @@ public class ServerService
     static string data = "C:\\ServerData";
     DirectoryInfo directoryInfo = new DirectoryInfo(data);
 
-    PlazaOptions plazasimulation = new PlazaOptions(true);
+    PlazaOptions plazasimulation = new PlazaOptions(false);
 
 
     string securitiesBdName = $"{data}\\securities.xml";
@@ -86,7 +86,7 @@ public class ServerService
         await Console.Out.WriteLineAsync($"{dt} {message}").ConfigureAwait(false);
     }
 
-    public void PlazaSingleton()
+    public ServerService()
     {
 
         if (!Directory.Exists(data))
