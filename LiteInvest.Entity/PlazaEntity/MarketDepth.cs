@@ -201,7 +201,7 @@ public class MarketDepth
 /// class representing one price level in a glass
 /// класс представляющий один ценовой уровень в стакане
 /// </summary>
-public record MarketDepthLevel
+public class MarketDepthLevel :ICloneable
 {
 
 	//TODO: ПО хорошему это надо все рефакторить.
@@ -211,6 +211,18 @@ public record MarketDepthLevel
 	{
         return new MarketDepthLevel() { Ask = 0, Bid = 0, Price = quotePrice, Type = Side.Empty };
 	}
+
+    public object Clone()
+    {
+        return new MarketDepthLevel()
+        {
+            Ask = Ask,
+            Bid = Bid,
+            Price = Price,
+            Type = Type,
+            _side = _side
+        };
+    }
 
     //[JsonIgnore]
     //[JsonPropertyName("a")]
@@ -230,7 +242,22 @@ public record MarketDepthLevel
 
     public decimal Volume { get => Ask == 0 ? Bid : Ask; }
 
-	private Side _side = Side.Empty;
+    public string VolumeString
+    {
+        get
+        {
+            if (Ask != 0 && Bid !=0)
+            {
+                return Bid.ToString("####0.#####") + " | " + Ask.ToString("####0.#####");
+            }
+            else
+            {
+                return Volume.ToString("####0.#####");
+            }
+        }
+    }
+
+    private Side _side = Side.Empty;
 
     /// <summary>
     /// BID =0
