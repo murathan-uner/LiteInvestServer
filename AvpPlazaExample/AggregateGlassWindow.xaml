@@ -1,0 +1,61 @@
+﻿<Window x:Class="AvpPlazaTester.AggregateGlassWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:AvpPlazaTester" 
+        d:DataContext="{d:DesignInstance Type=local:TestAggregateGlass}"
+        mc:Ignorable="d"
+        Title="AggregateGlassWindow" Height="450" Width="400">
+
+    <Window.Resources>
+        <Style x:Key="lvItemGlass" TargetType="ListViewItem">
+            <Setter Property="Background" Value="GreenYellow"/>
+            
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Bid}" Value="0">
+                    <Setter Property="Background" Value="Orange"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Volume}" Value="0">
+                    <Setter Property="Background" Value="LightGray"/>
+                    
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+    </Window.Resources>
+    
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="160"/>
+            <ColumnDefinition Width="200"/>
+            
+        </Grid.ColumnDefinitions>
+        <ListView x:Name="ListSec4" Grid.Column="0" ItemContainerStyle="{x:Null}" ItemsSource="{Binding Securities}" SelectedItem="{Binding SelectedSecurity, Mode=TwoWay}" HorizontalAlignment="Left" Margin="0,5,1,20" Width="150" VerticalAlignment="Stretch" SelectionMode="Single">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Name" Width="150" DisplayMemberBinding="{Binding Name}"/>
+                </GridView>
+            </ListView.View>
+
+        </ListView>
+
+        <StackPanel  Grid.Column="1" Orientation="Horizontal">
+            <Label Content="Масштаб стакана:"/>
+            <ComboBox Height="20" ItemsSource="{Binding ScaleList}" SelectedValue="{Binding SelectedScale}" VerticalAlignment="Top" Margin="5" Width="70" d:ItemsSource="{d:SampleData ItemCount=5}"/>
+        </StackPanel>
+
+        <Button Content="Подписаться" Grid.Column="1" Height="20" Width="150" VerticalAlignment="Top" Margin="0,30,0,0" Click="ButtonAggregateGlass_Click" />
+
+        <ListView x:Name="GlassView" Grid.Column="1" ItemContainerStyle="{StaticResource lvItemGlass }" d:ItemsSource="{d:SampleData ItemCount=5}" VerticalAlignment="Stretch" HorizontalAlignment="Left" Margin="0,55,0,10" FontSize="11">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Price" DisplayMemberBinding="{Binding Price, StringFormat=######0.########}" Width="100"/>
+                    <GridViewColumn Header="Volume" DisplayMemberBinding="{Binding VolumeString}" Width="70"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+        
+
+    </Grid>
+</Window>

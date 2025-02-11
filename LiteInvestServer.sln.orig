@@ -17,10 +17,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorRenderAuto.Client", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteInvest.Entity", "LiteInvest.Entity\LiteInvest.Entity.csproj", "{CBF8A8EB-D765-4315-9E55-2FA5287C2D23}"
 EndProject
+<<<<<<< ours
+=======
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ConnectorService", "ConnectorService", "{26CE70FB-DC3D-491B-8DBD-7C7278ED0F07}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AggregateGlass", "AggregateGlass\AggregateGlass.csproj", "{6E97781C-902F-4D20-9187-3F8C535BDFE4}"
 EndProject
+>>>>>>> theirs
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -85,20 +88,9 @@ Global
 		{CBF8A8EB-D765-4315-9E55-2FA5287C2D23}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CBF8A8EB-D765-4315-9E55-2FA5287C2D23}.Release|x64.ActiveCfg = Release|Any CPU
 		{CBF8A8EB-D765-4315-9E55-2FA5287C2D23}.Release|x64.Build.0 = Release|Any CPU
-		{6E97781C-902F-4D20-9187-3F8C535BDFE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6E97781C-902F-4D20-9187-3F8C535BDFE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6E97781C-902F-4D20-9187-3F8C535BDFE4}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{6E97781C-902F-4D20-9187-3F8C535BDFE4}.Debug|x64.Build.0 = Debug|Any CPU
-		{6E97781C-902F-4D20-9187-3F8C535BDFE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6E97781C-902F-4D20-9187-3F8C535BDFE4}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6E97781C-902F-4D20-9187-3F8C535BDFE4}.Release|x64.ActiveCfg = Release|Any CPU
-		{6E97781C-902F-4D20-9187-3F8C535BDFE4}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{6E97781C-902F-4D20-9187-3F8C535BDFE4} = {26CE70FB-DC3D-491B-8DBD-7C7278ED0F07}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F92D8990-2765-4FDA-8DF0-D4C5B8355C6A}

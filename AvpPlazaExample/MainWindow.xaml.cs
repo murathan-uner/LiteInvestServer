@@ -18,9 +18,12 @@ using System.Xml.Linq;
 using System.Xml.Serialization;
 
 using AvpPlazaTester;
+
 using LiteInvest.Entity.PlazaEntity;
+
 using PlazaEngine;
 using PlazaEngine.Engine;
+
 using RouterLogger = LiteInvest.Entity.PlazaEntity.RouterLogger;
 
 
@@ -40,10 +43,15 @@ namespace AvpPlazaExample
 
             Test1 = new(this);
             Test2 = new(this);
+            
             LogMessage("Тестер запущен, подключение к PLaza не выполнено");
         }
+
+
         Test1 Test1;
         Test2 Test2;
+        
+
         LogMessage logMessage;
         Ticks ticksWindow;
         public BindingList<Level> Levels = new();
@@ -69,7 +77,7 @@ namespace AvpPlazaExample
             if (RadioTest.IsChecked ?? true)
             {
                 /*Test Connection*/
-                plaza = new PlazaConnector("11111111", true,  testTrading: true)
+                plaza = new PlazaConnector("11111111", false,  testTrading: true)
                 {
                     Limit = 30,
                     LoadTicksFromStart = false,
@@ -190,7 +198,7 @@ namespace AvpPlazaExample
             SaveParametrs();
             logMessage?.Close();
             ticksWindow?.Close();
-
+            aggregateGlassWindow?.Close();
         }
 
         private void Plaza_UpdatePosition(PositionOnBoard position)
@@ -220,7 +228,7 @@ namespace AvpPlazaExample
                         oldOnline = Online;
                         if (Online)
                         {
-                            LogMessage("Все потоки PLAZA вышли в режим Онлайн. Можно работать.");
+                            LogMessage("Все потоки PLAZA загрузились и перешли в режим Онлайн. Можно работать.");
                         }
                     }
                     Thread.Sleep(100);
@@ -350,7 +358,7 @@ namespace AvpPlazaExample
                 ListSec3.ItemsSource = Securitys;
             }
             );
-            LoadParametrs();
+            //LoadParametrs();
         }
 
         ConcurrentQueue<MarketDepth> depthQueue = new ConcurrentQueue<MarketDepth>();
@@ -438,20 +446,6 @@ namespace AvpPlazaExample
                 RouterLogger.Log(o.ToString(), "Test_Scenario");
             }
 
-        }
-
-        public class Level
-        {
-            public decimal Price { get; set; }
-            public decimal Volume { get; set; }
-
-            public int TypeLevel { get; set; }
-            public Level(decimal price, decimal vol, int typeLevel)
-            {
-                Price = price;
-                Volume = vol;
-                TypeLevel = typeLevel;
-            }
         }
 
         private void ListSec2_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -584,6 +578,21 @@ namespace AvpPlazaExample
             {
                 plaza.TryRegisterTicks(selectedSec, true);
             }
+        }
+
+        AggregateGlassWindow aggregateGlassWindow;
+        private void Button_AggregateGlass_Click(object sender, RoutedEventArgs e)
+        {
+            if (plaza == null)
+            {
+                MessageBox.Show("Установите соединение с PLAZA", "Коннектор PLAZA не активен");
+                return;
+            }
+
+            TestAggregateGlass testAggregateGlass = new TestAggregateGlass(plaza);
+            aggregateGlassWindow = new AggregateGlassWindow(testAggregateGlass);
+            aggregateGlassWindow.Show();
+
         }
     }
 }

@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AggregateGlass\AggregateGlass.csproj" />
     <ProjectReference Include="..\PlazaEngine\PlazaEngine\PlazaEngine.csproj" />
   </ItemGroup>
 
