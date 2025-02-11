@@ -1,0 +1,20 @@
+html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+}
+
+.login_button {
+    display: flex;
+    width: 100%
+}
+
+.scroll-table {
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+}
+
+    .scroll-table tr {
+        scroll-snap-align: start;
+    }

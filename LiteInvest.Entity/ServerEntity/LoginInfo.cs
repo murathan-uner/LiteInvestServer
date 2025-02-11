@@ -1,6 +1,5 @@
-﻿namespace BlazorRenderAuto.Client.Entity
+﻿namespace LiteInvest.Entity.ServerEntity
 {
-
 	public class LoginInfo
 	{
 		public string Name { get; set; }

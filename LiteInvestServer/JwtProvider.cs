@@ -5,13 +5,12 @@ using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using BlazorRenderAuto.Client.Entity;
 using LiteInvest.Entity.ServerEntity;
 
 namespace LiteInvestServer
 {
 
-    public static class JwtHelper
+	public static class JwtHelper
     {
         public static string LoginKey = "loginUser";
     }
