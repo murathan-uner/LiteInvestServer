@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddSingleton<ApiDataService>();
+builder.Services.AddScoped<ApiDataService>();
 builder.Services.AddScoped<JsInteropService>();
 builder.Services.AddTelerikBlazor();
 
