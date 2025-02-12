@@ -18,12 +18,46 @@ using ConnectorService;
 using static AvpPlazaExample.MainWindow;
 
 using System.Windows.Media;
+using System.Collections.Concurrent;
 
 namespace AvpPlazaTester
 {
     public class TestAggregateGlass :INotifyPropertyChanged
     {
-        
+
+        private string labelGlassData;
+
+        public string LabelGlassData
+        {
+            get { return labelGlassData; }
+            set
+            {
+                if (labelGlassData != value)
+                {
+                    labelGlassData = value;
+                    OnPropertyChange();
+                }
+            }
+        }
+
+        private string labelGlassTimeUpdate;
+
+        public string LabelGlassTimeUpdate
+        {
+            get 
+            {
+                return labelGlassTimeUpdate; 
+            } 
+            set 
+            {
+                if (labelGlassTimeUpdate != value)
+                {
+                    labelGlassTimeUpdate = value;
+                    OnPropertyChange();
+                }
+            }
+        }
+
         public List<int> ScaleList
         {
             get => AggregateGlass.ScaleList;
@@ -91,6 +125,11 @@ namespace AvpPlazaTester
             Plaza_SecuritiesLoadedEvent();
             plaza.SecuritiesLoadedEvent += Plaza_SecuritiesLoadedEvent;
             PropertyChanged += TestAggregateGlass_PropertyChanged;
+
+            Thread threadUpdateGlass = new Thread(ThreadUpdateGlass);
+            threadUpdateGlass.IsBackground = true;
+            threadUpdateGlass.Name = "ThreadUpdateGlass";
+            threadUpdateGlass.Start();
         }
 
         private void TestAggregateGlass_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -101,25 +140,59 @@ namespace AvpPlazaTester
             }
         }
 
+        ConcurrentQueue<(List<MarketDepthLevel>, int)> queueMarketDepthLevels = new ConcurrentQueue<(List<MarketDepthLevel>, int)>();
+
         private void AggregateGlass_NewInsideQuotesEvent(InsideQuotes insideQuotes)
         {
-            Task.Run(() =>
+
+            try
+            {
+                if (SelectedSecurity?.Id != insideQuotes.SecurityId || selectedScale == 0)
+                {
+                    return; // стакан не потому инструменту который надо
+                }
+                List<MarketDepthLevel> mdLevels = insideQuotes.ScaledQuotes[selectedScale];
+                queueMarketDepthLevels.Enqueue((mdLevels, insideQuotes.CentreQuotes[selectedScale]));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
+        }
+
+        private void ThreadUpdateGlass()
+        {
+            while (true)
             {
                 try
                 {
-                    if (SelectedSecurity?.Id != insideQuotes.SecurityId || selectedScale == 0)
+                    Thread.Sleep(200);
+                    if (queueMarketDepthLevels.IsEmpty || !queueMarketDepthLevels.TryDequeue(out (List<MarketDepthLevel>, int) md))
                     {
-                        return; // стакан не потому инструменту который надо
+                        continue;
                     }
-                    List<MarketDepthLevel> mdLevels = insideQuotes.ScaledQuotes[selectedScale];
-                    UpdateGlass((List<MarketDepthLevel>)mdLevels.Clone(), insideQuotes.CentreQuotes[selectedScale]);
+                    while (!queueMarketDepthLevels.IsEmpty)    // если стаканы валятся быстрее, чем мы их можем нарисовать, то берем последний
+                    {
+                        DateTime timeTryDequeue = DateTime.Now;
+                        queueMarketDepthLevels.TryDequeue(out md);
+                        if (timeTryDequeue.AddMilliseconds(300) < DateTime.Now)
+                        {
+                            Debug.WriteLine($"Cтаканы по коду инструмента {SelectedSecurity?.Id} валятся быстрее, чем мы их можем прочитать.");
+                        }
+                    }
+                    UpdateGlass(md.Item1, md.Item2);
+                    DateTime update = DateTime.Now;
+                    LabelGlassTimeUpdate = $"{SelectedSecurity?.Name} :{update:HH.mm.ss:fff} + {md.Item1.Count}, {md.Item2}";
+                    LabelGlassData = $"{md.Item1[md.Item2].Price}={md.Item1[md.Item2].VolumeString}; " +
+                        $"{md.Item1[md.Item2-1].Price}={md.Item1[md.Item2-1].VolumeString}; " +
+                        $"{md.Item1[md.Item2+1].Price}={md.Item1[md.Item2+1].VolumeString}";
+
                 }
                 catch (Exception ex)
                 {
-                Debug.WriteLine(ex.Message);
+                    Debug.WriteLine (ex.Message);
                 }
             }
-            );
         }
 
 
@@ -129,25 +202,25 @@ namespace AvpPlazaTester
         {
             try
             {
-                Dispatcher?.Invoke(new Action(() =>
+                Dispatcher?.BeginInvoke(new Action(() =>
                 {
                     try
                     {
-                        List<MarketDepthLevel>? d = (List<MarketDepthLevel>?)listGlass.ItemsSource;
-                        listGlass.ItemsSource = mdLevels;
-                        d?.Clear();
-                        if (listGlassScrollIntoViewTime.AddSeconds(2) < DateTime.Now && mdLevels.Count > centreQuotes)
-                        {
-                            listGlass.ScrollIntoView(mdLevels[centreQuotes - 2]);
-                            // listGlass.ScrollIntoView(mdLevels[centreQuotes + 2]);
-                            listGlassScrollIntoViewTime = DateTime.Now;
-                        }
+
+                        listGlass.ItemsSource = mdLevels.GetRange(centreQuotes - 50, 100);
+                        //if (listGlassScrollIntoViewTime.AddSeconds(2) < DateTime.Now && mdLevels.Count > centreQuotes)
+                        //{
+                        //    listGlass.ScrollIntoView(mdLevels[centreQuotes - 2]);
+                        //    // listGlass.ScrollIntoView(mdLevels[centreQuotes + 2]);
+                        //    listGlassScrollIntoViewTime = DateTime.Now;
+                        //}
                     }
                     catch (Exception ex)
                     {
                         Debug.WriteLine(ex.Message);
                     }
-                }));
+                }
+                ));
             }
             catch (Exception ex)
             {

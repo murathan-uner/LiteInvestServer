@@ -9,6 +9,8 @@ using System.Text;
 using System.Threading.Tasks;
 using LiteInvest.Entity.PlazaEntity;
 
+using PlazaEngine.Depth;
+
 namespace PlazaEngine.Engine
 {
     internal class DepthEmulator
@@ -37,7 +39,7 @@ namespace PlazaEngine.Engine
 
         private void ThreadEmulating()
         {
-            int depth = 250;
+            int depth = 50;
             try
             {
                 Random rnd = new Random(); 
@@ -59,12 +61,20 @@ namespace PlazaEngine.Engine
                             md.SecurityId = sec.Id;
                             md.Time = DateTime.UtcNow.AddHours(3);
 
-                            decimal HiPrice = sec.PriceLimitHigh != 0 ? sec.PriceLimitHigh : 1000;
-                            decimal LoPrice = sec.PriceLimitLow != 0 ? sec.PriceLimitLow : 100;
+                            decimal HiPrice = sec.PriceLimitHigh != 0 ? sec.PriceLimitHigh - 4 * (sec.PriceLimitHigh - sec.PriceLimitLow) / 10 : 1000;
+                            decimal LoPrice = sec.PriceLimitLow != 0 ? sec.PriceLimitLow + 4 * (sec.PriceLimitHigh - sec.PriceLimitLow) / 10 : 100;
                             if (HiPrice == LoPrice)
                             {
-                                HiPrice = HiPrice * 1.1m;
-                                LoPrice = LoPrice * 0.9m;
+                                if (sec.PriceStep != 0)
+                                {
+                                    HiPrice = HiPrice + sec.PriceStep * 1000;
+                                    LoPrice = LoPrice - sec.PriceStep * 1000;
+                                }
+                                else
+                                {
+                                    HiPrice = HiPrice * 1.1m;
+                                    LoPrice = LoPrice * 0.9m;
+                                }
                             }
                             if (md.Asks.Count < 10 || md.Bids.Count < 10)
                             {
@@ -72,14 +82,14 @@ namespace PlazaEngine.Engine
                                 md.Bids.Clear();
                                 for (int i = 0; i < depth; i++)
                                 {
-                                    decimal p = Math.Round(HiPrice - (decimal)rnd.NextDouble() * (HiPrice - LoPrice) / 2, sec.Decimals);
+                                    decimal p = Math.Round((HiPrice + LoPrice) / 2 + (decimal)rnd.NextDouble() * (HiPrice - LoPrice) / 4, sec.Decimals);
                                     int v = rnd.Next(1, 1000);
                                     if (!md.Asks.Exists(a => a.Price == p))
                                     {
                                         md.Asks.Add(new MarketDepthLevel() { Id = i, Price = p, Ask = v });
                                     }
 
-                                    p = Math.Round(LoPrice + (decimal)rnd.NextDouble() * (HiPrice - LoPrice) / 2, sec.Decimals);
+                                    p = Math.Round((HiPrice + LoPrice) /2  - (decimal)rnd.NextDouble() * (HiPrice - LoPrice) / 4, sec.Decimals);
                                     v = rnd.Next(1, 1000);
                                     if (!md.Bids.Exists(a => a.Price == p))
                                     {
@@ -107,10 +117,15 @@ namespace PlazaEngine.Engine
                                     md.Bids.RemoveAt(ll);
                                 }
                             }
+
+                           
+
                             md.Asks.Sort((x, y) => x.Price > y.Price ? -1 : x.Price == y.Price ? 0 : 1);
-                            //md.Asks.Sort((x, y) => x.Price > y.Price ? 1 : x.Price == y.Price ? 0 : -1);  // сортировка в другую сторону
                             md.Bids.Sort((x, y) => x.Price > y.Price ? -1 : x.Price == y.Price ? 0 : 1);
-                            //md.Bids.Sort((x, y) => x.Price > y.Price ? 1 : x.Price == y.Price ? 0 : -1); // сортировка в другую сторону
+
+                            ChangeCenterMarketDepthEmulating(md, 30, 30);
+                            ChangeCenterMarketDepthEmulating(md, 3, 3);
+
                             MarketDepthChanged?.Invoke(md.GetCopy());
 
                             TickCollectionEmulating(md);
@@ -127,6 +142,41 @@ namespace PlazaEngine.Engine
                 Debug.WriteLine(ex.Message);
                 
             }
+        }
+
+
+        Dictionary<long, DateTime> nextTimeChangeCenterMarketDepth = new Dictionary<long, DateTime>();
+        private void ChangeCenterMarketDepthEmulating(MarketDepth md, int maxFreguency, int maxCountLevels)
+        {
+            long hash = md.SecurityId.GetHashCode() + maxFreguency.GetHashCode() + maxCountLevels.GetHashCode();
+
+            if (nextTimeChangeCenterMarketDepth.ContainsKey(hash) && nextTimeChangeCenterMarketDepth[hash] > DateTime.Now)
+            {
+                return;
+            }
+            Random rnd = new Random();
+            int levelsChangeCount = rnd.Next(1, maxCountLevels);
+            Direction directionChange = rnd.NextDouble() > 0.5 ? Direction.Buy : Direction.Sell;
+
+            for (int i = 0; i < levelsChangeCount && i < md.Asks.Count && i < md.Bids.Count; i++)
+            {
+                if (directionChange == Direction.Buy)
+                {
+                    md.Asks.Add(new MarketDepthLevel() { Id = md.Bids[0].Id, Price = md.Bids[0].Price, Ask = md.Bids[0].Bid });
+                    md.Bids.RemoveAt(0);
+                }
+                else
+                {
+                    md.Bids.Add(new MarketDepthLevel() { Id = md.Asks.Last().Id, Price = md.Asks.Last().Price, Bid = md.Asks.Last().Ask});
+                    md.Asks.RemoveAt(md.Asks.Count-1);
+                }
+            }
+
+            md.Asks.Sort((x, y) => x.Price > y.Price ? -1 : x.Price == y.Price ? 0 : 1);
+            md.Bids.Sort((x, y) => x.Price > y.Price ? -1 : x.Price == y.Price ? 0 : 1);
+
+            int addSecond = rnd.Next(2, maxFreguency);
+            nextTimeChangeCenterMarketDepth[hash] = DateTime.Now.AddSeconds(addSecond);
         }
 
         DateTime lastTickCollection = DateTime.Now;

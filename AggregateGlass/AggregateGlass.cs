@@ -1,6 +1,7 @@
 ﻿using LiteInvest.Entity.PlazaEntity;
 using PlazaEngine.Engine;
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
 
 using static System.Formats.Asn1.AsnWriter;
@@ -15,7 +16,7 @@ namespace ConnectorService
         /// <summary>
         /// Преднастроенные масштабы агрегирования
         /// </summary>
-        public static readonly List<int> ScaleList = new List<int>() {1, 5, 10, 15, 100 };
+        public static readonly List<int> ScaleList = new List<int>() { 1, 5, 10, 15, 100 };
 
         /// <summary>
         ///Количество уровней в стакане в обе стороны
@@ -53,7 +54,7 @@ namespace ConnectorService
         /// <summary>
         /// key = isin Security, valus = список масштабов scale
         /// </summary>
-        private Dictionary<string,List<int>> AllSubscribedScaledGlass = new Dictionary<string, List<int>>();
+        private Dictionary<string, List<int>> AllSubscribedScaledGlass = new Dictionary<string, List<int>>();
 
         /// <summary>
         /// Класс агрегирования стаканов
@@ -63,7 +64,17 @@ namespace ConnectorService
         {
             this.connector = (PlazaConnector)connector;
             this.connector.MarketDepthChangeEvent += Connector_MarketDepthChangeEvent;
+            
+            Thread threadMarketDepthAggregate = new Thread(ThreadMarketDepthAggregate);
+            threadMarketDepthAggregate.IsBackground = true;
+            threadMarketDepthAggregate.Name = "ThreadMarketDepthAggregate";
+            threadMarketDepthAggregate.Start();
+
         }
+
+
+
+        private ConcurrentDictionary<string, ConcurrentQueue<MarketDepth>> dictionaryQueueMarketDepth = new ConcurrentDictionary<string, ConcurrentQueue<MarketDepth>>();
 
         /// <summary>
         /// ОБрабатываем собития поступления полного стакана из плазы
@@ -71,36 +82,68 @@ namespace ConnectorService
         /// <param name="md">Полный стакан из Плазы</param>
         private void Connector_MarketDepthChangeEvent(MarketDepth md)
         {
-            //Task.Factory.StartNew(() =>
+            if (!AllSubscribedScaledGlass.ContainsKey(md.SecurityId)) // проверка подписались ли на стакан по этому инструменту
             {
-                try
+                return;
+            }
+            if (!dictionaryQueueMarketDepth.ContainsKey(md.SecurityId))
+            {
+                dictionaryQueueMarketDepth[md.SecurityId] = new ConcurrentQueue<MarketDepth>();
+            }
+            dictionaryQueueMarketDepth[md.SecurityId].Enqueue(md);
+
+            return;
+        }
+
+        private void ThreadMarketDepthAggregate()
+        {
+            while (true)
+            {
+                Thread.Sleep(1);
+                List<string> allKeysDictionaryQueueMarketDepth = dictionaryQueueMarketDepth.Keys.ToList();
+
+                for (int i = 0; i < allKeysDictionaryQueueMarketDepth.Count; i++)
                 {
-                    if (AllSubscribedScaledGlass.ContainsKey(md.SecurityId)) // проверка подписались ли на стакан по этому инструменту
+                    string key = allKeysDictionaryQueueMarketDepth[i];
+                    if (dictionaryQueueMarketDepth[key].IsEmpty || !dictionaryQueueMarketDepth[key].TryDequeue(out MarketDepth? md))
                     {
-                        if (!AllInsideQuotes.ContainsKey(md.SecurityId))        // проверка, создан ли чистые бланк стаканов для всех масштабов в 6000 строк
+                        continue;
+                    }
+                    DateTime timeTryDequeue = DateTime.Now;
+                    while (!dictionaryQueueMarketDepth[key].IsEmpty)                // если стаканы валятся быстрее, чем мы их можем нарисовать, то берем последний
+                    {
+                        dictionaryQueueMarketDepth[key].TryDequeue(out md);
+                    }
+
+                    try
+                    {
+                        if (AllSubscribedScaledGlass.ContainsKey(md.SecurityId))    // проверка подписались ли на стакан по этому инструменту
                         {
-                            CreateBlankInsideQuotes(md);                    // создаем все балнки стаканов по инструменту, по которому пришел стакан
+                            if (!AllInsideQuotes.ContainsKey(md.SecurityId))        // проверка, создан ли чистые бланк стаканов для всех масштабов в 6000 строк
+                            {
+                                CreateBlankInsideQuotes(md);                        // создаем все бланки стаканов по инструменту, по которому пришел стакан
+                            }
+
+                            var security = connector.GetSecurityByIsin(md.SecurityId);
+                            decimal priceStep = security.PriceStep;
+
+                            ParallelOptions opt = new ParallelOptions() { MaxDegreeOfParallelism = ScaleList.Count };
+                            Parallel.For(0, AllSubscribedScaledGlass[md.SecurityId].Count, opt, (i) =>  // распараллелим сбор по всем заказанным масштабам
+                            {
+                                int scale = AllSubscribedScaledGlass[md.SecurityId][i];
+                                BuildAggregateGlass(md, priceStep, scale);
+                            });
+
+                            NewInsideQuotesEvent?.Invoke(AllInsideQuotes[md.SecurityId]);
                         }
-
-                        var security = connector.GetSecurityByIsin(md.SecurityId);
-                        decimal priceStep = security.PriceStep;
-
-                        ParallelOptions opt = new ParallelOptions() { MaxDegreeOfParallelism = ScaleList.Count };
-                        Parallel.For(0, AllSubscribedScaledGlass[md.SecurityId].Count, opt, (i) =>  // распараллелим сбор по всем заказанным масштабам
-                        {
-                            int scale = AllSubscribedScaledGlass[md.SecurityId][i];
-                            BuildAggregateGlass(md, priceStep, scale);
-                        });
-
-                        NewInsideQuotesEvent?.Invoke(AllInsideQuotes[md.SecurityId]);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine(ex.Message);
                     }
                 }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine(ex.Message);
-                }
             }
-            //);
+            Debug.WriteLine("ThreadMarketDepthAggregate EXIT");
         }
 
         /// <summary>
@@ -113,8 +156,8 @@ namespace ConnectorService
         {
             decimal currentPrice = 0;
             decimal currentVolume = 0;
-            var d =  AllInsideQuotes[md.SecurityId].ScaledQuotes[scale];
-            d.Clear(); d = null;
+            //var d =  AllInsideQuotes[md.SecurityId].ScaledQuotes[scale];
+            //d.Clear(); d = null;
             AllInsideQuotes[md.SecurityId].ScaledQuotes[scale] = (List<MarketDepthLevel>)AllInsideQuotes[md.SecurityId].BlankScaledQuotes[scale].Clone();
             CheckNeedExpansionBlankGlass(md);
             
@@ -252,12 +295,14 @@ namespace ConnectorService
             {
                 insideQuotes.ScaledQuotes[ScaleList[i]] = new List<MarketDepthLevel>();
                 insideQuotes.IndexPriceLevelQuotes[ScaleList[i]] = new Dictionary<decimal, int>();
+                
                 var sc = insideQuotes.ScaledQuotes[ScaleList[i]];
                 var indexSc = insideQuotes.IndexPriceLevelQuotes[ScaleList[i]];
 
                 decimal currentPriceLevel = md.Bids[0].Price + allBlankLevelGlassCount * ScaleList[i] * security.PriceStep;
                 currentPriceLevel = currentPriceLevel - currentPriceLevel % (ScaleList[i] * security.PriceStep);
-               
+                insideQuotes.CentreQuotes[ScaleList[i]] = allBlankLevelGlassCount / 2;
+
                 for (int y = allBlankLevelGlassCount; y > allBlankLevelGlassCount * -1; y--)
                 {
                     MarketDepthLevel level = new MarketDepthLevel();
