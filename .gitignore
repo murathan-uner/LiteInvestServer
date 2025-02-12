@@ -365,3 +365,4 @@ FodyWeavers.xsd
 /LiteInvestServer/Data/users.xml
 /LiteInvestServer/Data/orders.xml
 /LiteInvestServer/Data/trades.xml
+/AggregateGlass/AggregateGlass.csproj
