@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerRest+WebSocket(OLD)",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PlazaEngine", "PlazaEngine\PlazaEngine\PlazaEngine.csproj", "{22A76A68-EB10-4508-8692-19AB144BDDC2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Fleck Websocket for OLD", "Fleck\Fleck Websocket for OLD.csproj", "{A7D8CDE5-94C9-4E10-8868-91726B50BE74}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Fleck", "Fleck\Fleck.csproj", "{A7D8CDE5-94C9-4E10-8868-91726B50BE74}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AvpPlazaTester", "AvpPlazaExample\AvpPlazaTester.csproj", "{A5CFC43B-6385-4906-AAC5-A7AED7A54433}"
 EndProject
@@ -23,7 +23,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AggregateGlass", "Aggregate
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteInvestFront", "LiteInvestFront\LiteInvestFront.csproj", "{A25F043F-9453-47B1-B187-8D4EACEE0686}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CurrentServer", "LiteInvestServerDll\LiteInvestServerDll\CurrentServer.csproj", "{1B3FF110-C346-456D-9126-99970C3A3E4F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteInvestServerDll", "LiteInvestServerDll\LiteInvestServerDll\LiteInvestServerDll.csproj", "{1B3FF110-C346-456D-9126-99970C3A3E4F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
