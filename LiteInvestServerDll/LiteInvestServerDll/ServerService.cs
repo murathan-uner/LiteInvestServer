@@ -8,9 +8,14 @@ using LiteInvest.Entity.Helpers;
 using LiteInvest.Entity.PlazaEntity;
 using LiteInvest.Entity.ServerEntity;
 using LiteInvestServerDll.Options;
+using LiteInvest.Entity.Server2;
+using System.Runtime.InteropServices;
 
 public class ServerService
 {
+
+    public bool crypto { get; set; } = false;
+
     ConcurrentDictionary<string, SecurityApi> Securities = new();
     ///База юзеров 
     ConcurrentDictionary<string, User> UsersContext = new ConcurrentDictionary<string, User>();
@@ -86,6 +91,8 @@ public class ServerService
         await Console.Out.WriteLineAsync($"{dt} {message}").ConfigureAwait(false);
     }
 
+
+
     public ServerService()
     {
 
@@ -121,9 +128,13 @@ public class ServerService
         //ClosedPositions = Helper.ReadXml<ConcurrentDictionary<string, ConcurrentDictionary<string, List<Pos>>>>($"{data}\\{nameof(ClosedPositions)}.xml");
 
         string admin = "adminadminov";
+        string basicuser = "samujan1@yandex.ru";
 
         if (!UsersContext.ContainsKey(admin))
             UsersContext.TryAdd(admin, new User(admin, "adminPass#1R") { Admin = true, CanTrade = false });
+
+        if (!UsersContext.ContainsKey(basicuser))
+            UsersContext.TryAdd(basicuser, new User(basicuser, "pass2") { Admin = false, CanTrade = true });
 
         Console.WriteLine($"simulation PLAZA {plazasimulation.Simulation}");
 
@@ -140,9 +151,6 @@ public class ServerService
         };
 
         plaza.TicksLoadedEvent += () => LogMessageAsync($"Ticks Ready To Go!");
-
-
-
         plaza.NewMyTradeEvent += ProcessNewMyTrade;
         plaza.OrderLoadedEvent += () => LogMessageAsync($"Orders Loaded!");
 
@@ -163,6 +171,14 @@ public class ServerService
                     Orders.TryAdd(username, new());
 
                 Orders[username][plazaOrder.ExchangeOrderId] = plazaOrder;
+
+
+                var user = UsersContext[username];
+                foreach (var orderaction in user.PrivateOrderEventsForUsers.Values)
+                {
+                    orderaction?.Invoke(plazaOrder);
+                }
+
                 LogMessageAsync($"Order add to DB {plazaOrder} id={plazaOrder.ExchangeOrderId}");
             }
             catch (Exception ex)
@@ -171,30 +187,98 @@ public class ServerService
             }
 
             //-----------------------------
-          
+
 
             LogMessageAsync($"New Order user ({username}) {plazaOrder.State} number = {plazaOrder.ExchangeOrderId} error ={reason}");
 
-         
+
             //далее по подпискам на сокеты мы должны отправить инфу о новом состоянии юзера..
         };
 
-        plaza.MarketDepthChangeEvent += orderbook =>
+        plaza.NewTickCollectionEvent += ticksDictionary =>
         {
+            //NOTE: Проще проверить все тики
+            //Или из подписки найти обновленные тики. 
+            //вопрос.. блять
 
-            if (orderbook == null)
+            //-----------------------------
+            //TODO: Рефакторить!
+
+            if (ticksDictionary == null)
                 return;
+
+
+            foreach (var tick in ticksDictionary)
+            {
+                // if(tick.Value.Count!=0)
+                // LogMessageAsync($"tiks arrive {tick.Key} count = {tick.Value.Count()} priceFirst = {tick.Value.First().Price}");
+            }
 
             try
             {
 
-            
+
+
+
+                //-----------------------------
+
+                //проверяем всех наших подписантов
+                foreach (var secIdsubcription in SubscriptionsForTicks)
+                {
+                    //LogMessageAsync($"sec {secIdsubcription.Key}");
+                    //в тиках есть тики, которые мы должны отправить
+
+                    //
+
+                    if (ticksDictionary.ContainsKey(secIdsubcription.Key) && ticksDictionary[secIdsubcription.Key].Count != 0)
+                    {
+
+                        var ticks = ticksDictionary[secIdsubcription.Key];
+
+
+						foreach (var action in secIdsubcription.Value)
+						{
+							//TODO: временная заплатка
+							
+								// LogMessageAsync($"{socket.Key} Sending pack of ticks");
+								action.Value?.Invoke(ticks);
+							
+						}
+
+				
+                    }
+                }
             }
             catch (Exception ex)
             {
-                LogMessageAsync("Order Book WebSockets error->" + ex.Message);
+                LogMessageAsync($"Problems with websocket TICKS {ex.Message}");
             }
         };
+
+        plaza.MarketDepthChangeEvent += orderbook =>
+    {
+
+        if (orderbook == null)
+            return;
+
+        try
+        {
+            if (SubscriptionsForOrderBook.ContainsKey(orderbook.SecurityId)
+            && SubscriptionsForOrderBook[orderbook.SecurityId] != null
+            && SubscriptionsForOrderBook[orderbook.SecurityId].Count != 0)
+            {
+                foreach (var subscription in SubscriptionsForOrderBook[orderbook.SecurityId].Values)
+                {
+					subscription?.Invoke(orderbook);
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            LogMessageAsync("Order Book WebSockets error->" + ex.Message);
+        }
+    };
 
 
         Helper.CreateTimerAndStart(CalculatePnls, 5000);
@@ -293,7 +377,144 @@ public class ServerService
         }
     }
 
-    void ProcessNewMyTrade(MyTrade newMytrade)
+
+    #region Подписки(взамен сокетов)
+
+    /// <summary>
+    /// ключ - айди инструмента
+    /// следющий ключ - хеш
+    /// (есть проблемы, если наш юзер отклбчится как то криво, мы не сможем удалить это)...
+    /// </summary>
+    ConcurrentDictionary<string,  ConcurrentDictionary<string,Action<MarketDepth>>> SubscriptionsForOrderBook { get; set; } = new();
+	ConcurrentDictionary<string,  ConcurrentDictionary<string, Action<List<Trade>>>> SubscriptionsForTicks { get; set; } = new();
+
+
+
+	/// <summary>
+	/// TODO: надо сделать проверку ключа.
+	/// </summary>
+	public async Task<SubscriptionAnswer> SubscribeForPrivateOrders(string username, Action<Order> action)
+    {
+        if (!UsersContext.ContainsKey(username))
+            return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+        string guid = Guid.NewGuid().ToString();
+        var result = UsersContext[username].PrivateOrderEventsForUsers.TryAdd(guid, action);
+
+        return new SubscriptionAnswer()
+        {
+            Success = result,
+            Id = guid
+        };
+
+    }
+
+	public async Task<SubscriptionAnswer> RemoveSubscribtionForPrivateOrders(string username, string id)
+	{
+		if (!UsersContext.ContainsKey(username))
+			return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+        if (!UsersContext[username].PrivateOrderEventsForUsers.ContainsKey(id))
+			return new SubscriptionAnswer { Success = true, ErrorMessage = "No Such Subscription", Id = id };
+
+		var result = UsersContext[username].PrivateOrderEventsForUsers.TryRemove(id,out var _);
+
+		return new SubscriptionAnswer()
+		{
+			Success = result,
+			Id = id
+		};
+
+	}
+
+
+	public async Task<SubscriptionAnswer> SubscribeForOrderBook(string secid/*, string username,*/ ,Action<MarketDepth> action)
+	{
+		//if (!UsersContext.ContainsKey(username))
+		//	return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+		if (!SubscriptionsForOrderBook.ContainsKey(secid))
+			SubscriptionsForOrderBook[secid] = new();
+
+
+        if (!plaza.Securities.ContainsKey(secid) )
+            return new SubscriptionAnswer() { Success = false, ErrorMessage = "No Sec Found" };
+
+        plaza.RegisterMarketDepth(plaza.Securities[secid], false);
+
+		string guid = Guid.NewGuid().ToString();
+        //проверить будет ли это автоматом работать
+        var result = SubscriptionsForOrderBook[secid].TryAdd(guid, action);
+
+		return new SubscriptionAnswer()
+		{
+			Success = result,
+			Id = guid
+		};
+
+	}
+
+    public async Task<SubscriptionAnswer> SubscribeForTicks(string secid, Action<List<Trade>> action)
+    {
+		//if (!UsersContext.ContainsKey(username))
+		//	return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+
+		if (!plaza.Securities.ContainsKey(secid))
+			return new SubscriptionAnswer() { Success = false, ErrorMessage = "No Sec Found" };
+
+        plaza.TryRegisterTicks(plaza.Securities[secid], false);
+
+		string guid = Guid.NewGuid().ToString();
+        //проверить будет ли это автоматом работать
+
+        if (!SubscriptionsForTicks.ContainsKey(secid))
+            SubscriptionsForTicks[secid] = new();
+
+        var result = SubscriptionsForTicks[secid].TryAdd(guid, action);
+
+        return new SubscriptionAnswer()
+        {
+            Success = result,
+            Id = guid
+        };
+
+    }
+
+
+	public async Task<SubscriptionAnswer> RemoveSubscribeForOrderBook(string secid,  string id)
+	{
+		//проверить будет ли это автоматом работать
+		var result = SubscriptionsForOrderBook[secid].TryRemove(id, out var _);
+
+		return new SubscriptionAnswer()
+		{
+			Success = result,
+			Id = id
+		};
+
+	}
+
+	public async Task<SubscriptionAnswer> RemoveSubscribeForTicks(string secid,  string id)
+	{
+		//if (!UsersContext.ContainsKey(username))
+		//	return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+		//проверить будет ли это автоматом работать
+		var result = SubscriptionsForTicks[secid].TryRemove(id, out var _);
+
+		return new SubscriptionAnswer()
+		{
+			Success = result,
+			Id = id
+		};
+
+	}
+
+
+	#endregion
+
+	void ProcessNewMyTrade(MyTrade newMytrade)
     {
         try
         {
@@ -373,175 +594,168 @@ public class ServerService
             LogMessageAsync("Process new My Trade error ->" + ex.Message);
         }
     }
-    #endregion HelperMethods
+	#endregion HelperMethods
 
-    #region mapMethods
+	#region mapMethods
 
-    public class ReturnType<T>
-    {
-        public T Data { get; set; }
-        public string Message { get; set; }
+	//public ReturnType<bool> Register(UserCredentials userCredentials)
+	//{
+	//    if (UsersContext.ContainsKey(userCredentials.LoginEmail))
+	//    {
+	//        return new ReturnType<bool>(false, "User already exists");
+	//    }
 
-        public ReturnType(T data, string message = "")
-        {
-            Data = data;
-            Message = message;
-        }
-    }
+	//    UsersContext.TryAdd(userCredentials.LoginEmail, new User(userCredentials.LoginEmail, userCredentials.Password)
+	//    {
+	//        Limit = 20000,
+	//        CanTrade = true,
+	//        Admin = false,
+	//    });
 
-    public ReturnType<bool> Register(UserCredentials userCredentials)
-    {
-        if (UsersContext.ContainsKey(userCredentials.LoginEmail))
-        {
-            return new ReturnType<bool>(false, "User already exists");
-        }
+	//    return new ReturnType<bool>(true);
+	//}
 
-        UsersContext.TryAdd(userCredentials.LoginEmail, new User(userCredentials.LoginEmail, userCredentials.Password)
-        {
-            Limit = 20000,
-            CanTrade = true,
-            Admin = false,
-        });
+	
 
-        return new ReturnType<bool>(true);
-    }
-
-    public ReturnType<LoginInfo> Login(string login, string pass)
+	public async Task <LoginInfo> Login(string login, string pass)
     {
         if (!UsersContext.ContainsKey(login))
         {
-            return new ReturnType<LoginInfo>(null, "User doesn't exist");
+            return new LoginInfo { errorMessage = "User doesn't exist" };
         }
 
         var user = UsersContext[login];
 
         if (user.Password != pass)
         {
-            return new ReturnType<LoginInfo>(null, "Incorrect password");
+			return new LoginInfo { errorMessage = "Incorrect password" };
         }
 
         var authResponse = jwtProvider.GenerateToken(user);
 
-        return new ReturnType<LoginInfo>(authResponse);
+        return authResponse;
     }
 
-    public ReturnType<bool> Logout()
+    public bool Logout()
     {
         try
         {
+            //TODO: по идее здесь можно вырубить все подписки юзера и т.д.
+
+            return true;
 
         }
         catch (Exception ex)
         {
-            return new ReturnType<bool>(false, ex.Message);
+            return false;
         }
-        return new ReturnType<bool>(true);
-    }
+		return false;
+	}
 
-    public ReturnType<List<KeyValuePair<string, User>>> RiskManagerGetUsers(string userName)
-    {
-        if (!UsersContext.ContainsKey(userName))
-            return new ReturnType<List<KeyValuePair<string, User>>>(null, "User not found");
+    //public ReturnType<List<KeyValuePair<string, User>>> RiskManagerGetUsers(string userName)
+    //{
+    //    if (!UsersContext.ContainsKey(userName))
+    //        return new ReturnType<List<KeyValuePair<string, User>>>(null, "User not found");
 
-        if (!UsersContext[userName].Admin)
-            return new ReturnType<List<KeyValuePair<string, User>>>(null, "No Admin rights");
+    //    if (!UsersContext[userName].Admin)
+    //        return new ReturnType<List<KeyValuePair<string, User>>>(null, "No Admin rights");
 
-        try
-        {
-            var usersList = UsersContext.ToList().Where(a => !a.Value.Admin).ToList();
-            return new ReturnType<List<KeyValuePair<string, User>>>(usersList);
-        }
-        catch (Exception ex)
-        {
-            return new ReturnType<List<KeyValuePair<string, User>>>(null, ex.Message);
-        }
-    }
+    //    try
+    //    {
+    //        var usersList = UsersContext.ToList().Where(a => !a.Value.Admin).ToList();
+    //        return new ReturnType<List<KeyValuePair<string, User>>>(usersList);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        return new ReturnType<List<KeyValuePair<string, User>>>(null, ex.Message);
+    //    }
+    //}
 
-    public ReturnType<bool> RiskManagerChangeLimitUser(string userName, string usernametochange, decimal newlimit)
-    {
-        if (!UsersContext.ContainsKey(userName))
-            return new ReturnType<bool>(false, "User not found");
+    //public ReturnType<bool> RiskManagerChangeLimitUser(string userName, string usernametochange, decimal newlimit)
+    //{
+    //    if (!UsersContext.ContainsKey(userName))
+    //        return new ReturnType<bool>(false, "User not found");
 
-        if (!UsersContext[userName].Admin)
-            return new ReturnType<bool>(false, "No Admin rights");
+    //    if (!UsersContext[userName].Admin)
+    //        return new ReturnType<bool>(false, "No Admin rights");
 
-        try
-        {
-            UsersContext[usernametochange].Limit = newlimit;
-            return new ReturnType<bool>(true);
-        }
-        catch (Exception ex)
-        {
-            return new ReturnType<bool>(false, ex.Message);
-        }
-    }
+    //    try
+    //    {
+    //        UsersContext[usernametochange].Limit = newlimit;
+    //        return new ReturnType<bool>(true);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        return new ReturnType<bool>(false, ex.Message);
+    //    }
+    //}
 
-    public ReturnType<bool> RiskManagerCanTrade(string userName, string usernametochange, bool cantrade)
-    {
-        if (!UsersContext.ContainsKey(userName))
-            return new ReturnType<bool>(false, "User not found");
+    //public ReturnType<bool> RiskManagerCanTrade(string userName, string usernametochange, bool cantrade)
+    //{
+    //    if (!UsersContext.ContainsKey(userName))
+    //        return new ReturnType<bool>(false, "User not found");
 
-        if (!UsersContext[userName].Admin)
-            return new ReturnType<bool>(false, "No Admin rights");
+    //    if (!UsersContext[userName].Admin)
+    //        return new ReturnType<bool>(false, "No Admin rights");
 
-        if (UsersContext[usernametochange].Admin)
-        {
-            return new ReturnType<bool>(false, "You cannot change settings for admin to trade");
-        }
+    //    if (UsersContext[usernametochange].Admin)
+    //    {
+    //        return new ReturnType<bool>(false, "You cannot change settings for admin to trade");
+    //    }
 
-        try
-        {
-            UsersContext[usernametochange].CanTrade = cantrade;
-            return new ReturnType<bool>(true);
-        }
-        catch (Exception ex)
-        {
-            return new ReturnType<bool>(false, ex.Message);
-        }
-    }
+    //    try
+    //    {
+    //        UsersContext[usernametochange].CanTrade = cantrade;
+    //        return new ReturnType<bool>(true);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        return new ReturnType<bool>(false, ex.Message);
+    //    }
+    //}
 
-    public ReturnType<bool> RiskManagerCloseAllPositions(string userName)
-    {
-        if (!UsersContext.ContainsKey(userName))
-            return new ReturnType<bool>(false, "User not found");
+    //public ReturnType<bool> RiskManagerCloseAllPositions(string userName)
+    //{
+    //    if (!UsersContext.ContainsKey(userName))
+    //        return new ReturnType<bool>(false, "User not found");
 
-        if (!UsersContext[userName].Admin)
-            return new ReturnType<bool>(false, "No Admin rights");
+    //    if (!UsersContext[userName].Admin)
+    //        return new ReturnType<bool>(false, "No Admin rights");
 
-        if (plaza == null)
-            return new ReturnType<bool>(false, "Plaza Not Ready");
+    //    if (plaza == null)
+    //        return new ReturnType<bool>(false, "Plaza Not Ready");
 
-        try
-        {
-            foreach (var pos in RealPositions.Values)
-            {
-                var sec = plaza.Securities[pos.SecurityId];
-                var order = new Order(sec, pos.XPosValueCurrent > 0 ? Side.Sell : Side.Buy, pos.XPosValueCurrent, plaza.Portfolio.Number, userName);
-                LogMessageAsync("Sending close orders of positions " + order.ToString());
-            }
-            return new ReturnType<bool>(true);
-        }
-        catch (Exception ex)
-        {
-            return new ReturnType<bool>(false, ex.Message);
-        }
-    }
+    //    try
+    //    {
+    //        foreach (var pos in RealPositions.Values)
+    //        {
+    //            var sec = plaza.Securities[pos.SecurityId];
+    //            var order = new Order(sec, pos.XPosValueCurrent > 0 ? Side.Sell : Side.Buy, pos.XPosValueCurrent, plaza.Portfolio.Number, userName);
+    //            LogMessageAsync("Sending close orders of positions " + order.ToString());
+    //        }
+    //        return new ReturnType<bool>(true);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        return new ReturnType<bool>(false, ex.Message);
+    //    }
+    //}
 
-    public async Task<ReturnType<Order>> SendOrder(ClientOrder clientOrder, string userName)
+    public async Task<Order> SendOrder(ClientOrder clientOrder, string userName)
     {
         try
         {
             if (!UsersContext.ContainsKey(userName))
-                return new ReturnType<Order>(null, "User not found");
+                return new Order { Error = "User not found" };
 
             var user = UsersContext[userName];
 
             if (!user.CanTrade)
-                return new ReturnType<Order>(null, "User cannot trade!");
+				return new Order { Error = "User cannot trade!" };
 
             if (!plaza.Securities.ContainsKey(clientOrder.SecID))
-                return new ReturnType<Order>(null, "No Security Id Found");
-
+				return new Order { Error = "No Security Id Found" };
+	
             var price = (decimal)clientOrder.Price;
             var sec = plaza.Securities[clientOrder.SecID];
 
@@ -556,121 +770,74 @@ public class ServerService
 
             await plaza.ExecuteOrderAsync(plazaOrder).ConfigureAwait(false);
 
-            return new ReturnType<Order>(plazaOrder);
+            return plazaOrder;
         }
         catch (Exception ex)
         {
-            return new ReturnType<Order>(null, ex.Message);
+            return  new Order { Error = ex.Message };
         }
     }
 
-    public ReturnType<List<Pos>> GetOpenPositions(string userName)
+    public List<Pos> GetOpenPositions(string userName)
     {
         try
         {
             if (!OpenedPositions.ContainsKey(userName))
-                return new ReturnType<List<Pos>>(new List<Pos>(), "");
+                return new List<Pos>() { };
 
             var positions = OpenedPositions[userName].Values.ToList();
-            return new ReturnType<List<Pos>>(positions);
+            return positions;
         }
         catch (Exception ex)
         {
-            return new ReturnType<List<Pos>>(new List<Pos>(), ex.Message);
+            return new List<Pos>() { };
         }
     }
 
-    public ReturnType<bool> OpenInstrument(string userName, SecurityApi sec)
-    {
-        try
-        {
-            if (UsersContext[userName].OpenedInstruments == null)
-                UsersContext[userName].OpenedInstruments = new List<SecurityApi>();
 
-            UsersContext[userName].OpenedInstruments.Add(sec);
-            return new ReturnType<bool>(true, $"Added {sec.id}");
-        }
-        catch (Exception ex)
-        {
-            return new ReturnType<bool>(false, ex.Message);
-        }
-    }
-
-    public ReturnType<List<SecurityApi>> GetUserInstruments(string userName)
-    {
-        try
-        {
-            return new ReturnType<List<SecurityApi>>(UsersContext[userName].OpenedInstruments ?? new List<SecurityApi>());
-        }
-        catch (Exception ex)
-        {
-            return new ReturnType<List<SecurityApi>>(null, ex.Message);
-        }
-    }
-
-    public ReturnType<bool> CloseInstrument(string userName, SecurityApi sec)
-    {
-        try
-        {
-            if (UsersContext[userName].OpenedInstruments == null || UsersContext[userName].OpenedInstruments.Count == 0)
-                return new ReturnType<bool>(true, "");
-
-            var secFound = UsersContext[userName].OpenedInstruments.FirstOrDefault(s => s.SpecialHash == sec.SpecialHash);
-
-            if (secFound != null)
-                UsersContext[userName].OpenedInstruments.Remove(sec);
-
-            return new ReturnType<bool>(true);
-        }
-        catch (Exception ex)
-        {
-            return new ReturnType<bool>(false, ex.Message);
-        }
-    }
-
-    public ReturnType<List<Order>> GetOrders(string userName)
+    public ServerResponce<List<Order>> GetOrders(string userName)
     {
         try
         {
             if (!Orders.ContainsKey(userName))
-                return new ReturnType<List<Order>>(new List<Order>());
+                return new ServerResponce<List<Order>>(new List<Order>(),"No such user");
 
             var result = Orders[userName].Values.Where(o => o.State == Order.OrderStateType.Activ || o.State == Order.OrderStateType.Partial).ToList();
-            return new ReturnType<List<Order>>(result ?? new List<Order>());
+            return new ServerResponce<List<Order>>(result ?? new List<Order>());
         }
         catch (Exception ex)
         {
-            return new ReturnType<List<Order>>(null, ex.Message);
+            return new ServerResponce<List<Order>>(null, ex.Message);
         }
     }
 
-    public ReturnType<bool> CancelOrder(string userName, Order order)
+    public ServerResponce<bool> CancelOrder(string userName, Order order)
     {
         try
         {
             if (!UsersContext.ContainsKey(userName))
-                return new ReturnType<bool>(false, "User not found");
+                return new ServerResponce<bool>(false, "User not found");
 
             plaza.CancelOrder(order.NumberUserOrderId);
-            return new ReturnType<bool>(true);
+            return new ServerResponce<bool>(true);
         }
         catch (Exception ex)
         {
-            return new ReturnType<bool>(false, ex.Message);
+            return new ServerResponce<bool>(false, ex.Message);
         }
     }
 
-    public ReturnType<List<SecurityApi>> GetAllSecurities()
+    public async Task<ServerResponce<List<SecurityApi>>> GetAllSecurities()
     {
         if (Securities == null || Securities.Count == 0)
-            return new ReturnType<List<SecurityApi>>(new List<SecurityApi>(), "No Security");
+            return new ServerResponce<List<SecurityApi>>(null, "No Securities");
 
-        return new ReturnType<List<SecurityApi>>(Securities.Values.OrderBy(s => s.ShortName).ToList());
+        return new ServerResponce<List<SecurityApi>>(Securities.Values.OrderBy(s => s.ShortName).ToList());
     }
 
     #endregion mapMethods
 
-    public void ServerServiceDipose()
+    public void Dipose()
     {
         try
         {

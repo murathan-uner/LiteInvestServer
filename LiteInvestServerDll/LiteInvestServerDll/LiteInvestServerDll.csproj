@@ -15,4 +15,37 @@
     <ProjectReference Include="..\..\PlazaEngine\PlazaEngine\PlazaEngine.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="SchemasPlaza\netrepl.trace.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SchemasPlaza\PlazaStartSettings.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SchemasPlaza\Schemas\deals.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SchemasPlaza\Schemas\forts_messages.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SchemasPlaza\Schemas\orders_aggr.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SchemasPlaza\Schemas\part.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SchemasPlaza\Schemas\pos.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SchemasPlaza\Schemas\refdata.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SchemasPlaza\Schemas\trades.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SchemasPlaza\Schemas\userorderbook.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

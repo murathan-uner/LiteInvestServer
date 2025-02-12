@@ -15,7 +15,7 @@
 @using GridRowClickEventArgs = Telerik.Blazor.Components.GridRowClickEventArgs
 
 @* @inject ApiDataServiceTest ApiDataServiceTest *@
-@inject ApiDataService ApiDataService
+@inject UiLogicService ApiDataService
 @inject JsInteropService jsInteropService
 @inject IJSRuntime JSRuntime
 @implements IDisposable
@@ -332,12 +332,12 @@
 
         //TODO: Сделать нормальную подписку на частные ордера
 
-        WebSockets =
-        [
-            await ApiDataService.SubscribeOrderBook(secutityMain.id),
-            await ApiDataService.SubcribeTick(secutityMain.id),
+        // WebSockets =
+        // [
+        //     await ApiDataService.SubscribeOrderBook(secutityMain.id),
+        //     await ApiDataService.SubcribeTick(secutityMain.id),
 
-        ];
+        // ];
 
         return base.OnInitializedAsync();
     }
@@ -423,12 +423,7 @@
         }
 
     }
-
-
-
-
  
-
     //симуляция погано работает.
     //TODO: вынести нормально в настройки или в самом обьекте передавать
     bool real = true;
@@ -449,11 +444,11 @@
         Console.WriteLine($"Disposing {secutityMain.id}");
 
 
-        if (WebSockets != null)
-            foreach (var websocketID in WebSockets)
-            {
-                ApiDataService.StopWebSocket(websocketID);
-            }
+        // if (WebSockets != null)
+        //     foreach (var websocketID in WebSockets)
+        //     {
+        //         ApiDataService.StopWebSocket(websocketID);
+        //     }
 
     }
 

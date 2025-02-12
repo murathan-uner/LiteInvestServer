@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddScoped<ApiDataService>();
+builder.Services.AddScoped<UiLogicService>();
 builder.Services.AddScoped<JsInteropService>();
 
 builder.Services.AddSingleton<ServerService>();

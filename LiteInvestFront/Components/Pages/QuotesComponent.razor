@@ -4,10 +4,13 @@
 @using LiteInvest.Entity.Helpers
 @using LiteInvest.Entity.PlazaEntity
 @using LiteInvest.Entity.ServerEntity
+@using LiteInvestServerDll
 @using Telerik.DataSource
 @using Telerik.DataSource.Extensions
 
-@inject ApiDataService ApiDataService
+@inject UiLogicService _uilogicService
+@inject ServerService _serverService
+
 @implements IDisposable
 @inject JsInteropService jsInteropService
 @inject IJSRuntime JSRuntime
@@ -21,7 +24,7 @@ OnRowContextMenu="@OnRowClickRight"
 OnRowRender="@RowRender"
 EnableLoaderContainer="true"
 RowHeight="15"
-             Height="calc(100vh - 100px)"
+Height="calc(100vh - 100px)"
 Data="@Quotes"
 TItem="@MarketDepthLevel"
 ScrollMode="@GridScrollMode.Virtual"
@@ -47,7 +50,7 @@ PageSize="@pagesize">
             <span class="restVolumeSpan">
                 @Quotes.RestVolume
             </span>
-             @if (Quotes.RestVolume.ToString() != string.Empty)
+            @if (Quotes.RestVolume.ToString() != string.Empty)
             {
                 <svg class="removeOrder" @onclick="() => RemoveOrderClick(Quotes)" xmlns="http://www.w3.org/2000/svg" width="15" height="7" viewBox="-2 -2 15 15">
                     <line x1="0" y1="0" x2="10" y2="10" stroke="red" stroke-width="2" />
@@ -61,6 +64,195 @@ PageSize="@pagesize">
 
 
 @code {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     [Parameter] public int pagesize { get; set; }
@@ -128,7 +320,7 @@ PageSize="@pagesize">
             // busyscroll = true;
 
             if (newdictionaryQuotes != null && newdictionaryQuotes.Count != 0)
-                AlgoQuotesScale(newdictionaryQuotes, usualbestbid, ApiDataService.crypto,false); // TODO: временно прописал напрямую
+                AlgoQuotesScale(newdictionaryQuotes, usualbestbid, _serverService.crypto,false); // TODO: временно прописал напрямую
 
 
         }
@@ -136,25 +328,32 @@ PageSize="@pagesize">
 
 
     bool _firstrender;
+
+    string idsubscription;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-
         if (firstRender)
         {
 
             jsInteropService.OnScroll += OnScroll;
+
             jsInteropService.OnKeyDown += OnKeyDown;
 
             //getScrollEvent2
             //await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
-            await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
 
+            await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
 
             Scale = secutityMain.Scale;
 
-            ApiDataService.NewQuotes += OnNewMarketDepth; 
-            ApiDataService.NewMyOrder += NewMyOrder;
+            var res = await _serverService.SubscribeForOrderBook(secutityMain.id, OnNewMarketDepth);
 
+            if (res.Success)
+                idsubscription = res.Id;
+
+            // ApiDataService.NewQuotes += OnNewMarketDepth; 
+            //TODO: подписка на ордера сделать!!!
+            // ApiDataService.NewMyOrder += NewMyOrder;
 
             _firstrender = true;
 
@@ -333,7 +532,7 @@ PageSize="@pagesize">
 
             Console.WriteLine($"Sending order price = {order.Price} side = {order.Side}");
 
-            ApiDataService.SendOrder(order);
+            _serverService.SendOrder(order, _uilogicService.userName);
         }
         catch (Exception ex)
         {
@@ -457,11 +656,15 @@ PageSize="@pagesize">
 
     //TODO: сюда же приходит лишь кусок изменений (крипта)
     //рынок фортс (полные изменения)
-    private void OnNewMarketDepth(List<MarketDepthLevel> bids, List<MarketDepthLevel> asks, string secID)
+    private void OnNewMarketDepth(MarketDepth md)
     {
 
-        if (secID != secutityMain.id)
-            return;
+        var bids = md.Bids;
+
+        var asks = md.Asks;
+
+        // if (secID != secutityMain.id)
+        //     return;
 
         //с бинанса может такой апдейт прийти
         if (bids.Count != 0)
@@ -487,7 +690,7 @@ PageSize="@pagesize">
                 var easyDictionaryCurrent = BuildMarketDepthDictionary(bids, asks);
 
                 newdictionaryQuotes = ScaleBuilderQuotes(easyDictionaryCurrent);
-                AlgoQuotesScale(newdictionaryQuotes, usualbestbid, ApiDataService.crypto);
+                AlgoQuotesScale(newdictionaryQuotes, usualbestbid, _serverService.crypto);
             }
             catch (Exception ex)
             {
@@ -557,7 +760,7 @@ PageSize="@pagesize">
             QuotesDictionary.Clear();
 
             Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, initialquotes, crypto);
-            ApiDataService.SendInitialQuotes(secutityMain, initialquotes, IndexesQuotes);
+            _uilogicService.SendInitialQuotes(secutityMain, initialquotes, IndexesQuotes);
 
             UpdateBestBidIndex(bestbidagregated);
 
@@ -582,14 +785,14 @@ PageSize="@pagesize">
                 }, 500, false);
 
 
-            ApiDataService.ScrollClustes(secutityMain, bestbidIndex);
+            _uilogicService.ScrollClustes(secutityMain, bestbidIndex);
 
             if (scroll)
                 return;
         }
         else
         {
-            Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, Quotes, ApiDataService.crypto);
+            Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, Quotes, _serverService.crypto);
             UpdateQuotesGrid();
             UpdateBestBidIndex(bestbidagregated);
         }
@@ -919,7 +1122,7 @@ PageSize="@pagesize">
             if (visiblerange != 0)
             {
                 Console.WriteLine($"SCROLL 1` max price = {Quotes[skip].Price} min = {minpriceGrid}");
-                ApiDataService.SetNewMaxMin(secutityMain, maxpriceGRID,minpriceGrid);
+                _uilogicService.SetNewMaxMin(secutityMain, maxpriceGRID,minpriceGrid);
             }
 
         }
@@ -956,7 +1159,7 @@ PageSize="@pagesize">
          if (_order == null)
          	Console.WriteLine("No Order Found in Row");
 
-         ApiDataService.CancelOrder(_order);
+         _serverService.CancelOrder( _uilogicService.userName, _order);
     }
 
     public double minchart { get; set; }// = 0;
@@ -999,7 +1202,7 @@ PageSize="@pagesize">
                 var minprice = maxpriceGRID - visiblerange;
 
                 Console.WriteLine($"SCROLL SCRIPT` max price = {maxpriceGRID} min = {minprice}");
-                ApiDataService.SetNewMaxMin(secutityMain, maxpriceGRID, minprice);
+                _uilogicService.SetNewMaxMin(secutityMain, maxpriceGRID, minprice);
 
             }
 
@@ -1086,8 +1289,11 @@ PageSize="@pagesize">
     {
         jsInteropService.OnKeyDown -= OnKeyDown;
         jsInteropService.OnScroll -= OnScroll;
-        ApiDataService.NewQuotes -= OnNewMarketDepth;
-        ApiDataService.NewMyOrder -= NewMyOrder;
+
+        _serverService.RemoveSubscribeForOrderBook(secutityMain.id,idsubscription);
+
+       // ApiDataService.NewQuotes -= OnNewMarketDepth;
+       // ApiDataService.NewMyOrder -= NewMyOrder;
        
     }
 

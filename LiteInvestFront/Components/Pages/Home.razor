@@ -4,11 +4,15 @@
 @using System.Collections.ObjectModel
 @using LiteInvestFront.Services
 @using LiteInvest.Entity.ServerEntity
+@using LiteInvestServerDll
 @using Telerik.Blazor.Components
 
-@inject ApiDataService ApiDataService;
-@inject JsInteropService jsInteropService;
-@inject IJSRuntime js;
+@inject UiLogicService _uiLogicService
+@inject ServerService _serverService
+
+
+@inject JsInteropService jsInteropService
+@inject IJSRuntime js
 
 @implements IDisposable
 
@@ -149,8 +153,8 @@
 
 
     private async void LogInClicked()
-    { 
-        ordersubscription = await ApiDataService.SubscribePrivateOrders();
+    {
+        // ordersubscription = await _serverService.SubscribeForPrivateOrders()
     }
 
     public int? ordersubscription { get; set; }
@@ -168,11 +172,11 @@
             // if (ApiDataService != null)
             //     ApiDataService.StopPrivateOrderSubscription();
 
-            if (ApiDataService != null)
+            if (_uiLogicService != null)
             {
-                ApiDataService.StopPrivateWebSocket(ordersubscription);
-                ApiDataService.Dispose();
-                ApiDataService = null;
+                // ApiDataService.StopPrivateWebSocket(ordersubscription);
+                _uiLogicService.Dispose();
+                _uiLogicService = null;
             }
 
 

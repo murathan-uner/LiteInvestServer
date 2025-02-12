@@ -2,10 +2,13 @@
 @using LiteInvest.Entity.Helpers
 @using LiteInvestFront.Services
 @using LiteInvest.Entity.PlazaEntity
+@using LiteInvestServerDll
 
-@inject ApiDataService apiDataService
+@inject UiLogicService uiLogicService
+@inject ServerService _serverService;
 
-@implements IDisposable;
+
+@implements IDisposable
 
 <TelerikGrid
     Data="@OrdersData"
@@ -48,21 +51,21 @@
 
     public async void LoadData()
     {
-        var orders = await apiDataService.GetActiveOrders();
+        // var orders = await _serverService.GetActiveOrders();
 
-        //TODO: Апи посылает повторно один и тот же ордер.
-        //причем только первый
-        if (orders != null)
-        {
-            Dictionary<string, Order> OrdersDictionary = new();
-            foreach (var order in orders)
-                OrdersDictionary[order.ExchangeOrderId] = order;
+        // //TODO: Апи посылает повторно один и тот же ордер.
+        // //причем только первый
+        // if (orders != null)
+        // {
+        //     Dictionary<string, Order> OrdersDictionary = new();
+        //     foreach (var order in orders)
+        //         OrdersDictionary[order.ExchangeOrderId] = order;
 
-            OrdersData = OrdersDictionary.Values.ToList();
-        }
+        //     OrdersData = OrdersDictionary.Values.ToList();
+        // }
 
-        if (orders == null || orders.Count == 0)
-            OrdersData.Clear();
+        // if (orders == null || orders.Count == 0)
+        //     OrdersData.Clear();
 
 
         InvokeAsync(StateHasChanged);
@@ -77,18 +80,18 @@
 
     public async void OnRowClicked(GridRowClickEventArgs e)
     {
-        try
-        {
-            Order order = OrdersData.Find(o => o == (Order)e.Item);
+        // try
+        // {
+        //     Order order = OrdersData.Find(o => o == (Order)e.Item);
 
-            if (order != null)
-            {
-                await apiDataService.CancelOrder(order);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-        }
+        //     if (order != null)
+        //     {
+        //         await apiDataService.CancelOrder(order);
+        //     }
+        // }
+        // catch (Exception ex)
+        // {
+        //     Console.WriteLine(ex.Message);
+        // }
     }
 }

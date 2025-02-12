@@ -3,29 +3,35 @@
 @using LiteInvest.Entity.Helpers
 @using LiteInvest.Entity.PlazaEntity
 @using LiteInvest.Entity.ServerEntity
+@using LiteInvestServerDll
 
-@inject ApiDataService ApiDataService
+@* @inject ApiDataService ApiDataService *@
+
+@inject UiLogicService _uilogicservice
+@inject ServerService _serverService
+
+
 @implements IDisposable
 @inject IJSRuntime JSRuntime
 
 <style>
     .clustersColumn {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
     }
 
 </style>
 
 <div class="clustersColumn">
     <TelerikGrid @ref="ClustersGrid3"
-                 EnableLoaderContainer="true"
-                 RowHeight="15"
-                 Height="calc(100vh - 100px)"
-                 Data="@ClusterDatas"
-                
-                 TItem="@ClusterLevel"
-                 ScrollMode="@GridScrollMode.Virtual"
-                 PageSize="@pagesize">
+    EnableLoaderContainer="true"
+    RowHeight="15"
+    Height="calc(100vh - 100px)"
+    Data="@ClusterDatas"
+
+    TItem="@ClusterLevel"
+    ScrollMode="@GridScrollMode.Virtual"
+    PageSize="@pagesize">
 
         <GridColumns>
             <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
@@ -50,13 +56,13 @@
     </TelerikGrid>
 
     <TelerikGrid @ref="ClustersGrid2"
-                 EnableLoaderContainer="true"
-                 RowHeight="15"
-                 Height="calc(100vh - 100px)"
-                 Data="@ClusterDatas"
-                 TItem="@ClusterLevel"
-                 ScrollMode="@GridScrollMode.Virtual"
-                 PageSize="@pagesize">
+    EnableLoaderContainer="true"
+    RowHeight="15"
+    Height="calc(100vh - 100px)"
+    Data="@ClusterDatas"
+    TItem="@ClusterLevel"
+    ScrollMode="@GridScrollMode.Virtual"
+    PageSize="@pagesize">
 
         <GridColumns>
             <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
@@ -82,13 +88,13 @@
     </TelerikGrid>
 
     <TelerikGrid @ref="ClustersGrid1"
-                 EnableLoaderContainer="true"
-                 RowHeight="15"
-                 Height="calc(100vh - 100px)"
-                 Data="@ClusterDatas"
-                 TItem="@ClusterLevel"
-                 ScrollMode="@GridScrollMode.Virtual"
-                 PageSize="@pagesize">
+    EnableLoaderContainer="true"
+    RowHeight="15"
+    Height="calc(100vh - 100px)"
+    Data="@ClusterDatas"
+    TItem="@ClusterLevel"
+    ScrollMode="@GridScrollMode.Virtual"
+    PageSize="@pagesize">
 
         <GridColumns>
             <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
@@ -140,6 +146,12 @@ PageSize="@pagesize">
 </TelerikGrid> *@
 
 @code {
+
+
+
+
+
+
 
     [Parameter]
     public int pagesize { get; set; }
@@ -194,6 +206,10 @@ PageSize="@pagesize">
 
     bool rendered = false;
 
+
+
+    string idsubscription;
+
     protected override async void OnAfterRender(bool firstRender)
     {
         if (firstRender)
@@ -201,9 +217,15 @@ PageSize="@pagesize">
             rendered = true;
             await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
 
-            ApiDataService.NewTicks += ProcessClusterTick;
-            ApiDataService.BuildNewTable += BuildEmptyClusterLevels;
-            ApiDataService.ScrollClusters += ScrollClusters;
+
+            var res = _serverService.SubscribeForTicks(secutityMain.id, (t) => { ProcessClusterTick(t); }).Result;
+
+            if (res.Success)
+                idsubscription = res.Id;
+
+            // UiLogicService.NewTicks += ProcessClusterTick;
+            _uilogicservice.BuildNewTable += BuildEmptyClusterLevels;
+            _uilogicservice.ScrollClusters += ScrollClusters;
         }
 
         base.OnAfterRender(firstRender);
@@ -256,11 +278,11 @@ PageSize="@pagesize">
 
     bool busy = false;
 
-    private void ProcessClusterTick(string sec, List<TradeApi> ticks)
+    private void ProcessClusterTick(/* string sec,  */List<Trade> ticks)
     {
 
-        if (sec != secutityMain.id)
-            return;
+        // if (sec != secutityMain.id)
+        //     return;
 
         var copyclusters = ClusterDatas.ToList();
 
@@ -327,8 +349,10 @@ PageSize="@pagesize">
 
     public void Dispose()
     {
-        ApiDataService.NewTicks -= ProcessClusterTick;
-        ApiDataService.ScrollClusters -= ScrollClusters;
+        _serverService.RemoveSubscribeForTicks(secutityMain.id, idsubscription);
+
+        // UiLogicService.NewTicks -= ProcessClusterTick;
+        _uilogicservice.ScrollClusters -= ScrollClusters;
     }
 
     protected override bool ShouldRender()
