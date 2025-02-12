@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BlazorRenderAuto.Client\BlazorRenderAuto.Client.csproj" />
+    <ProjectReference Include="..\BlazorRenderAuto.Client\BlazorRenderAuto.Client (OLD).csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.11" />
   </ItemGroup>
 

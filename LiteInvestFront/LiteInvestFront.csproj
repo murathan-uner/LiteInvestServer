@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LiteInvest.Entity\LiteInvest.Entity.csproj" />
-    <ProjectReference Include="..\LiteInvestServerDll\LiteInvestServerDll\LiteInvestServerDll.csproj" />
+    <ProjectReference Include="..\LiteInvestServerDll\LiteInvestServerDll\CurrentServer.csproj" />
   </ItemGroup>
 
 </Project>
