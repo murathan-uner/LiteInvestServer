@@ -67,194 +67,6 @@ PageSize="@pagesize">
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     [Parameter] public int pagesize { get; set; }
     [Parameter] public SecurityApi secutityMain { get; set; }
 
@@ -349,7 +161,15 @@ PageSize="@pagesize">
             var res = await _serverService.SubscribeForOrderBook(secutityMain.id, OnNewMarketDepth);
 
             if (res.Success)
+            {
                 idsubscription = res.Id;
+
+                Console.WriteLine($"Subscription Order BOOK {secutityMain.Isin}");
+            }
+            else
+            {
+                Console.WriteLine($"Error Subscription Order BOOK {secutityMain.Isin}");
+            }
 
             // ApiDataService.NewQuotes += OnNewMarketDepth; 
             //TODO: подписка на ордера сделать!!!

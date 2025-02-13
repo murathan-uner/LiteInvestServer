@@ -158,6 +158,11 @@ builder.Services.AddSingleton(_ =>
         LogMessageAsync($"Ticks Ready To Go!");
     };
 
+    plaza.SecuritiesLoadedEvent += () =>
+     {
+		 LogMessageAsync($"Securitutes Loaded");
+	 };
+
     plaza.NewTickCollectionEvent += ticksDictionary =>
     {
         //NOTE: Проще проверить все тики
