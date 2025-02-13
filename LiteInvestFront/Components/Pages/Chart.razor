@@ -2,8 +2,11 @@
 @using LiteInvestFront.Services
 @using LiteInvest.Entity.PlazaEntity
 @using LiteInvest.Entity.ServerEntity
+@using LiteInvestServerDll
 
-@inject ApiDataService ApidataService
+@inject UiLogicService _uilogicservice
+@inject ServerService _serverService
+
 @implements IDisposable
 
 <TelerikChart Height="calc(100vh - 100px)" @ref="Chart2" Class="chart" Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%">
@@ -30,10 +33,10 @@
 
         <ChartSeries Type="ChartSeriesType.Bubble"
         Data="@Ticks"
-        YField="@nameof(TradeApi.Price)"
-        XField="@nameof(TradeApi.IndexForChart)"
-        SizeField="@nameof(TradeApi.Volume)"
-        ColorField="@nameof(TradeApi.Color)"
+        YField="@nameof(Trade.Price)"
+        XField="@nameof(Trade.IndexForChart)"
+        SizeField="@nameof(Trade.Volume)"
+        ColorField="@nameof(Trade.Color)"
         Opacity ="0.6"
         ZIndex="1"
         >
@@ -69,7 +72,7 @@
 
 @code {
 
-    public List<TradeApi> Ticks { get; set; }
+    public List<Trade> Ticks { get; set; }
 
     public int maxamount { get; set; } = 30; //надо разделить на шаг и получится реальное количество отображаемых элементов
 
@@ -94,12 +97,12 @@
 
         if (Ticks == null)
         {
-            Ticks = new List<TradeApi>();
+            Ticks = new List<Trade>();
             // Ticks.Add(new TradeApi(){IndexForChart = 0, Size = 100,});
 
             //TODO: нам помоему сервер не отдает это значение
             basicvolume = secutityMain.Lot * maxScaleForChart;
-            Ticks.Add(new TradeApi() { IndexForChart = -3 * maxStaticValue, Volume = basicvolume, });
+            Ticks.Add(new Trade() { IndexForChart = -3 * maxStaticValue, Volume = basicvolume, });
 
             //Console.WriteLine($"{secutityMain.Isin} max value for chart {secutityMain.Lot * 300}");
 
@@ -117,13 +120,20 @@
         SetMaxMin(max, min);
     }
 
+
+
+    string idsubscription;
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
         {
+            var res = _serverService.SubscribeForTicks(secutityMain.id, (t) => { ProcessTicks(t); }).Result;
 
-            ApidataService.NewTicks += ProcessTicks;
-            ApidataService.NewMaxMin += ProcessNewMaxMin;
+            if (res.Success)
+                idsubscription = res.Id;
+
+            // ApidataService.NewTicks += ProcessTicks;
+            _uilogicservice.NewMaxMin += ProcessNewMaxMin;
 
         }
 
@@ -135,7 +145,7 @@
         //TODO: решил сделать реализацию через инжект.
         // Возможно это опасно
 
-        var newvalue = ApidataService.openedInstruments;
+        var newvalue = _uilogicservice.openedInstruments;
 
         if (newvalue == 0) newvalue = 1;
 
@@ -166,20 +176,15 @@
 
     DateTime lasttickupdate;
 
-    public void ProcessTicks(string sec, List<TradeApi> ticks)
+    public void ProcessTicks(/* string sec, */ List<Trade> ticks)
     {
 
-        if (sec != secutityMain.id)
-            return;
+        // if (sec != secutityMain.id)
+        //     return;
 
         if(ticks==null)
             return;
 
-        if (ApidataService.crypto)
-        {
-          //  if (!(ticks[0].Time > lasttickupdate + TimeSpan.FromMilliseconds(200)))
-            //    return;
-        }
 
         try
         {
@@ -205,7 +210,7 @@
             Console.WriteLine(ex.Message);
         }
 
-        
+
         InvokeAsync(StateHasChanged);
     }
 
@@ -256,9 +261,13 @@
 
     public void Dispose()
     {
-       
-        ApidataService.NewMaxMin -= ProcessNewMaxMin;
-        ApidataService.NewTicks -= ProcessTicks;
+
+        _uilogicservice.NewMaxMin -= ProcessNewMaxMin;
+
+        _serverService.RemoveSubscribeForTicks(secutityMain.id, idsubscription);
+
+
+        // ApidataService.NewTicks -= ProcessTicks;
     }
 
 }

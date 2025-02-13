@@ -3,7 +3,7 @@
 @using LiteInvestFront.Services
 @using LiteInvest.Entity.ServerEntity
 
-@inject ApiDataService apiDataService
+@inject UiLogicService apiDataService
 
 @implements IDisposable;
 
@@ -43,12 +43,12 @@
 
     public async void LoadData()
     {
-        var positions = await apiDataService.GetPositions();
-        if (positions != null)
-        {
-            OpenedPositions = positions;
-        }
-        InvokeAsync(StateHasChanged);
+        // var positions = await apiDataService.GetPositions();
+        // if (positions != null)
+        // {
+        //     OpenedPositions = positions;
+        // }
+        // InvokeAsync(StateHasChanged);
     }
 
     public async void LoadPoses()

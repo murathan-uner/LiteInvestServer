@@ -99,12 +99,48 @@ public class Trade
     decimal price;
 
 
-    /// <summary>
-    /// to take a line to save
-    /// взять строку для сохранения
-    /// </summary>
-    /// <returns>line with the state of the object/строка с состоянием объекта</returns>
-    public override string ToString()
+	public string Color
+	{
+		get
+		{
+			if (Side == Side.Sell)
+				//return "#fca49c";
+
+				return "red";
+
+			//return "#6CCCAC";
+			return "green";
+		}
+	}
+
+	public int IndexForChart { get; set; }
+
+	private decimal? _size;
+	public decimal Size
+	{
+		get
+		{
+
+			if (_size != null)
+				return (decimal)_size;
+
+			var vol = (int)Volume;
+			var res = vol.ToString().Length;
+			return res;
+		}
+		set
+		{
+			_size = value;
+		}
+	}
+
+
+	/// <summary>
+	/// to take a line to save
+	/// взять строку для сохранения
+	/// </summary>
+	/// <returns>line with the state of the object/строка с состоянием объекта</returns>
+	public override string ToString()
     {
        return new StringBuilder()
             .Append(SecurityName!=null ? SecurityName : "").Append("; ")

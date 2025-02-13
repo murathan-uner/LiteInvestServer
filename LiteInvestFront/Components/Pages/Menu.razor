@@ -2,20 +2,23 @@
 @using System.Reactive.Linq
 @using LiteInvestFront.Services
 @using LiteInvest.Entity.ServerEntity
+@using LiteInvestServerDll
 @using Telerik.Blazor.Components.RootComponent
 
-@inject ApiDataService ApiDataService
+@inject UiLogicService ApiDataService
+@inject ServerService _serverService
+
 @inject IJSRuntime js
 
 @implements IDisposable
 
 <TelerikWindow @bind-Visible=poswindowVisible
-               Resizable="true"
-               Draggable="true"
-               MinWidth="30%"
-               MinHeight="30%"
-               MaxHeight="90%"
-               MaxWidth="90%">
+Resizable="true"
+Draggable="true"
+MinWidth="30%"
+MinHeight="30%"
+MaxHeight="90%"
+MaxWidth="90%">
     <WindowContent>
         <Positions />
     </WindowContent>
@@ -28,12 +31,12 @@
 
 </TelerikWindow>
 <TelerikWindow @bind-Visible=orderswindowsVisible
-               Resizable="true"
-               Draggable="true"
-               MinWidth="30%"
-               MinHeight="30%"
-               MaxHeight="90%"
-               MaxWidth="90%">
+Resizable="true"
+Draggable="true"
+MinWidth="30%"
+MinHeight="30%"
+MaxHeight="90%"
+MaxWidth="90%">
     <WindowContent>
         <Orders />
     </WindowContent>
@@ -46,14 +49,14 @@
 </TelerikWindow>
 
 <TelerikWindow @bind-Visible=windowVisible
-               Resizable="true"
-               MinWidth="300"
-               MinHeight="200"
-               Centered="true"
-               Modal="true"
-               MaxWidth="800"
-               CloseOnOverlayClick="true"
-               MaxHeight="500">
+Resizable="true"
+MinWidth="300"
+MinHeight="200"
+Centered="true"
+Modal="true"
+MaxWidth="800"
+CloseOnOverlayClick="true"
+MaxHeight="500">
     <WindowContent>
 
         <TelerikForm Model="@loginInfo">
@@ -98,13 +101,13 @@
 
         <form class="internalSearch" role="search">
             <TelerikAutoComplete @ref="TelerikComboBox" Data="@Instruments"
-                                 ValueField="@nameof(SecuritySelected.Isin)"
-                                 @bind-Value="@AutoComplete"
-                                 Placeholder="Выберите Инструмент!"
-                                 Filterable="true"
-                                 OnChange="OnChangeHandler"
-                                 FilterOperator="@StringFilterOperator.Contains"
-                                 ShowClearButton="true" />
+            ValueField="@nameof(SecuritySelected.Isin)"
+            @bind-Value="@AutoComplete"
+            Placeholder="Выберите Инструмент!"
+            Filterable="true"
+            OnChange="OnChangeHandler"
+            FilterOperator="@StringFilterOperator.Contains"
+            ShowClearButton="true" />
         </form>
         @*     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -149,6 +152,9 @@
 
 @code
 {
+
+
+
     private bool poswindowVisible = false;
     private bool orderswindowsVisible = false;
     private async Task ToggleDropdown()
@@ -254,10 +260,10 @@
     Dictionary<string, int> FortsCoins2 = new()
     {
         { "Si-3.25", 1 },
-        { "AFLT-3.25",1 },
-        { "LKOH-3.25",5},
-        { "VTBR-3.25",1},
-        {"SBRF-3.25",1}
+        // { "AFLT-3.25",1 },
+        // { "LKOH-3.25",5},
+        // { "VTBR-3.25",1},
+        // {"SBRF-3.25",1}
     };
 
     private async Task<Task> OnLoginClick(MouseEventArgs obj)
@@ -269,7 +275,9 @@
             colorforlogin = "black";
             textForLogin = "Входим";
 
-            var res = await ApiDataService.LogIn(loginInfo.Login, loginInfo.Password);
+            ApiDataService.userName = loginInfo.Login;
+
+            var res = await _serverService.Login(loginInfo.Login, loginInfo.Password);
             //var res = await ApiDataService.LogIn("samujan1@yandex.ru", "pass2");
 
 
@@ -303,7 +311,14 @@
 
             textForLogin = "Грузим инструменты";
             Console.WriteLine("Loading instruments");
-            Instruments = await ApiDataService.GetInstruments();
+
+
+            var resInstruments = await _serverService.GetAllSecurities();
+
+            if (resInstruments.Data != null)
+                Instruments = resInstruments.Data;
+
+
             SecuritySelected = Instruments.FirstOrDefault();
 
             textForLogin = $"Получено {Instruments.Count()}";
@@ -323,7 +338,7 @@
 
             LoginClicked?.Invoke();
 
-            if (ApiDataService.crypto)
+            if (_serverService.crypto)
             {
                 foreach (var coin in coins)
                 {

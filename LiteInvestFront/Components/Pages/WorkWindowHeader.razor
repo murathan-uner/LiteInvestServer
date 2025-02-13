@@ -2,7 +2,7 @@
 @using LiteInvestFront.Services
 
 @inject IJSRuntime js;
-@inject ApiDataService apiDataService;
+@inject UiLogicService apiDataService;
 
 @if (true) { }
 <div class="instrument-header @((apiDataService.SelectedSecurityHash == Security.SpecialHash) ? "picked" : "")" @onclick="() => OnHeaderClick(Security.SpecialHash)">

@@ -1,4 +1,6 @@
-﻿using System.Runtime.Serialization;
+﻿using LiteInvest.Entity.PlazaEntity;
+using System.Collections.Concurrent;
+using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
 namespace LiteInvest.Entity.ServerEntity
@@ -72,15 +74,24 @@ namespace LiteInvest.Entity.ServerEntity
         /// </summary>
         public int LeverageFutures { get; set; }
 
-        /// <summary>
-        /// Плечо на Валюту
-        /// </summary>
-        //public int LeverageCurrency { get; set; }
+		/// <summary>
+		/// Плечо на Валюту
+		/// </summary>
+		//public int LeverageCurrency { get; set; }
+
+
+		/// <summary>
+		/// События на подписку на мои ордера 
+		/// </summary>
+		public ConcurrentDictionary<string, Action<Order>> PrivateOrderEventsForUsers { get; internal set; } = new();
+
+		/// <summary>
+		/// События на подписку на мои ордера 
+		/// </summary>
+		public ConcurrentDictionary<string, Action<MarketDepth>> MarketDepthsSubscriptions { get; internal set; } = new();
 
 
 
 
-
-
-    }
+	}
 }
