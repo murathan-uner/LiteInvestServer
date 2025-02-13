@@ -427,7 +427,12 @@ public class ServerService
 
 	}
 
-
+    /// <summary>
+    /// Проблема этого метода, что секьюритис самой плазы долго получаем... 
+    /// </summary>
+    /// <param name="secid"></param>
+    /// <param name="action"></param>
+    /// <returns></returns>
 	public async Task<SubscriptionAnswer> SubscribeForOrderBook(string secid/*, string username,*/ ,Action<MarketDepth> action)
 	{
 		//if (!UsersContext.ContainsKey(username))

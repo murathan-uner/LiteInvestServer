@@ -377,6 +377,9 @@ namespace PlazaEngine.Engine
             }
         }
 
+
+
+
         /// <summary>
         /// Остановить обновление котировок у инструмента
         /// </summary>

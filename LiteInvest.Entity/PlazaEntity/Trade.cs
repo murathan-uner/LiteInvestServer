@@ -39,10 +39,10 @@ public class Trade
             }
             else 
             {
-                if ((securities?.Count ?? 0) > 0 && (securities?.TryGetValue(SecurityId, out Security? _secname)??false))
-                {
-                    securityName = _secname.Name;
-                }
+                //if ((securities?.Count ?? 0) > 0 && (securities?.TryGetValue(SecurityId, out Security? _secname)??false))
+                //{
+                //    securityName = _secname.Name;
+                //}
                 return securityName??default;
             }
         }
