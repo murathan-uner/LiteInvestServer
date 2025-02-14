@@ -158,6 +158,9 @@ PageSize="@pagesize">
 
             Scale = secutityMain.Scale;
 
+            if (Scale == 0)
+                Scale = 1;
+
             var res = await _serverService.SubscribeForOrderBook(secutityMain.id, OnNewMarketDepth);
 
             if (res.Success)

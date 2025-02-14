@@ -75,7 +75,7 @@ var services = builder.Services;
 var configuration = builder.Configuration;
 
 var jwtOptions = builder.Configuration.GetSection("JwtOptions").Get<JwtOptions>();
-var plazasimulation = builder.Configuration.GetSection("PlazaOptions").Get<PlazaOptions>();
+var plazasimulation = builder.Configuration.GetSection("PlazaOptions").Get<LiteInvest.Entity.PlazaEntity.PlazaOptions>();
 
 var jwtprovider = new JwtProvider(jwtOptions);
 

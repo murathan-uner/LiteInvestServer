@@ -22,7 +22,7 @@ namespace LiteInvest.Entity.ServerEntity
         [DataMember]
         public decimal Lot { get; set; }
         [DataMember]
-        public decimal PriceStep { get; set; }
+        public decimal PriceStep { get; set; } = 1;
         [DataMember]
         public decimal Decimals { get; set; }
         [DataMember]

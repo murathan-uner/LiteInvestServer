@@ -1,6 +1,7 @@
 using LiteInvestFront.Services;
 using LiteInvestFront.Components;
 using LiteInvestServerDll;
+using LiteInvest.Entity.PlazaEntity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,8 +18,11 @@ builder.Services.AddSingleton<ServerService>();
 builder.Services.AddTelerikBlazor();
 
 var app = builder.Build();
+
+
+var plazasimulation = builder.Configuration.GetSection("PlazaOptions").Get<PlazaOptions>();
 var server = app.Services.GetRequiredService<ServerService>();
-server.Start(true);
+server.Start(plazasimulation.Simulation);
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
