@@ -17,7 +17,8 @@ builder.Services.AddSingleton<ServerService>();
 builder.Services.AddTelerikBlazor();
 
 var app = builder.Build();
-app.Services.GetRequiredService<ServerService>();
+var server = app.Services.GetRequiredService<ServerService>();
+server.Start(true);
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

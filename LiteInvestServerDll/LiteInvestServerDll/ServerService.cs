@@ -42,9 +42,6 @@ public class ServerService
     static string data = "C:\\ServerData";
     DirectoryInfo directoryInfo = new DirectoryInfo(data);
 
-    PlazaOptions plazasimulation = new PlazaOptions(false);
-
-
     string securitiesBdName = $"{data}\\securities.xml";
     string userdBdName = $"{data}\\users.xml";
     string ordersBdName = $"{data}\\orders.xml";
@@ -96,7 +93,8 @@ public class ServerService
     public ServerService()
     {
 
-        if (!Directory.Exists(data))
+
+		if (!Directory.Exists(data))
             System.IO.Directory.CreateDirectory(directoryInfo.ToString());
 
 
@@ -136,193 +134,208 @@ public class ServerService
         if (!UsersContext.ContainsKey(basicuser))
             UsersContext.TryAdd(basicuser, new User(basicuser, "pass2") { Admin = false, CanTrade = true });
 
-        Console.WriteLine($"simulation PLAZA {plazasimulation.Simulation}");
+       
 
-        plaza = new PlazaConnector("02mMLX144T2yxnfzEUrCjUKzXKciQKJ", plazasimulation.Simulation, testTrading: false, appname: "osaApplication")
-        {
-            Limit = 30,
-            LoadTicksFromStart = false,
-        };
-
-        plaza.UpdatePosition += pos =>
-        {
-            RealPositions[pos.SecurityId] = pos;
-            LogMessageAsync($"New Pos Info sec_id={pos.SecurityId} {pos.XPosValueCurrent} ");
-        };
-
-        plaza.TicksLoadedEvent += () => LogMessageAsync($"Ticks Ready To Go!");
-        plaza.NewMyTradeEvent += ProcessNewMyTrade;
-        plaza.OrderLoadedEvent += () => LogMessageAsync($"Orders Loaded!");
-
-        plaza.OrderChangedEvent += async (plazaOrder, reason) =>
-        {
-
-            if (plazaOrder == null)
-                return;
-
-            var username = plazaOrder.Comment;
-
-            try
-            {
-                if (!UsersContext.ContainsKey(username) || username == string.Empty)
-                    return;
-
-                if (!Orders.ContainsKey(username))
-                    Orders.TryAdd(username, new());
-
-                Orders[username][plazaOrder.ExchangeOrderId] = plazaOrder;
+   
+    }
 
 
-                var user = UsersContext[username];
-                foreach (var orderaction in user.PrivateOrderEventsForUsers.Values)
-                {
-                    orderaction?.Invoke(plazaOrder);
-                }
+    private bool simulation { get; set; }
 
-                LogMessageAsync($"Order add to DB {plazaOrder} id={plazaOrder.ExchangeOrderId}");
-            }
-            catch (Exception ex)
-            {
-                LogMessageAsync($"Problems adding order {ex.Message}");
-            }
+    public void Start(bool _simulation)
+    {
+        simulation = _simulation;
 
-            //-----------------------------
+		Console.WriteLine($"simulation PLAZA {_simulation}");
 
+		plaza = new PlazaConnector("02mMLX144T2yxnfzEUrCjUKzXKciQKJ", _simulation, testTrading: false, appname: "osaApplication")
+		{
+			Limit = 30,
+			LoadTicksFromStart = false,
+		};
 
-            LogMessageAsync($"New Order user ({username}) {plazaOrder.State} number = {plazaOrder.ExchangeOrderId} error ={reason}");
+		plaza.UpdatePosition += pos =>
+		{
+			RealPositions[pos.SecurityId] = pos;
+			LogMessageAsync($"New Pos Info sec_id={pos.SecurityId} {pos.XPosValueCurrent} ");
+		};
 
+		plaza.TicksLoadedEvent += () => LogMessageAsync($"Ticks Ready To Go!");
+		plaza.NewMyTradeEvent += ProcessNewMyTrade;
+		plaza.OrderLoadedEvent += () => LogMessageAsync($"Orders Loaded!");
 
-            //далее по подпискам на сокеты мы должны отправить инфу о новом состоянии юзера..
-        };
+		plaza.OrderChangedEvent += async (plazaOrder, reason) =>
+		{
 
-        plaza.NewTickCollectionEvent += ticksDictionary =>
-        {
-            //NOTE: Проще проверить все тики
-            //Или из подписки найти обновленные тики. 
-            //вопрос.. блять
+			if (plazaOrder == null)
+				return;
 
-            //-----------------------------
-            //TODO: Рефакторить!
+			var username = plazaOrder.Comment;
 
-            if (ticksDictionary == null)
-                return;
+			try
+			{
+				if (!UsersContext.ContainsKey(username) || username == string.Empty)
+					return;
 
+				if (!Orders.ContainsKey(username))
+					Orders.TryAdd(username, new());
 
-            foreach (var tick in ticksDictionary)
-            {
-                // if(tick.Value.Count!=0)
-                // LogMessageAsync($"tiks arrive {tick.Key} count = {tick.Value.Count()} priceFirst = {tick.Value.First().Price}");
-            }
-
-            try
-            {
+				Orders[username][plazaOrder.ExchangeOrderId] = plazaOrder;
 
 
+				var user = UsersContext[username];
+				foreach (var orderaction in user.PrivateOrderEventsForUsers.Values)
+				{
+					orderaction?.Invoke(plazaOrder);
+				}
+
+				LogMessageAsync($"Order add to DB {plazaOrder} id={plazaOrder.ExchangeOrderId}");
+			}
+			catch (Exception ex)
+			{
+				LogMessageAsync($"Problems adding order {ex.Message}");
+			}
+
+			//-----------------------------
 
 
-                //-----------------------------
+			LogMessageAsync($"New Order user ({username}) {plazaOrder.State} number = {plazaOrder.ExchangeOrderId} error ={reason}");
 
-                //проверяем всех наших подписантов
-                foreach (var secIdsubcription in SubscriptionsForTicks)
-                {
-                    //LogMessageAsync($"sec {secIdsubcription.Key}");
-                    //в тиках есть тики, которые мы должны отправить
 
-                    //
+			//далее по подпискам на сокеты мы должны отправить инфу о новом состоянии юзера..
+		};
 
-                    if (ticksDictionary.ContainsKey(secIdsubcription.Key) && ticksDictionary[secIdsubcription.Key].Count != 0)
-                    {
+		plaza.NewTickCollectionEvent += ticksDictionary =>
+		{
+			//NOTE: Проще проверить все тики
+			//Или из подписки найти обновленные тики. 
+			//вопрос.. блять
 
-                        var ticks = ticksDictionary[secIdsubcription.Key];
+			//-----------------------------
+			//TODO: Рефакторить!
+
+			if (ticksDictionary == null)
+				return;
+
+
+			foreach (var tick in ticksDictionary)
+			{
+				// if(tick.Value.Count!=0)
+				// LogMessageAsync($"tiks arrive {tick.Key} count = {tick.Value.Count()} priceFirst = {tick.Value.First().Price}");
+			}
+
+			try
+			{
+
+
+
+
+				//-----------------------------
+
+				//проверяем всех наших подписантов
+				foreach (var secIdsubcription in SubscriptionsForTicks)
+				{
+					//LogMessageAsync($"sec {secIdsubcription.Key}");
+					//в тиках есть тики, которые мы должны отправить
+
+					//
+
+					if (ticksDictionary.ContainsKey(secIdsubcription.Key) && ticksDictionary[secIdsubcription.Key].Count != 0)
+					{
+
+						var ticks = ticksDictionary[secIdsubcription.Key];
 
 
 						foreach (var action in secIdsubcription.Value)
 						{
 							//TODO: временная заплатка
-							
-								// LogMessageAsync($"{socket.Key} Sending pack of ticks");
-								action.Value?.Invoke(ticks);
-							
+
+							// LogMessageAsync($"{socket.Key} Sending pack of ticks");
+							action.Value?.Invoke(ticks);
+
 						}
 
-				
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LogMessageAsync($"Problems with websocket TICKS {ex.Message}");
-            }
-        };
 
-        plaza.MarketDepthChangeEvent += orderbook =>
-    {
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				LogMessageAsync($"Problems with websocket TICKS {ex.Message}");
+			}
+		};
 
-        if (orderbook == null)
-            return;
+		plaza.MarketDepthChangeEvent += orderbook =>
+		{
 
-        try
-        {
-            if (SubscriptionsForOrderBook.ContainsKey(orderbook.SecurityId)
-            && SubscriptionsForOrderBook[orderbook.SecurityId] != null
-            && SubscriptionsForOrderBook[orderbook.SecurityId].Count != 0)
-            {
-                foreach (var subscription in SubscriptionsForOrderBook[orderbook.SecurityId].Values)
-                {
-					subscription?.Invoke(orderbook);
-                }
-            }
+			if (orderbook == null)
+				return;
 
-        }
-        catch (Exception ex)
-        {
-            LogMessageAsync("Order Book WebSockets error->" + ex.Message);
-        }
-    };
+			try
+			{
+				if (SubscriptionsForOrderBook.ContainsKey(orderbook.SecurityId)
+				&& SubscriptionsForOrderBook[orderbook.SecurityId] != null
+				&& SubscriptionsForOrderBook[orderbook.SecurityId].Count != 0)
+				{
+					foreach (var subscription in SubscriptionsForOrderBook[orderbook.SecurityId].Values)
+					{
+						subscription?.Invoke(orderbook);
+					}
+				}
 
-
-        Helper.CreateTimerAndStart(CalculatePnls, 5000);
-        Helper.CreateTimerAndStart(SaveDb, 5000);
-
-        plaza.UpdateSecurity += sec =>
-        {
-            Securities[sec.Id] = new SecurityApi()
-            {
-                id = sec.Id,
-                ShortName = sec.ShortName,
-                ClassCode = sec.ClassCode,
-                Isin = sec.Name,
-                FullName = sec.FullName,
-                Type = sec.Type.ToString(),
-                Lot = sec.Lot,
-                PriceStep = sec.PriceStep,
-                Decimals = sec.Decimals,
-                PriceLimitHigh = sec.PriceLimitHigh,
-                PriceLimitLow = sec.PriceLimitLow,
-            };
-        };
+			}
+			catch (Exception ex)
+			{
+				LogMessageAsync("Order Book WebSockets error->" + ex.Message);
+			}
+		};
 
 
-        if (plaza.Emulation)
-        {
-            foreach (var sec in Securities)
-            {
-                plaza.Securities.TryAdd(sec.Key, new Security(sec.Value.ShortName, sec.Value.FullName, SecurityType.Futures, sec.Value.ClassCode, sec.Value.Lot)
-                {
-                    Id = sec.Value.id,
-                    Name = "Emulation Security",
-                    ShortName = sec.Value.ShortName,
-                    PriceStep = sec.Value.PriceStep,
-                    PriceLimitLow = sec.Value.PriceLimitHigh,
-                    PriceLimitHigh = sec.Value.PriceLimitLow,
-                    PriceStepCost = 1,
+		Helper.CreateTimerAndStart(CalculatePnls, 5000);
+		Helper.CreateTimerAndStart(SaveDb, 5000);
 
-                });
-            }
-        }
+		plaza.UpdateSecurity += sec =>
+		{
+			Securities[sec.Id] = new SecurityApi()
+			{
+				id = sec.Id,
+				ShortName = sec.ShortName,
+				ClassCode = sec.ClassCode,
+				Isin = sec.Name,
+				FullName = sec.FullName,
+				Type = sec.Type.ToString(),
+				Lot = sec.Lot,
+				PriceStep = sec.PriceStep,
+				Decimals = sec.Decimals,
+				PriceLimitHigh = sec.PriceLimitHigh,
+				PriceLimitLow = sec.PriceLimitLow,
+			};
+		};
 
-        plaza.Connect();
-    }
+
+		if (plaza.Emulation)
+		{
+			foreach (var sec in Securities)
+			{
+				plaza.Securities.TryAdd(sec.Key, new Security(sec.Value.ShortName, sec.Value.FullName, SecurityType.Futures, sec.Value.ClassCode, sec.Value.Lot)
+				{
+					Id = sec.Value.id,
+					Name = "Emulation Security",
+					ShortName = sec.Value.ShortName,
+					PriceStep = sec.Value.PriceStep,
+					PriceLimitLow = sec.Value.PriceLimitHigh,
+					PriceLimitHigh = sec.Value.PriceLimitLow,
+					PriceStepCost = 1,
+
+				});
+			}
+		}
+
+		plaza.Connect();
+
+
+	}
+
 
     #region HelperMethods
 
@@ -445,7 +458,7 @@ public class ServerService
         if (!plaza.Securities.ContainsKey(secid) )
             return new SubscriptionAnswer() { Success = false, ErrorMessage = "No Sec Found" };
 
-        plaza.RegisterMarketDepth(plaza.Securities[secid], false);
+        plaza.RegisterMarketDepth(plaza.Securities[secid], simulation);
 
 		string guid = Guid.NewGuid().ToString();
         //проверить будет ли это автоматом работать
@@ -468,7 +481,7 @@ public class ServerService
 		if (!plaza.Securities.ContainsKey(secid))
 			return new SubscriptionAnswer() { Success = false, ErrorMessage = "No Sec Found" };
 
-        plaza.TryRegisterTicks(plaza.Securities[secid], false);
+        plaza.TryRegisterTicks(plaza.Securities[secid], simulation);
 
 		string guid = Guid.NewGuid().ToString();
         //проверить будет ли это автоматом работать
