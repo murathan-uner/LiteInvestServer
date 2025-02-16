@@ -9,115 +9,116 @@
 @rendermode InteractiveServer
 
 <TelerikTileLayout Columns="OpenedInstruments.Count"
-ColumnWidth="auto"
-RowHeight="100vh"
-Reorderable="true"
-ColumnSpacing="0px"
-RowSpacing="0px"
-Resizable="false"
-OnReorder="@OnReorder">
+                   ColumnWidth="auto"
+                   RowHeight="100vh"
+                   Reorderable="true"
+                   ColumnSpacing="0px"
+                   RowSpacing="0px"
+                   Resizable="false"
+                   OnReorder="@OnReorder">
 
 
 
-	<TileLayoutItems>
-		@foreach (var security in OpenedInstruments)
-		{
-			<TileLayoutItem @key="security.SpecialHash">
-				<HeaderTemplate>
-					<WorkWindowHeader Security="security" OnHeaderClick="(e) => focusWindowByHeaderClick(e)" OnClosingMain="(e) => {OnClosingMain(e);}"></WorkWindowHeader>
-				</HeaderTemplate>
-				<Content>
-					<div class="tile-content">
-						<WorkWindow secHash="@security.SpecialHash" secutityMain="@security" WindowsOpened="@OpenedInstruments.Count" />
-					</div>
-				</Content>
-			</TileLayoutItem>
-		}
-	</TileLayoutItems>
+    <TileLayoutItems>
+        @foreach (var security in OpenedInstruments)
+        {
+            <TileLayoutItem @key="security.SpecialHash">
+                <HeaderTemplate>
+                    <WorkWindowHeader Security="security" OnHeaderClick="(e) => focusWindowByHeaderClick(e)" OnClosingMain="(e) => {OnClosingMain(e);}"></WorkWindowHeader>
+                </HeaderTemplate>
+                <Content>
+                    <div class="tile-content">
+                        <WorkWindow OnMouseEnter="(e) => focusWindowByHeaderClick(e)" secHash="@security.SpecialHash" secutityMain="@security" WindowsOpened="@OpenedInstruments.Count" />
+                    </div>
+                </Content>
+            </TileLayoutItem>
+        }
+    </TileLayoutItems>
 </TelerikTileLayout>
 
 @code {
 
-	public string selectedSecurityHash = "";
+    public string selectedSecurityHash = "";
 
-	private void focusWindowByHeaderClick(string id)
-	{
-		if (_apidataService.SelectedSecurityHash != id){
-			_apidataService.SelectedSecurityHash = id;
-			_apidataService.SelectedSecurityHashChanged?.Invoke();
-		}
-		js.InvokeVoidAsync("focusElementById", id);
-	}
+    private void focusWindowByHeaderClick(string id)
+    {
+        if (_apidataService.SelectedSecurityHash != id)
+        {
+            _apidataService.SelectedSecurityHash = id;
+            _apidataService.SelectedSecurityHashChanged?.Invoke();
+        }
+        js.InvokeVoidAsync("focusElementById", id);
+    }
 
-	private bool shouldNOTrenderafterclick = false;
+    private bool shouldNOTrenderafterclick = false;
 
-	public string lasthashForRender { get; set; } = "";
+    public string lasthashForRender { get; set; } = "";
 
-	ObservableCollection<SecurityApi> OpenedInstruments { get; set; } = new();
+    ObservableCollection<SecurityApi> OpenedInstruments { get; set; } = new();
 
-	protected override void OnInitialized()
-	{
+    protected override void OnInitialized()
+    {
 
-		Console.WriteLine($" {DateTime.Now} On Initialized -> WindowsRenderer");
+        Console.WriteLine($" {DateTime.Now} On Initialized -> WindowsRenderer");
 
-		base.OnInitialized();
-	}
+        base.OnInitialized();
+    }
 
-	protected override Task OnAfterRenderAsync(bool firstRender)
-	{
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
 
-		if (firstRender)
-		{
-			_apidataService.LastwindowOpened += () =>
-			{
-				lasthashForRender = "";
-			};
+        if (firstRender)
+        {
+            _apidataService.LastwindowOpened += () =>
+            {
+                lasthashForRender = "";
+            };
 
-			_apidataService.NewSecOpened += (sec) =>
-			{
-				lasthashForRender = sec.SpecialHash;
+            _apidataService.NewSecOpened += (sec) =>
+            {
+                lasthashForRender = sec.SpecialHash;
 
-				OpenedInstruments.Add(sec);
-				_apidataService.openedInstruments++;
-				InvokeAsync(StateHasChanged);
-			};
+                OpenedInstruments.Add(sec);
+                _apidataService.openedInstruments++;
+                InvokeAsync(StateHasChanged);
+            };
 
 
-		}
+        }
 
-		return base.OnAfterRenderAsync(firstRender);
-	}
+        return base.OnAfterRenderAsync(firstRender);
+    }
 
-	protected override void OnParametersSet()
-	{
-		Console.WriteLine($" {DateTime.Now} ON Parameters Set WindowsRenderer");
+    protected override void OnParametersSet()
+    {
+        Console.WriteLine($" {DateTime.Now} ON Parameters Set WindowsRenderer");
 
-		base.OnParametersSet();
-	}
+        base.OnParametersSet();
+    }
 
-	private void OpenInstrument(SecurityApi sec)
-	{
-		OpenedInstruments.Add(sec);
-		Console.WriteLine($"'{sec.Isin} hash = {sec.SpecialHash}' registered.");
+    private void OpenInstrument(SecurityApi sec)
+    {
+        OpenedInstruments.Add(sec);
+        Console.WriteLine($"'{sec.Isin} hash = {sec.SpecialHash}' registered.");
 
-		//не требуется, так как мы напрямую работем с коллекцией.
-		//InvokeAsync(StateHasChanged);
-	}
+        //не требуется, так как мы напрямую работем с коллекцией.
+        //InvokeAsync(StateHasChanged);
+    }
 
-	protected override bool ShouldRender()
-	{
-		if (shouldNOTrenderafterclick)
-		{
-			Console.WriteLine("Pass Render Windows");
-			shouldNOTrenderafterclick = false;
-			return false;
-		}
+    protected override bool ShouldRender()
+    {
+        if (shouldNOTrenderafterclick)
+        {
+            Console.WriteLine("Pass Render Windows");
+            shouldNOTrenderafterclick = false;
+            return false;
+        }
 
-		return base.ShouldRender();
-	}
+        return base.ShouldRender();
+    }
 
-	public Task OnClosingMain(SecurityApi sec)
-	{
+    public Task OnClosingMain(SecurityApi sec)
+    {
         try
         {
             //await _apidataservice.CloseInstrument(sec);
@@ -134,18 +135,18 @@ OnReorder="@OnReorder">
         }
 
         // Remove tile with the given ID
-		//RegisteredInstruments.Remove(instrument);
-	}
+        //RegisteredInstruments.Remove(instrument);
+    }
 
-	void OnReorder(TileLayoutReorderEventArgs args)
-	{
-		string log = $"<div><strong>Reorder event fired for item with id: {args.Id}</strong>.</div>";
-	
-	}
+    void OnReorder(TileLayoutReorderEventArgs args)
+    {
+        string log = $"<div><strong>Reorder event fired for item with id: {args.Id}</strong>.</div>";
+
+    }
 
     public void Dispose()
     {
-		GC.SuppressFinalize(this);
+        GC.SuppressFinalize(this);
     }
 
 }

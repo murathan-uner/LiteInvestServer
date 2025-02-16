@@ -10,20 +10,20 @@
 
 @implements IDisposable
 
-<TelerikGrid
-    Data="@OrdersData"
-    OnRowClick="@OnRowClicked"
-    RowHeight="30">
+<TelerikGrid Data="@OrdersData"
+             OnRowClick="@OnRowClicked"
+             RowHeight="30"
+             Width="99.99%">
 
     <GridColumns>
-        <GridColumn Width="1fr" Field="@nameof(Order.ExchangeOrderId)"  />
-        <GridColumn Width="1fr" Field="@nameof(Order.SecIsin)"  />
+        <GridColumn Width="1fr" Field="@nameof(Order.ExchangeOrderId)" />
+        <GridColumn Width="1fr" Field="@nameof(Order.SecIsin)" />
         <GridColumn Width="1fr" Field="@nameof(Order.State)" />
-        <GridColumn Width="1fr" Field="@nameof(Order.Side)"/>
-        <GridColumn Width="1fr" Field="@nameof(Order.PriceOrder)"  />
-        <GridColumn Width="1fr" Field="@nameof(Order.TypeOrder)"  />
-        <GridColumn Width="1fr" Field="@nameof(Order.Volume)"  />
-        <GridColumn Width="1fr" Field="@nameof(Order.VolumeExecuted)"/>
+        <GridColumn Width="1fr" Field="@nameof(Order.Side)" />
+        <GridColumn Width="1fr" Field="@nameof(Order.PriceOrder)" />
+        <GridColumn Width="1fr" Field="@nameof(Order.TypeOrder)" />
+        <GridColumn Width="1fr" Field="@nameof(Order.Volume)" />
+        <GridColumn Width="1fr" Field="@nameof(Order.VolumeExecuted)" />
 
     </GridColumns>
 

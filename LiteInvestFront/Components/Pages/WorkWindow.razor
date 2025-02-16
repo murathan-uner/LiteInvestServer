@@ -262,7 +262,7 @@
 </style>
 
 
-<div id="@secutityMain.SpecialHash" tabindex="0">
+<div @onmouseenter="() => {OnMouseEnter?.Invoke(secutityMain.SpecialHash);}" id="@secutityMain.SpecialHash" tabindex="0">
 
     <TelerikGridLayout>
         <GridLayoutColumns>
@@ -299,7 +299,7 @@
 
 
 @code {
-
+    [Parameter] public Action<string> OnMouseEnter { get; set; }
 
     [Parameter]
     public int WindowsOpened {
