@@ -13,12 +13,10 @@
 @implements IDisposable
 
 <TelerikWindow @bind-Visible=poswindowVisible
-Resizable="true"
-Draggable="true"
-MinWidth="30%"
-MinHeight="30%"
-MaxHeight="90%"
-MaxWidth="90%">
+               ContainmentSelector="body"
+               Resizable="true"
+               Draggable="true"
+               Width="60vw">
     <WindowContent>
         <Positions />
     </WindowContent>
@@ -31,12 +29,10 @@ MaxWidth="90%">
 
 </TelerikWindow>
 <TelerikWindow @bind-Visible=orderswindowsVisible
-Resizable="true"
-Draggable="true"
-MinWidth="30%"
-MinHeight="30%"
-MaxHeight="90%"
-MaxWidth="90%">
+               ContainmentSelector="body"
+               Resizable="true"
+               Draggable="true"
+               Width="60vw">
     <WindowContent>
         <Orders />
     </WindowContent>
@@ -49,14 +45,14 @@ MaxWidth="90%">
 </TelerikWindow>
 
 <TelerikWindow @bind-Visible=windowVisible
-Resizable="true"
-MinWidth="300"
-MinHeight="200"
-Centered="true"
-Modal="true"
-MaxWidth="800"
-CloseOnOverlayClick="true"
-MaxHeight="500">
+               Resizable="true"
+               MinWidth="300"
+               MinHeight="200"
+               Centered="true"
+               Modal="true"
+               MaxWidth="800"
+               CloseOnOverlayClick="true"
+               MaxHeight="500">
     <WindowContent>
 
         <TelerikForm Model="@loginInfo">
@@ -101,13 +97,13 @@ MaxHeight="500">
 
         <form class="internalSearch" role="search">
             <TelerikAutoComplete @ref="TelerikComboBox" Data="@Instruments"
-            ValueField="@nameof(SecuritySelected.Isin)"
-            @bind-Value="@AutoComplete"
-            Placeholder="Выберите Инструмент!"
-            Filterable="true"
-            OnChange="OnChangeHandler"
-            FilterOperator="@StringFilterOperator.Contains"
-            ShowClearButton="true" />
+                                 ValueField="@nameof(SecuritySelected.Isin)"
+                                 @bind-Value="@AutoComplete"
+                                 Placeholder="Выберите Инструмент!"
+                                 Filterable="true"
+                                 OnChange="OnChangeHandler"
+                                 FilterOperator="@StringFilterOperator.Contains"
+                                 ShowClearButton="true" />
         </form>
         @*     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -278,7 +274,7 @@ MaxHeight="500">
             ApiDataService.userName = loginInfo.Login;
 
             var res = await _serverService.Login(loginInfo.Login, loginInfo.Password);
-            //var res = await ApiDataService.LogIn("samujan1@yandex.ru", "pass2");
+            //var res = await _serverService.Login("samujan1@yandex.ru", "pass2");
 
 
             //TODO по хорошему на сервере надо убрать ответ NULL

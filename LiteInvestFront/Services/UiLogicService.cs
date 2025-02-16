@@ -30,9 +30,9 @@ namespace LiteInvestFront.Services;
 /// </summary>
 public class UiLogicService:IDisposable
 {
-	//TODO: перенести все нормально в настройки
+    //TODO: перенести все нормально в настройки
 
-	public int openedInstruments { get; set; } = 0;
+    public int openedInstruments { get; set; } = 0;
 
 	public string userName { get; set; }
 	public Action<SecurityApi, double, double> NewMaxMin { get; set; }
