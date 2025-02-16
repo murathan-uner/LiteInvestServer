@@ -16,7 +16,7 @@ namespace ConnectorService
         /// <summary>
         /// Преднастроенные масштабы агрегирования
         /// </summary>
-        public static readonly List<int> ScaleList = new List<int>() { 1, 5, 10, 15, 100 };
+        public List<int> ScaleList;
 
         /// <summary>
         ///Количество уровней в стакане в обе стороны
@@ -39,13 +39,14 @@ namespace ConnectorService
         /// </summary>
         /// <param name="connector"></param>
         /// <returns></returns>
-        public static AggregateGlass Build(ConnectorBase connector)
+        public static AggregateGlass Build(ConnectorBase connector, List<int> scaleList)
         {
             lock (buildLocker)
             {
                 if (Instance == null)
                 {
                     Instance = new AggregateGlass(connector);
+                    Instance.ScaleList = scaleList;
                 }
                 return Instance;
             }
@@ -121,7 +122,7 @@ namespace ConnectorService
                         {
                             if (!AllInsideQuotes.ContainsKey(md.SecurityId))        // проверка, создан ли чистые бланк стаканов для всех масштабов в 6000 строк
                             {
-                                CreateBlankInsideQuotes(md);                        // создаем все бланки стаканов по инструменту, по которому пришел стакан
+                                CreateBlankInsideQuotes(md);                        // создаем бланк стаканов по инструменту
                             }
 
                             var security = connector.GetSecurityByIsin(md.SecurityId);
@@ -156,10 +157,10 @@ namespace ConnectorService
         {
             decimal currentPrice = 0;
             decimal currentVolume = 0;
-            //var d =  AllInsideQuotes[md.SecurityId].ScaledQuotes[scale];
-            //d.Clear(); d = null;
-            AllInsideQuotes[md.SecurityId].ScaledQuotes[scale] = (List<MarketDepthLevel>)AllInsideQuotes[md.SecurityId].BlankScaledQuotes[scale].Clone();
+
             CheckNeedExpansionBlankGlass(md);
+            AllInsideQuotes[md.SecurityId].ScaledQuotes[scale] = (List<MarketDepthLevel>)AllInsideQuotes[md.SecurityId].BlankScaledQuotes[scale].Clone();
+            
             
             for (int y = 0; y < md.Asks.Count; y++)              // продажи
             {
@@ -263,11 +264,11 @@ namespace ConnectorService
         /// Подписаться на все пренастроенные агрегированные стаканы предустановленных масштабов scaleList
         /// </summary>
         /// <param name="isin"></param>
-        public void SubscribAllScaledGlass(string isin)
+        public void SubscribAllScaledGlass(string isin, bool emulation)
         {
             foreach (var scale in ScaleList)
             {
-                //connector.Emulation = true;
+                connector.Emulation = emulation;
                 connector.Register_Unregister_MarketDepth(isin, true);
                 if (!AllSubscribedScaledGlass.ContainsKey(isin) || AllSubscribedScaledGlass[isin] == null)
                 {
@@ -329,9 +330,7 @@ namespace ConnectorService
             }
         }
 
-        //ToDo Цент стакана посчитать и отдать.
-
-
+       
         /// <summary>
         /// Получить все аггрегированные  стаканы по одному инструменту 
         /// </summary>

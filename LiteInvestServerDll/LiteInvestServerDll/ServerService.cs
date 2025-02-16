@@ -9,6 +9,7 @@ using LiteInvest.Entity.PlazaEntity;
 using LiteInvest.Entity.ServerEntity;
 using LiteInvest.Entity.Server2;
 using System.Runtime.InteropServices;
+using ConnectorService;
 
 public class ServerService
 {
@@ -35,11 +36,14 @@ public class ServerService
     ConcurrentDictionary<string, PositionOnBoard> RealPositions = new();
 
     PlazaConnector plaza = null;
+    AggregateGlass aggregateGlass;
 
     object savelocker = new object();
 
     static string data = "C:\\ServerData";
     DirectoryInfo directoryInfo = new DirectoryInfo(data);
+
+    PlazaOptions plazasimulation = new PlazaOptions();
 
     string securitiesBdName = $"{data}\\securities.xml";
     string userdBdName = $"{data}\\users.xml";
@@ -87,7 +91,7 @@ public class ServerService
         await Console.Out.WriteLineAsync($"{dt} {message}").ConfigureAwait(false);
     }
 
-
+    public List<int> ScaleList;
 
     public ServerService()
     {
@@ -153,7 +157,12 @@ public class ServerService
 			LoadTicksFromStart = false,
 		};
 
-		plaza.UpdatePosition += pos =>
+        ScaleList = PlazaOptions.ScaleList;
+        aggregateGlass = AggregateGlass.Build(plaza, ScaleList);    
+        aggregateGlass.NewInsideQuotesEvent += AggregateGlass_NewInsideQuotesEvent;
+        
+
+        plaza.UpdatePosition += pos =>
 		{
 			RealPositions[pos.SecurityId] = pos;
 			LogMessageAsync($"New Pos Info sec_id={pos.SecurityId} {pos.XPosValueCurrent} ");
@@ -183,7 +192,11 @@ public class ServerService
 
 
 				var user = UsersContext[username];
-				foreach (var orderaction in user.PrivateOrderEventsForUsers.Values)
+                if (user?.PrivateOrderEventsForUsers?.Values == null)
+                {
+                    return;
+                }
+                foreach (var orderaction in user.PrivateOrderEventsForUsers.Values)
 				{
 					orderaction?.Invoke(plazaOrder);
 				}
@@ -316,25 +329,45 @@ public class ServerService
 		{
 			foreach (var sec in Securities)
 			{
-				plaza.Securities.TryAdd(sec.Key, new Security(sec.Value.ShortName, sec.Value.FullName, SecurityType.Futures, sec.Value.ClassCode, sec.Value.Lot)
-				{
-					Id = sec.Value.id,
-					Name = "Emulation Security",
-					ShortName = sec.Value.ShortName,
-					PriceStep = sec.Value.PriceStep,
-					PriceLimitLow = sec.Value.PriceLimitHigh,
-					PriceLimitHigh = sec.Value.PriceLimitLow,
-					PriceStepCost = 1,
+                plaza.Securities.TryAdd(sec.Key, new Security(sec.Value.ShortName, sec.Value.FullName, SecurityType.Futures, sec.Value.ClassCode, sec.Value.Lot)
+                {
+                    Id = sec.Value.id,
+                    Name = "Emulation Security",
+                    ShortName = sec.Value.ShortName,
+                    PriceStep = sec.Value.PriceStep,
+                    PriceLimitLow = sec.Value.PriceLimitLow,
+                    PriceLimitHigh = sec.Value.PriceLimitHigh,
+                    PriceStepCost = 1,
 
-				});
+                });
 			}
 		}
 
 		plaza.Connect();
 
-
 	}
 
+    /// <summary>
+    /// Пришел агрегированный стакан 
+    /// </summary>
+    /// <param name="insideQuotes"></param>
+    /// <exception cref="NotImplementedException"></exception>
+    private void AggregateGlass_NewInsideQuotesEvent(InsideQuotes insideQuotes)
+    {
+        if (!SubscriptionsForScaledOrderBook.ContainsKey(insideQuotes.SecurityId) // не подписывались на этот инструмент
+            || SubscriptionsForScaledOrderBook[insideQuotes.SecurityId] == null
+            )
+        {
+            return;
+        }
+        foreach (var subscription in SubscriptionsForScaledOrderBook[insideQuotes.SecurityId])
+        {
+            subscription.Value?.Invoke(insideQuotes);
+        }
+
+
+
+    }
 
     #region HelperMethods
 
@@ -398,7 +431,14 @@ public class ServerService
     /// (есть проблемы, если наш юзер отклбчится как то криво, мы не сможем удалить это)...
     /// </summary>
     ConcurrentDictionary<string,  ConcurrentDictionary<string,Action<MarketDepth>>> SubscriptionsForOrderBook { get; set; } = new();
-	ConcurrentDictionary<string,  ConcurrentDictionary<string, Action<List<Trade>>>> SubscriptionsForTicks { get; set; } = new();
+
+    /// <summary>
+    /// Подписки на агрегированный сткан
+    /// ключ - id инструмента, value - callback метод обработки в клиенте
+    /// </summary>
+    ConcurrentDictionary<string, ConcurrentDictionary<string, Action<InsideQuotes>>> SubscriptionsForScaledOrderBook { get; set; } = new(); 
+
+    ConcurrentDictionary<string,  ConcurrentDictionary<string, Action<List<Trade>>>> SubscriptionsForTicks { get; set; } = new();
 
 
 
@@ -439,13 +479,14 @@ public class ServerService
 
 	}
 
-    /// <summary>
+    /*  Заменил на SubscribeForScaledOrderBook
+     * /// <summary> 
     /// Проблема этого метода, что секьюритис самой плазы долго получаем... 
     /// </summary>
     /// <param name="secid"></param>
     /// <param name="action"></param>
     /// <returns></returns>
-	public async Task<SubscriptionAnswer> SubscribeForOrderBook(string secid/*, string username,*/ ,Action<MarketDepth> action)
+	public async Task<SubscriptionAnswer> SubscribeForOrderBook(string secid /, string username,/ ,Action<MarketDepth> action)
 	{
 		//if (!UsersContext.ContainsKey(username))
 		//	return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
@@ -469,7 +510,42 @@ public class ServerService
 			Id = guid
 		};
 
-	}
+	}*/
+
+    /// <summary>
+    /// Подписка на новый агрегированный стакан AVP
+    /// </summary>
+    /// <param name="secid"></param>
+    /// <param name="action"></param>
+    /// <returns></returns>
+	public async Task<SubscriptionAnswer> SubscribeForScaledOrderBook(string secid, Action<InsideQuotes> action)
+    {
+        //if (!UsersContext.ContainsKey(username))
+        //	return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+        if (!SubscriptionsForScaledOrderBook.ContainsKey(secid))
+            SubscriptionsForScaledOrderBook[secid] = new();
+
+
+        if (!plaza.Securities.ContainsKey(secid))
+            return new SubscriptionAnswer() { Success = false, ErrorMessage = "No Sec Found" };
+
+
+
+        aggregateGlass.SubscribAllScaledGlass(secid, plazasimulation.Simulation);
+
+        string guid = Guid.NewGuid().ToString();
+        //проверить будет ли это автоматом работать
+        var result = SubscriptionsForScaledOrderBook[secid].TryAdd(guid, action);
+
+        return new SubscriptionAnswer()
+        {
+            Success = result,
+            Id = guid
+        };
+
+    }
+
 
     public async Task<SubscriptionAnswer> SubscribeForTicks(string secid, Action<List<Trade>> action)
     {

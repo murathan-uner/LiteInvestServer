@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\AggregateGlass\AggregateGlass.csproj" />
     <ProjectReference Include="..\..\LiteInvest.Entity\LiteInvest.Entity.csproj" />
     <ProjectReference Include="..\..\PlazaEngine\PlazaEngine\PlazaEngine.csproj" />
   </ItemGroup>

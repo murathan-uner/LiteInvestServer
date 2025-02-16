@@ -63,18 +63,30 @@ namespace PlazaEngine.Engine
 
                             decimal HiPrice = sec.PriceLimitHigh != 0 ? sec.PriceLimitHigh - 4 * (sec.PriceLimitHigh - sec.PriceLimitLow) / 10 : 1000;
                             decimal LoPrice = sec.PriceLimitLow != 0 ? sec.PriceLimitLow + 4 * (sec.PriceLimitHigh - sec.PriceLimitLow) / 10 : 100;
-                            if (HiPrice == LoPrice)
+                            if (HiPrice < LoPrice)  // в режиме эмуляции на эмулированные инструменты бывает так прилетает
+                            {
+                                (HiPrice, LoPrice) = (LoPrice , HiPrice);   // меняем местами
+                            }
+                            if (HiPrice == LoPrice)     // и так бывает
                             {
                                 if (sec.PriceStep != 0)
                                 {
                                     HiPrice = HiPrice + sec.PriceStep * 1000;
                                     LoPrice = LoPrice - sec.PriceStep * 1000;
+                                    
                                 }
                                 else
                                 {
                                     HiPrice = HiPrice * 1.1m;
                                     LoPrice = LoPrice * 0.9m;
+                                    sec.PriceStep = 0.1m;
                                 }
+                            }
+                            if ((HiPrice - LoPrice) > sec.PriceStep * 4000)     // и так бывает
+                            {
+                                var Hi = (HiPrice + LoPrice) / 2 + sec.PriceStep * 2000;
+                                var Lo = (HiPrice + LoPrice) / 2 - sec.PriceStep * 2000;
+                                (HiPrice, LoPrice) = (Hi, Lo);
                             }
                             if (md.Asks.Count < 10 || md.Bids.Count < 10)
                             {
@@ -244,14 +256,21 @@ namespace PlazaEngine.Engine
             
         }
 
-        
 
+        object subscribeLocker = new object();
         internal void Subscribe(Security security)
         {
-            _depthEmulators.TryAdd(security.Id, security);
-            if (!threadEmulating.IsAlive)
+            lock (subscribeLocker)
             {
-                threadEmulating.Start();
+                if (_depthEmulators.ContainsKey(security.Id))
+                {
+                    return;
+                }
+                _depthEmulators.TryAdd(security.Id, security);
+                if (!threadEmulating.IsAlive)
+                {
+                    threadEmulating.Start();
+                }
             }
         }
 

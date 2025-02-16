@@ -60,7 +60,7 @@ namespace AvpPlazaTester
 
         public List<int> ScaleList
         {
-            get => AggregateGlass.ScaleList;
+            get => aggregateGlass.ScaleList;
             set
             {
                 OnPropertyChange();
@@ -119,7 +119,7 @@ namespace AvpPlazaTester
             this.plaza = plaza;
             Securities = new BindingList<Security>();
             
-            aggregateGlass = AggregateGlass.Build(plaza);
+            aggregateGlass = AggregateGlass.Build(plaza, new List<int>() { 1, 5, 10, 20, 50, 100 });
             aggregateGlass.NewInsideQuotesEvent += AggregateGlass_NewInsideQuotesEvent;
 
             Plaza_SecuritiesLoadedEvent();
@@ -262,7 +262,7 @@ namespace AvpPlazaTester
                 return;
             }
 
-            aggregateGlass.SubscribAllScaledGlass(selectedSecurity.Id);
+            aggregateGlass.SubscribAllScaledGlass(selectedSecurity.Id, true);
         }
         
 

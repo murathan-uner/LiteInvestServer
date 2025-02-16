@@ -657,6 +657,9 @@ namespace PlazaEngine.Engine
                 
                 _statusNeeded = ServerConnectStatus.Connect;
 
+                if (Emulation)
+                    return;
+
                 _threadPrime = new Thread(PrimeWorkerThreadSpace);
                 _threadPrime.Name = "PrimeWorkerThreadSpace";
                 _threadPrime.CurrentCulture = new CultureInfo("ru-RU");

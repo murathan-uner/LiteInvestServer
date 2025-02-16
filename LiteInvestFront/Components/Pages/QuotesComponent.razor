@@ -32,7 +32,7 @@ Pageable="false"
 Sortable="false"
 PageSize="@pagesize">
     <GridColumns>
-        <GridColumn Width="40%" Field="@nameof(MarketDepthLevel.Volume)" HeaderClass="grid-header" />
+        <GridColumn Width="40%" Field="@nameof(MarketDepthLevel.VolumeString)" HeaderClass="grid-header" />
         <GridColumn Width="40%" Field="@nameof(MarketDepthLevel.Price)" HeaderClass="grid-header" />
         <GridColumn Width="20%" Field="@nameof(MarketDepthLevel.RestVolume)" HeaderClass="grid-header" />
     </GridColumns>
@@ -40,7 +40,7 @@ PageSize="@pagesize">
         <td style="@GetStyleForQuote(Quotes)" class="">
             @if (Quotes.Volume != 0)
             {
-                @Quotes.Volume
+                @Quotes.VolumeString
             }
         </td>
         <td class="@GetClassForQuote(Quotes) price">
@@ -116,6 +116,8 @@ PageSize="@pagesize">
         }
     }
 
+    private string ScaleString { get; set; } = "x1";
+
     bool busyscroll = false;
     private void OnScaleChanged(int newscale)
     {
@@ -142,10 +144,16 @@ PageSize="@pagesize">
     bool _firstrender;
 
     string idsubscription;
+
+    Thread threadUpdateQuotesGrid;
+    object threadUpdateQuotesGridStartLocker = new object();
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            cancellationToken = cancelTokenSource.Token;
+            ScaleList = _serverService.ScaleList;
 
             jsInteropService.OnScroll += OnScroll;
 
@@ -156,12 +164,11 @@ PageSize="@pagesize">
 
             await JSRuntime.InvokeVoidAsync("addHotkeyListener", secutityMain.SpecialHash);
 
-            Scale = secutityMain.Scale;
+            Scale = 0;  // ЭТО не значение масштаба агрегирования, а индекс, указывающий из ScaleList, с задаными масштабами
 
-            if (Scale == 0)
-                Scale = 1;
+            //var res = await _serverService.SubscribeForOrderBook(secutityMain.id, OnNewMarketDepth);
 
-            var res = await _serverService.SubscribeForOrderBook(secutityMain.id, OnNewMarketDepth);
+            var res = await _serverService.SubscribeForScaledOrderBook(secutityMain.id, OnNewScaledMarketDepth);
 
             if (res.Success)
             {
@@ -180,10 +187,48 @@ PageSize="@pagesize">
 
             _firstrender = true;
 
+            lock (threadUpdateQuotesGridStartLocker)
+            {
+                if (threadUpdateQuotesGrid == null || threadUpdateQuotesGrid.ThreadState != ThreadState.Running)
+                {
+
+                    threadUpdateQuotesGrid = new Thread(ThreadUpdateQuotesGrid);
+                    threadUpdateQuotesGrid.Name = "ThreadUpdateQuotesGrid";
+                    threadUpdateQuotesGrid.IsBackground = true;
+                    threadUpdateQuotesGrid.Start();
+                }
+            }
+
         }
 
         base.OnAfterRender(firstRender);
     }
+
+    private List<int> ScaleList;
+
+    private void OnNewScaledMarketDepth(InsideQuotes insideQuotes)
+    {
+        if (secutityMain?.id != insideQuotes.SecurityId)
+        {
+            return;
+        }
+        if (Scale < 0)
+        {
+            Scale = 0;
+        }
+        if (Scale >= ScaleList.Count)
+        {
+            Scale = ScaleList.Count - 1;
+        }
+        int myScale = ScaleList[Scale];
+
+        Quotes = insideQuotes.ScaledQuotes[myScale];
+        bestbidIndex = insideQuotes.CentreQuotes[myScale];
+
+        //UpdateQuotesGrid();   //(AVP) обновление сделано автоматическое в потоке
+
+    }
+
 
     private void OnKeyDown(string windowId, string keyCode, bool isCtrl, bool isShift)
     {
@@ -218,29 +263,28 @@ PageSize="@pagesize">
 
             if (keyCode == plusHotKey)
             {
-                if (Scale >= 5)
+                if (Scale < ScaleList.Count-1)
                 {
-                    var newScale = Scale - 5;
-
-                    if (newScale == 0)
-                        Scale = 1;
-                    else Scale = newScale;
-
-                    Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
-
+                    Scale++;
+                    Console.WriteLine($"{secutityMain.Isin} New Agregation Scale {Scale}");
+                }
+                else if (Scale > ScaleList.Count -1)
+                {
+                    Scale = ScaleList.Count - 1;    // предохранитель, если вдруг выскочит вверх за границу ScaleList
                 }
             }
 
-
-
             if (keyCode == minusHotKey)
             {
-                if (Scale == 1)
-                    Scale += 4;
-                else Scale += 5;
-                //UpdateAll();
-
-                Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
+                if (Scale > 0)
+                {
+                    Scale--;
+                    Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
+                }
+                else if (Scale < 0)
+                {
+                    Scale = 0; // предохранитель, если вдруг выскочит ниже 0
+                }
             }
 
         }
@@ -281,7 +325,7 @@ PageSize="@pagesize">
                 if (IndexesQuotes.ContainsKey(myorder.PriceOrder) && Quotes.Count > IndexesQuotes[myorder.PriceOrder])
                 {
                     Quotes[IndexesQuotes[myorder.PriceOrder]].RestVolume = myorder.Volume - myorder.VolumeExecuted;
-                    UpdateQuotesGrid();
+                    //UpdateQuotesGrid();   // (AVP) обновление автоматическое в потоке
                 }
 
             }
@@ -295,7 +339,7 @@ PageSize="@pagesize">
                 if (IndexesQuotes.ContainsKey(myorder.PriceOrder) && Quotes.Count > IndexesQuotes[myorder.PriceOrder])
                 {
                     Quotes[IndexesQuotes[myorder.PriceOrder]].RestVolume = null;
-                    UpdateQuotesGrid();
+                    //UpdateQuotesGrid();   // (AVP) обновление автоматическое в потоке
                 }
 
             }
@@ -538,6 +582,28 @@ PageSize="@pagesize">
         return base.ShouldRender();
     }
 
+    /// <summary>
+    /// поток, который сам обновляет стакан и скроллинг
+    /// </summary>
+    private void ThreadUpdateQuotesGrid()
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+
+                Thread.Sleep(100);  // 10 раз в секунду
+                ScaleString = $"x{ScaleList[Scale]}";
+                UpdateQuotesGrid();
+                AlgoQuotesScale2(true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+    }
+
     private void UpdateQuotesGrid()
     {
         //QuotesGrid?.Rebind();
@@ -555,6 +621,39 @@ PageSize="@pagesize">
             }
         }).GetAwaiter().GetResult();
     }
+
+    /// <summary>
+    /// Масштабирование агрегированного стакана запускаемого из отдельного потока
+    /// </summary>
+    /// <param name="scroll"></param>
+    private void AlgoQuotesScale2(bool scroll = true)
+    {
+        if (scroll)
+        {
+            //ToDo выделить в отдельный параметр PlazaOption диферент скролинга = 10
+
+            if (Math.Abs(prevbestbid - bestbidIndex) <= 10)  // если центр сместился более чем на 10, то центруем, чтоб стакан не мелкал постоянно при малом смещении центра цены
+            {
+                return;
+            }
+            prevbestbid = bestbidIndex;
+            Helper.CreateTimerAndStart(() =>
+            {
+
+                JSRuntime.InvokeVoidAsync("getScrollEvent2", GridTableId);
+
+                WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
+
+
+                busy = false;
+                busyscroll = false;
+
+                middlescroll = true;
+
+            }, 100, false);
+        }
+    }
+
 
     int i = 0;
 
@@ -587,7 +686,7 @@ PageSize="@pagesize">
 
             UpdateBestBidIndex(bestbidagregated);
 
-            UpdateQuotesGrid();
+            //UpdateQuotesGrid(); //(AVP) обновление автоматическое в потоке
 
             //при изменении масштаба скролл не нужен, тем более у нас и так цена будет выше макс
 
@@ -598,7 +697,7 @@ PageSize="@pagesize">
                     JSRuntime.InvokeVoidAsync("getScrollEvent2", GridTableId);
 
                     WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
-                    UpdateQuotesGrid();
+                    //UpdateQuotesGrid(); //(AVP) обновление автоматическое в потоке
 
                     busy = false;
                     busyscroll = false;
@@ -616,7 +715,7 @@ PageSize="@pagesize">
         else
         {
             Quotes = CompareOldWithNewAndPlaceIndexes(newdictionaryQuotes, QuotesDictionary, Quotes, _serverService.crypto);
-            UpdateQuotesGrid();
+            //UpdateQuotesGrid(); //(AVP) обновление автоматическое в потоке
             UpdateBestBidIndex(bestbidagregated);
         }
 
@@ -634,7 +733,7 @@ PageSize="@pagesize">
                 {
 
                     WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
-                    UpdateQuotesGrid();
+                    //UpdateQuotesGrid(); //(AVP) обновление автоматическое в потоке
                     busy = false;
 
                 }, 500, false);
@@ -652,7 +751,7 @@ PageSize="@pagesize">
                 {
 
                     WorkWindow.ScrollTo(bestbidIndex, QuotesGrid);
-                    UpdateQuotesGrid();
+                    //UpdateQuotesGrid(); //(AVP) обновление автоматическое в потоке
                     busy = false;
 
                 }, 500, false);
@@ -851,9 +950,9 @@ PageSize="@pagesize">
 
             foreach (var order in Orders)
             {
-               // var agregatedQuotePrice =  order.Key - order.Key % (secutityMain.PriceStep * Scale);
-               if (!IndexesQuotes.ContainsKey(order.Key))
-                   continue;
+                // var agregatedQuotePrice =  order.Key - order.Key % (secutityMain.PriceStep * Scale);
+                if (!IndexesQuotes.ContainsKey(order.Key))
+                    continue;
 
                 copy[IndexesQuotes[order.Key]].RestVolume = order.Value.Volume - order.Value.VolumeExecuted;
 
@@ -903,8 +1002,8 @@ PageSize="@pagesize">
             {
 
             {
-            var skip = (int)gridStateEventArgs.GridState.Skip;
-        UpdateMaxMinFromScroll(skip);
+        var skip = (int)gridStateEventArgs.GridState.Skip;
+    UpdateMaxMinFromScroll(skip);
     }
     }*/
 
@@ -979,10 +1078,10 @@ PageSize="@pagesize">
 
         Orders.TryGetValue(level.Price, out var _order);
 
-         if (_order == null)
-         	Console.WriteLine("No Order Found in Row");
+        if (_order == null)
+            Console.WriteLine("No Order Found in Row");
 
-         _serverService.CancelOrder( _uilogicService.userName, _order);
+        _serverService.CancelOrder( _uilogicService.userName, _order);
     }
 
     public double minchart { get; set; }// = 0;
@@ -1108,6 +1207,12 @@ PageSize="@pagesize">
 
     }
 
+    /// <summary>
+    ///Токен для завершения отдельного потока Thread threadUpdateQuotesGrid 
+    /// </summary>
+    CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
+    CancellationToken cancellationToken;
+
     public void Dispose()
     {
         jsInteropService.OnKeyDown -= OnKeyDown;
@@ -1118,6 +1223,8 @@ PageSize="@pagesize">
        // ApiDataService.NewQuotes -= OnNewMarketDepth;
        // ApiDataService.NewMyOrder -= NewMyOrder;
        
+        cancelTokenSource.Cancel();  // команда завершить поток Thread threadUpdateQuotesGrid;
+
     }
 
 
