@@ -287,8 +287,8 @@
 
             </Telerik.Blazor.Components.GridLayoutItem>
             <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="3">
-
-                <QuotesComponent @key="secutityMain.SpecialHash" secutityMain="@secutityMain" pagesize="@pagesize"></QuotesComponent>
+                <TelerikTextBox  Value="@ScaleString" Size="sm" ReadOnly="true" ></TelerikTextBox>
+                <QuotesComponent OnScaleStringChangeEvent="ScaleStringChangeEvent" @key="secutityMain.SpecialHash" secutityMain="@secutityMain" pagesize="@pagesize"></QuotesComponent>
 
             </Telerik.Blazor.Components.GridLayoutItem>
         </GridLayoutItems>
@@ -310,6 +310,22 @@
         }
     }
 
+    private string ScaleString
+    {
+        get;
+        set;
+    } = "x1";
+
+    private void ScaleStringChangeEvent(string scaleString)
+    {
+        InvokeAsync(() =>
+        {
+            ScaleString = scaleString;
+            StateHasChanged();
+        });
+
+    }
+
     static string plusHotKey = "Equal";
     static string minusHotKey = "Minus";
     static string cancelHotKey = "KeyC";
@@ -317,6 +333,7 @@
     [Parameter] public string secHash { get; set; }
     [Parameter] public SecurityApi secutityMain { get; set; }
     [Parameter] public string lastsecHashOpened { get; set; }
+
 
 
     private string WindowId { get; set; } = Guid.NewGuid().ToString();

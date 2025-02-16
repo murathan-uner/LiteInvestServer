@@ -18,6 +18,7 @@
 @*  *@
 @* *@
 
+
 <TelerikGrid @ref="QuotesGrid" Id="@GridTableId"
 OnRowClick="@OnRowClickHandler"
 OnRowContextMenu="@OnRowClickRight"
@@ -69,8 +70,11 @@ PageSize="@pagesize">
 
     [Parameter] public int pagesize { get; set; }
     [Parameter] public SecurityApi secutityMain { get; set; }
+    [Parameter] public EventCallback<string> OnScaleStringChangeEvent { get; set; }
 
     public TelerikGrid<MarketDepthLevel> QuotesGrid { get; set; }
+
+
     List<MarketDepthLevel> Quotes { get; set; }
     /// <summary>
     /// Индекс к которому мы должны таблицу откскроллить!
@@ -115,8 +119,18 @@ PageSize="@pagesize">
             _scale = value;
         }
     }
-
-    private string ScaleString { get; set; } = "x1";
+    private string scaleString { get; set; } = "x1";
+    private string ScaleString {
+        get => scaleString;
+        set 
+        {
+            if (scaleString != value)
+            {
+                scaleString = value;
+                OnScaleStringChangeEvent.InvokeAsync(value);
+            }
+        } 
+    } 
 
     bool busyscroll = false;
     private void OnScaleChanged(int newscale)
@@ -267,6 +281,7 @@ PageSize="@pagesize">
                 {
                     Scale++;
                     Console.WriteLine($"{secutityMain.Isin} New Agregation Scale {Scale}");
+                    
                 }
                 else if (Scale > ScaleList.Count -1)
                 {
@@ -280,6 +295,7 @@ PageSize="@pagesize">
                 {
                     Scale--;
                     Console.WriteLine($"{secutityMain.Isin} New Agregation Step {Scale}");
+                   
                 }
                 else if (Scale < 0)
                 {
@@ -591,7 +607,6 @@ PageSize="@pagesize">
         {
             try
             {
-
                 Thread.Sleep(100);  // 10 раз в секунду
                 ScaleString = $"x{ScaleList[Scale]}";
                 UpdateQuotesGrid();
@@ -614,6 +629,7 @@ PageSize="@pagesize">
             {
                 QuotesGrid.Data = Quotes;
                 QuotesGrid?.Rebind();
+                
             }
             catch (Exception ex)
             {
