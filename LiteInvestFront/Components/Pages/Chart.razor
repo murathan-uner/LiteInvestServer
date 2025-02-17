@@ -109,7 +109,7 @@
             ChangeScaleOfChart();
         }
 
-        base.OnInitializedAsync();
+        await base.OnInitializedAsync();
     }
 
     private void ProcessNewMaxMin(SecurityApi sec, double max, double min)

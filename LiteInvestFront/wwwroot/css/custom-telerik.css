@@ -1,0 +1,142 @@
+/************/
+/*   Grid  */
+/************/
+.grid-cluster {
+    border: none !important;
+    border-right: 1px solid darkgray !important;
+}
+
+.chart-wrapper {
+    position: absolute !important;
+    right: 0 !important;
+    top: 0 !important;
+}
+
+/************/
+/*   Chart  */
+/************/
+.chart-wrapper-wrapper {
+    overflow: hidden !important;
+    position: relative !important;
+}
+
+.chart-wrapper {
+    position: absolute !important;
+    right: 0 !important;
+    top: 0 !important;
+}
+
+/************/
+/* Splitter */
+/************/
+.lm_splitter:hover {
+    background-color: darkgray !important;
+}
+
+.main-splitter-container {
+    display: flex;
+    width: 100%;
+    height: calc(100vh - 20px);
+    position: relative; /* Required for absolute gutter positioning */
+}
+
+.splitter-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative; /* Required for absolute gutter positioning */
+}
+
+.main-split-pane, .split-pane {
+    background: lightgray;
+    position: relative; /* Needed for gutter to overlap */
+}
+/*.clusters-pane {
+    flex-grow: 1;
+}
+.chart-pane {
+    flex-grow: 1.5;
+}
+.quotes-pane {
+    flex-grow: 0.5;
+}*/
+
+.split-gutter {
+    width: 7px; /* Visible gutter width */
+    cursor: ew-resize;
+/*    background: linear-gradient(to right, transparent 0px, transparent 3px, darkgray 3px, darkgray 4px, transparent 4px, transparent 7px);*/
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 10; /* Ensure it's above panes */
+    transform: translateX(-50%); /* Center gutter between panes */
+}
+
+/*****************/
+/* Golden layout */
+/*****************/
+.lm_splitter.lm_horizontal {
+    width: 3px !important;
+}
+
+    .lm_splitter.lm_horizontal .lm_drag_handle {
+        width: 8px !important;
+    }
+
+.lm_splitter.lm_vertical {
+    height: 3px !important;
+}
+
+    .lm_splitter.lm_vertical .lm_drag_handle {
+        height: 8px !important;
+    }
+
+.lm_content {
+/*    padding-left: 4px !important;*/
+}
+
+.chooseColor {
+    width: 10px;
+    height: 10px;
+    background: #fff;
+    float: left;
+    margin: 5px 5px 0 0;
+    cursor: pointer;
+}
+
+    .chooseColor .selectedColor {
+        width: 10px;
+        height: 10px;
+    }
+
+    .chooseColor ul {
+        margin-top: 8px;
+        display: none;
+        box-shadow: 2px 2px 3px rgba( 0, 0, 0, 0.7 );
+        z-index: 1000;
+    }
+
+    .chooseColor:hover ul {
+        display: block;
+    }
+
+/*    .chooseColor ul,*/
+    .chooseColor ul li {
+        margin: 0;
+        padding: 0;
+        list-style-type: none;
+    }
+
+        .chooseColor ul li {
+            width: 40px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+            .chooseColor ul li:hover {
+                border: 1px solid orange;
+                width: 40px;
+                height: 20px;
+            }
+
+;
