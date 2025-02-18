@@ -339,9 +339,26 @@ window.registerViewportChangeCallbackForChart = (dotnetHelper) => {
     });
 }
 
-window.initGoldenLayout = (windowId, idx) => {
-    new MainSplitter("main-splitter-container-" + windowId);
-    new Splitter("clusters-container-" + windowId);
+//window.initGoldenLayout = (windowId, idx) => {
+//}
+
+window.initSplitter = (windowId, idx) => {
+
+    let observer = new MutationObserver(() => {
+        let mainSplitter = document.getElementById("main-splitter-container-" + windowId);
+        let clustersSplitter = document.getElementById("clusters-container-" + windowId);
+        if (mainSplitter) {
+            new MainSplitter("main-splitter-container-" + windowId);
+        }
+        if (clustersSplitter) {
+            new Splitter("clusters-container-" + windowId);
+        }
+        if (mainSplitter && clustersSplitter) {
+            observer.disconnect();
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
 }
 
 window.getElementSizeById = (id) => {

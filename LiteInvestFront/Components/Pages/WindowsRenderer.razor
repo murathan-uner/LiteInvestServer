@@ -93,7 +93,7 @@ OnReorder="@OnReorder">
                 _apidataService.openedInstruments++;
 
                 string windowId = sec.SpecialHash;
-                JSRuntime.InvokeVoidAsync("initGoldenLayout", [windowId, OpenedInstruments.Count - 1]);
+                JSRuntime.InvokeVoidAsync("initSplitter", [windowId, OpenedInstruments.Count - 1]);
 
                 InvokeAsync(StateHasChanged);
             };
