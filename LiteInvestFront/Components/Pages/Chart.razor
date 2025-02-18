@@ -1,45 +1,50 @@
-﻿@using LiteInvestFront.Entity
+﻿@using LiteInvestFront.Components.Common
+@using LiteInvestFront.Entity
 @using LiteInvestFront.Services
 @using LiteInvest.Entity.PlazaEntity
 @using LiteInvest.Entity.ServerEntity
 @using LiteInvestServerDll
+@using System.Collections.Concurrent
+@using System.Timers
+@inject IJSRuntime JSRuntime
 
 @inject UiLogicService _uilogicservice
 @inject ServerService _serverService
 
 @implements IDisposable
 
-<TelerikChart Height="calc(100vh - 100px)" @ref="Chart2" Class="chart" Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%">
+<TelerikChart @ref="MainChart" Class="chart" Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%" Height="@Constants.VIEWPORT_HEIGHT_SIZE">
 
     <ChartLegend Visible="false"></ChartLegend>
     <ChartPannable Enabled="false"></ChartPannable>
 
     <ChartSeriesItems>
 
-        <ChartSeries Type="ChartSeriesType.ScatterLine"
-        Data="@Ticks"
-        YField="@nameof(TradeApi.Price)"
-        XField="@nameof(TradeApi.IndexForChart)"
-        Color="#808080"
-        ZIndex="0"
-        >
-
-            <ChartSeriesMarkers Visible="false">
-            </ChartSeriesMarkers>
-
-
+        <ChartSeries Type="ChartSeriesType.Bubble"
+        Data="@TicksStandard"
+        YField="@nameof(Trade.Price)"
+        XField="@nameof(Trade.IndexForChart)"
+        SizeField="@nameof(Trade.BubbleSize)"
+        ColorField="@nameof(Trade.Color)">
         </ChartSeries>
 
+        <ChartSeries Type="ChartSeriesType.ScatterLine"
+        Data="@Ticks"
+        YField="@nameof(Trade.Price)"
+        XField="@nameof(Trade.IndexForChart)"
+        Color="#808080"
+        ZIndex="0">
+            <ChartSeriesMarkers Visible="false"></ChartSeriesMarkers>
+        </ChartSeries>
 
         <ChartSeries Type="ChartSeriesType.Bubble"
         Data="@Ticks"
         YField="@nameof(Trade.Price)"
         XField="@nameof(Trade.IndexForChart)"
-        SizeField="@nameof(Trade.Volume)"
+        SizeField="@nameof(Trade.BubbleSize)"
         ColorField="@nameof(Trade.Color)"
         Opacity ="0.6"
-        ZIndex="1"
-        >
+        ZIndex="1">
 
             <ChartSeriesLabels Visible="true"
             Template="chartSeriesLabelTemplate"
@@ -49,14 +54,13 @@
 
     </ChartSeriesItems>
 
-
     <ChartXAxes>
-        <ChartXAxis Max="@counter" Min="@(counter-maxamount)" Visible="false">
+        <ChartXAxis Max="@Counter" Min="@(Counter-MaxAmount)" Visible="false">
         </ChartXAxis>
     </ChartXAxes>
 
     <ChartYAxes>
-        <ChartYAxis Min="@minchart" Max="@maxchart" Visible="false">
+        <ChartYAxis Min="@ChartYMin" Max="@ChartYMax" Visible="false">
         </ChartYAxis>
     </ChartYAxes> 
 
@@ -65,79 +69,114 @@
 
 <script suppress-error="BL9992">
     function chartSeriesLabelTemplate(context) {
-    return context.dataItem.Volume;
+        return context.dataItem.Volume;
     }
 
 </script>
 
 @code {
 
-    public List<Trade> Ticks { get; set; }
+    [Parameter]
+    public SecurityApi secutityMain { get; set; }
 
-    public int maxamount { get; set; } = 30; //надо разделить на шаг и получится реальное количество отображаемых элементов
+    private ConcurrentQueue<Trade> TickQueue = new();
+    private List<Trade> Ticks { get; set; } = new();
+    private List<Trade> TicksStandard { get; set; } = new();
+
+    //public int MaxAmount { get; set; } = 30; //надо разделить на шаг и получится реальное количество отображаемых элементов
+    private int MaxAmount = Constants.DEFAULT_CHART_AMOUNT; // Dynamically updated
 
     static int maxStaticValue { get; set; } = 30;
     public int maxScaleForChart { get; set; } = 200;
 
-    [Parameter]
-    public SecurityApi secutityMain { get; set; }
 
-    double minchart { get; set; } 
-    double maxchart { get; set; } 
+    private decimal ChartYMin { get; set; } = Constants.DEFAULT_CHART_Y_MIN;
+    private decimal ChartYMax { get; set; } = Constants.DEFAULT_CHART_Y_MAX;
 
-    public TelerikChart Chart2 { get; set; }
+    public TelerikChart MainChart { get; set; }
 
-    int counter = 1;
+    private int Counter = 1;
+    private int LastValue = 0;
+    private string IdSubscription = string.Empty;
 
-    int lastvalue = 0;
+    private decimal basicvolume = 0;
+    private int chartcount = 0;
+    private DateTime lasttickupdate;
 
+    private Timer RefreshTimer;
+
+    private decimal ViewportWidth = 0;
+    private decimal ViewportHeight = 0;
+    private decimal VolumeRatio = 1;
 
     protected override async Task OnInitializedAsync()
     {
+        // standard ticks
+        TicksStandard.Add(new Trade() { IndexForChart = 0, Volume = Constants.DEFAULT_CHART_MAX_VOLUME });
+        //
 
-        if (Ticks == null)
-        {
-            Ticks = new List<Trade>();
-            // Ticks.Add(new TradeApi(){IndexForChart = 0, Size = 100,});
+        //TODO: нам помоему сервер не отдает это значение
+        basicvolume = secutityMain.Lot * maxScaleForChart * VolumeRatio;
+        Ticks.Add(new Trade() { IndexForChart = -3 * maxStaticValue, Volume = basicvolume, });
 
-            //TODO: нам помоему сервер не отдает это значение
-            basicvolume = secutityMain.Lot * maxScaleForChart;
-            Ticks.Add(new Trade() { IndexForChart = -3 * maxStaticValue, Volume = basicvolume, });
+        //Console.WriteLine($"{secutityMain.Isin} max value for chart {secutityMain.Lot * 300}");
 
-            //Console.WriteLine($"{secutityMain.Isin} max value for chart {secutityMain.Lot * 300}");
+        ChangeScaleOfChart();
 
-            ChangeScaleOfChart();
-        }
+        // Timer for refreshing the chart display
+        RefreshTimer = new Timer(100);
+        RefreshTimer.Elapsed += ProcessTicksFromQueue;
+        RefreshTimer.Start();
 
         await base.OnInitializedAsync();
     }
 
-    private void ProcessNewMaxMin(SecurityApi sec, double max, double min)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if(sec.SpecialHash!=secutityMain.SpecialHash)
-            return;
+        await base.OnAfterRenderAsync(firstRender);
 
-        SetMaxMin(max, min);
-    }
-
-
-
-    string idsubscription;
-    protected override void OnAfterRender(bool firstRender)
-    {
         if (firstRender)
         {
             var res = _serverService.SubscribeForTicks(secutityMain.id, (t) => { ProcessTicks(t); }).Result;
 
             if (res.Success)
-                idsubscription = res.Id;
+                IdSubscription = res.Id;
 
             // ApidataService.NewTicks += ProcessTicks;
             _uilogicservice.NewMaxMin += ProcessNewMaxMin;
 
+            await JSRuntime.InvokeVoidAsync("window.registerViewportChangeCallbackForChart", DotNetObjectReference.Create(this));
         }
+    }
 
-        base.OnAfterRender(firstRender);
+    [JSInvokable]
+    public void OnResize(int width, int height)
+    {
+        if (ViewportWidth == width && ViewportHeight == height) return;
+        ViewportWidth = width;
+        ViewportHeight = height;
+
+        // recalculate
+        var ViewportHeightRatio = Constants.DEFAULT_WINDOWS_HEIGHT / ViewportHeight;
+        // VolumeRatio = Constants.DEFAULT_CHART_Y_RANGE / (ChartYMax - ChartYMin);
+        VolumeRatio = ViewportHeightRatio;
+
+        // Console.WriteLine($"volume ratio: {VolumeRatio} {ViewportHeightRatio}");
+
+        ChartYMin = Constants.DEFAULT_CHART_Y_MIN_RATIO * ViewportHeight;
+        ChartYMax = Constants.DEFAULT_CHART_Y_MAX_RATIO * ViewportHeight;
+        var maxVolume = Constants.DEFAULT_CHART_MAX_VOLUME_RATIO * ViewportHeight;
+        TicksStandard[0].Volume = maxVolume;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ProcessNewMaxMin(SecurityApi sec, double max, double min)
+    {
+        if (sec.SpecialHash != secutityMain.SpecialHash)
+            return;
+
+        SetMaxMin(max, min);
     }
 
     public void ChangeScaleOfChart()
@@ -149,10 +188,10 @@
 
         if (newvalue == 0) newvalue = 1;
 
-        if(lastvalue==newvalue)
+        if(LastValue==newvalue)
             return;
 
-        lastvalue = newvalue;
+        LastValue = newvalue;
 
         var res = maxStaticValue / (newvalue );
 
@@ -160,81 +199,85 @@
         if (Ticks!=null && Ticks.Count > 0)
         {
             Ticks[0].Volume = basicvolume / newvalue;
+            Ticks[0].BubbleSize = Ticks[0].Volume * VolumeRatio;
         }
 
-        maxamount = (int)res;
+        MaxAmount = (int)res;
 
         if(Ticks!=null && Ticks.Count>0)
-            Console.WriteLine($"new max amount {maxamount} {secutityMain.Isin}  №{newvalue} of windows (CHART MESSAGE) ticksvol = {Ticks[0].Volume}");
+            Console.WriteLine($"new max amount {MaxAmount} {secutityMain.Isin}  №{newvalue} of windows (CHART MESSAGE) ticksvol = {Ticks[0].Volume}");
         InvokeAsync(StateHasChanged);
     }
 
-    decimal basicvolume = 0;
-
-
-    int chartcount = 0;
-
-    DateTime lasttickupdate;
-
+    /*
+     * Running on worker's thread
+     */
     public void ProcessTicks(/* string sec, */ List<Trade> ticks)
     {
-
         // if (sec != secutityMain.id)
         //     return;
 
-        if(ticks==null)
+        if(ticks == null)
             return;
 
-
-        try
+        foreach (var tick in ticks)
         {
-            foreach (var tick in ticks)
-            {
-
-                counter += 1;
-                tick.IndexForChart = counter;
-
-                //Console.WriteLine($" {secutityMain.Isin} Added New tick {tick.Price} index {tick.IndexForChart}");
-                Ticks.Add(tick);
-
-                if (Ticks.Count > maxamount)
-                    Ticks.RemoveAt(1);
-            }
-
-            if (Ticks.Count > 1)
-                Ticks[0].Price = Ticks[1].Price;
-
+            Counter += 1;
+            tick.IndexForChart = Counter;
+            tick.BubbleSize = tick.Volume * VolumeRatio;
+            TickQueue.Enqueue(tick);
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-        }
-
-
-        InvokeAsync(StateHasChanged);
     }
 
-    double range = 0;
+    /*
+     * Bubble Chart Rendering function
+     * Running on UI thread
+     */
+    private void ProcessTicksFromQueue(object? sender, ElapsedEventArgs e)
+    {
+        if (TickQueue.IsEmpty) return;
+
+        List<Trade> newTicks = new();
+        while (TickQueue.TryDequeue(out Trade tick))
+        {
+            newTicks.Add(tick);
+        }
+
+        if (newTicks.Count > 0)
+        {
+            InvokeAsync(() =>
+            {
+                Ticks.AddRange(newTicks);
+                if (Ticks.Count > MaxAmount)
+                {
+                    Ticks.RemoveRange(1, Ticks.Count - MaxAmount);
+                }
+
+                if (Ticks.Count > 1)
+                    Ticks[0].Price = Ticks[1].Price;
+
+                StateHasChanged();
+            });
+        }
+    }
 
     public async void PushInvokeAsync()
     {
-        InvokeAsync(StateHasChanged);
+        await InvokeAsync(StateHasChanged);
     }
 
     protected override bool ShouldRender()
     {
         //Console.WriteLine($"CHART Should Render {secutityMain.Isin}  {DateTime.Now}");
-
         return base.ShouldRender();
     }
-
 
     public void SetMaxMin(double max, double min)
     {
         try
         {
-            minchart = min;
-            maxchart = max;
+            ChartYMin = (decimal) min;
+            ChartYMax = (decimal) max;
 
             InvokeAsync(StateHasChanged);
         }
@@ -244,28 +287,10 @@
         }
     }
 
-    private void UpdateChart()
-    {
-        InvokeAsync(() =>
-        {
-            try
-            {
-                Chart2.Refresh();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-        }).GetAwaiter().GetResult();
-    }
-
     public void Dispose()
     {
-
         _uilogicservice.NewMaxMin -= ProcessNewMaxMin;
-
-        _serverService.RemoveSubscribeForTicks(secutityMain.id, idsubscription);
-
+        _serverService.RemoveSubscribeForTicks(secutityMain.id, IdSubscription);
 
         // ApidataService.NewTicks -= ProcessTicks;
     }

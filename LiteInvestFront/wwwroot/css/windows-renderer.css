@@ -36,7 +36,7 @@
 .main-splitter-container {
     display: flex;
     width: 100%;
-    height: calc(100vh - 20px);
+    height: calc(100vh - 100px);
     position: relative; /* Required for absolute gutter positioning */
 }
 
@@ -92,10 +92,9 @@
     }
 
 .lm_content {
-/*    padding-left: 4px !important;*/
 }
 
-.chooseColor {
+/*.chooseColor {
     width: 10px;
     height: 10px;
     background: #fff;
@@ -120,7 +119,6 @@
         display: block;
     }
 
-/*    .chooseColor ul,*/
     .chooseColor ul li {
         margin: 0;
         padding: 0;
@@ -138,5 +136,4 @@
                 width: 40px;
                 height: 20px;
             }
-
-;
+*/

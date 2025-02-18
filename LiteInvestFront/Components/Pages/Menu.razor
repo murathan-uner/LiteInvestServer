@@ -273,8 +273,8 @@
 
             ApiDataService.userName = loginInfo.Login;
 
-            var res = await _serverService.Login(loginInfo.Login, loginInfo.Password);
-            //var res = await _serverService.Login("samujan1@yandex.ru", "pass2");
+            // var res = await _serverService.Login(loginInfo.Login, loginInfo.Password);
+            var res = await _serverService.Login("samujan1@yandex.ru", "pass2");
 
 
             //TODO по хорошему на сервере надо убрать ответ NULL

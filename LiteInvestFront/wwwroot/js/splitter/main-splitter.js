@@ -2,7 +2,7 @@
 
     constructor(containerId) {
 
-        this.paneSizeRatios = [1, 1.2, 0.6];
+        this.paneSizeRatios = [0.2, 0.47, 0.33];
         this.minSizes = [30, 60, 60];
 
 

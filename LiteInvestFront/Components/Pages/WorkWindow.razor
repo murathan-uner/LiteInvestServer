@@ -2,6 +2,7 @@
 @using System.Collections.ObjectModel
 @using System.Drawing
 @using System.Globalization
+@using LiteInvestFront.Components.Common
 @using LiteInvestFront.Entity
 @using LiteInvestFront.Services
 @using LiteInvest.Entity.Helpers
@@ -262,44 +263,47 @@
 </style>
 
 
-<div @onmouseenter="() => {OnMouseEnter?.Invoke(secutityMain.SpecialHash);}" id="@secutityMain.SpecialHash" tabindex="0">
+<div @onmouseenter="() => {OnMouseEnter?.Invoke(secHash);}" id="@secHash" tabindex="0">
 
-    <TelerikGridLayout>
-        <GridLayoutColumns>
-            <Telerik.Blazor.Components.GridLayoutColumn Width="20%" />
-            <Telerik.Blazor.Components.GridLayoutColumn Width="47%" />
-            <Telerik.Blazor.Components.GridLayoutColumn Width="33%" />
-        </GridLayoutColumns>
-
-        <GridLayoutRows>
-            <Telerik.Blazor.Components.GridLayoutRow />
-        </GridLayoutRows>
-
-        <GridLayoutItems>
-            <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="1">
-
-                <ClustersComponent @key="secutityMain.SpecialHash" secutityMain="@secutityMain" pagesize="@pagesize"></ClustersComponent>
-
-            </Telerik.Blazor.Components.GridLayoutItem>
-            <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="2">
-
-                <Chart @key="secutityMain.SpecialHash" @ref="ChartComponent" secutityMain="@secutityMain"> </Chart>
-
-            </Telerik.Blazor.Components.GridLayoutItem>
-            <Telerik.Blazor.Components.GridLayoutItem Row="1" Column="3">
-                <TelerikTextBox  Value="@ScaleString" Size="sm" ReadOnly="true" ></TelerikTextBox>
-                <QuotesComponent OnScaleStringChangeEvent="ScaleStringChangeEvent" @key="secutityMain.SpecialHash" secutityMain="@secutityMain" pagesize="@pagesize"></QuotesComponent>
-
-            </Telerik.Blazor.Components.GridLayoutItem>
-        </GridLayoutItems>
-    </TelerikGridLayout>
+    <div id="@("main-splitter-container-" + WindowId)" class="main-splitter-container">
+        <div class="main-split-pane splitter-container clusters-pane" id="@("clusters-container-" + WindowId)">
+            <ClustersComponent @key="secutityMain.SpecialHash" secutityMain="@secutityMain" pagesize="@pagesize"></ClustersComponent>
+        </div>
+        <div class="main-split-pane chart-pane" id="@("chart-container-" + WindowId)">
+            <TelerikStackLayout Class="chart-wrapper-wrapper" Height="@Constants.VIEWPORT_HEIGHT_SIZE">
+                <TelerikStackLayout Class="chart-wrapper" Width="@(ChartPaneFullWidth + "px")">
+                    <div>
+                        <Chart @key="secutityMain.SpecialHash" @ref="ChartComponent" secutityMain="@secutityMain"> </Chart>
+                    </div>
+                </TelerikStackLayout>
+            </TelerikStackLayout>
+        </div>
+        <div class="main-split-pane quotes-pane" id="@("quotes-container-" + WindowId)">
+            <TelerikTextBox Value="@ScaleString" Size="sm" ReadOnly="true"></TelerikTextBox>
+            <QuotesComponent OnScaleStringChangeEvent="ScaleStringChangeEvent" @key="secutityMain.SpecialHash" secutityMain="@secutityMain" pagesize="@pagesize">
+            </QuotesComponent>
+        </div>
+    </div>
 
 </div>
 
 
-
 @code {
-    [Parameter] public Action<string> OnMouseEnter { get; set; }
+
+    [Parameter]
+    public string secHash
+    {
+        get => _secHash;
+        set
+        {
+            _secHash = value;
+            WindowId = _secHash;
+        }
+    }
+
+    [Parameter] public SecurityApi secutityMain { get; set; } = new();
+    [Parameter] public string lastsecHashOpened { get; set; } = string.Empty;
+    [Parameter] public Action<string>? OnMouseEnter { get; set; }
 
     [Parameter]
     public int WindowsOpened {
@@ -309,6 +313,8 @@
                 ChartComponent.ChangeScaleOfChart();
         }
     }
+
+    public Chart ChartComponent { get; set; }
 
     private string ScaleString
     {
@@ -326,20 +332,17 @@
 
     }
 
+    public List<int?> WebSockets { get; set; }
+
     static string plusHotKey = "Equal";
     static string minusHotKey = "Minus";
     static string cancelHotKey = "KeyC";
 
-    [Parameter] public string secHash { get; set; }
-    [Parameter] public SecurityApi secutityMain { get; set; }
-    [Parameter] public string lastsecHashOpened { get; set; }
 
-
-
-    private string WindowId { get; set; } = Guid.NewGuid().ToString();
-
-
-    public List<int?> WebSockets { get; set; }
+    private string WindowId = string.Empty;
+    private string _secHash;
+    private int ChartPaneFullWidth { get; set; } = 0;
+    private int ChartPaneHeight { get; set; } = 0;
 
     protected override async Task<Task> OnInitializedAsync()
     {
@@ -366,9 +369,9 @@
             //TODO: вынуть из компонента? 
             //await JSRuntime.InvokeVoidAsync("getScrollEvent", GridTableId);
 
-            
-
-           
+            var dimensionsChartPane = await JSRuntime.InvokeAsync<ChartSize>("getElementSizeById", [$"chart-container-{WindowId}"]);
+            ChartPaneFullWidth = (int)Constants.DEFAULT_CHART_FULL_WIDTH;
+            StateHasChanged();
         }
 
     }
@@ -380,13 +383,6 @@
 
     // 	return base.SetParametersAsync(parameters);
     // }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        Console.WriteLine($"{DateTime.Now} On Parameters {secutityMain.id} set WorkWindow");
-
-        base.OnParametersSet();
-    }
 
     public int Scale = 1;
 
@@ -446,7 +442,6 @@
     bool real = true;
     //Половина видимых индексов
     public decimal middleamountofitems { get; set; } = 20;
-    public Chart ChartComponent { get; set; }
     public int pagesize { get; set; } = 100;
 
 
@@ -469,5 +464,9 @@
 
     }
 
-
+    private class ChartSize
+    {
+        public int Width { get; set; }
+        public int Height { get; set; }
+    }
 }

@@ -17,6 +17,12 @@
     <link rel="stylesheet" href="css/menu.css" />
     <link rel="stylesheet" href="css/main.css" />
     <link rel="stylesheet" href="css/workWindowSettings.css" />
+
+    @* goldenlayout *@
+        <link rel="stylesheet" href="goldenlayout/css/goldenlayout-base.css" />
+        <link rel="stylesheet" href="goldenlayout/css/goldenlayout-dark-theme.css" />
+    @* goldenlayout *@
+
     <ImportMap />
     <HeadOutlet />
 </head>
@@ -24,6 +30,16 @@
 <body>
     <Routes @rendermode=RenderMode.InteractiveServer />
     <script src="_framework/blazor.web.js"></script>
+
+    @* goldenlayout *@
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+        <script src="goldenlayout/js/goldenlayout.js"></script>
+    @* goldenlayout *@
+
+    @* splitter *@
+        <script src="/js/splitter/main-splitter.js"></script>
+        <script src="/js/splitter/splitter.js"></script>
+    @* splitter *@
 
     <script src="/js/UI/hotkeyListener.js"></script>
     <script src="/js/UI/scrollHandler.js"></script>

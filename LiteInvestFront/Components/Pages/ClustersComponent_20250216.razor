@@ -5,56 +5,154 @@
 @using LiteInvest.Entity.ServerEntity
 @using LiteInvestServerDll
 
+@* @inject ApiDataService ApiDataService *@
+
 @inject UiLogicService _uilogicservice
 @inject ServerService _serverService
+
 
 @implements IDisposable
 @inject IJSRuntime JSRuntime
 
 <style>
     .clustersColumn {
-    /* display: grid;
-    grid-template-columns: 1fr 1fr 1fr; */
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
     }
+
 </style>
 
-@foreach(var i in Enumerable.Range(0, 3))
-{
-    <div class="split-pane clustersColumn">
-        <TelerikGrid @ref="ClustersGrids[2-i]"
-        Class="grid-cluster"
-        EnableLoaderContainer="true"
-        RowHeight="15"
-        Height="100%"
-        Data="@ClusterDatas"
-        TItem="@ClusterLevel"
-        ScrollMode="@GridScrollMode.Virtual"
-        PageSize="150">
+<div class="clustersColumn">
+    <TelerikGrid @ref="ClustersGrid3"
+    EnableLoaderContainer="true"
+    RowHeight="15"
+    Height="calc(100vh - 100px)"
+    Data="@ClusterDatas"
 
-            <GridColumns>
-                <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
-                    <FooterTemplate>
-                        @if (times?.Count == 3)
-                        {
-                            @times[2-i];
-                        }
-                    </FooterTemplate>
-                </GridColumn>
-            </GridColumns>
+    TItem="@ClusterLevel"
+    ScrollMode="@GridScrollMode.Virtual"
+    PageSize="@pagesize">
 
-            <RowTemplate Context="ClusterDatas">
-                <td class="@GetClassForClusters(ClusterDatas)">
-                    @if (ClusterDatas.Volume != 0)
+        <GridColumns>
+            <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
+                <FooterTemplate>
+                    @if (times?.Count == 3)
                     {
-                        @ClusterDatas.Volume.KiloFormat()
+                        @times[2];
                     }
-                </td>
-            </RowTemplate>
-        </TelerikGrid>
-    </div>
-}
+                </FooterTemplate>
+            </GridColumn>
+        </GridColumns>
+
+        <RowTemplate Context="ClusterDatas">
+            <td class="@GetClassForClusters(ClusterDatas)">
+                @if (ClusterDatas.Volume != 0)
+                {
+                    @ClusterDatas.Volume.KiloFormat()
+                }
+            </td>
+        </RowTemplate>
+
+    </TelerikGrid>
+
+    <TelerikGrid @ref="ClustersGrid2"
+    EnableLoaderContainer="true"
+    RowHeight="15"
+    Height="calc(100vh - 100px)"
+    Data="@ClusterDatas"
+    TItem="@ClusterLevel"
+    ScrollMode="@GridScrollMode.Virtual"
+    PageSize="@pagesize">
+
+        <GridColumns>
+            <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
+                <FooterTemplate>
+                    @if (times?.Count == 3)
+                    {
+                        @times[1]
+                        ;
+                    }
+                </FooterTemplate>
+            </GridColumn>
+        </GridColumns>
+
+        <RowTemplate Context="ClusterDatas">
+            <td class="@GetClassForClusters(ClusterDatas)">
+                @if (ClusterDatas.Volume != 0)
+                {
+                    @ClusterDatas.Volume.KiloFormat()
+                }
+            </td>
+        </RowTemplate>
+
+    </TelerikGrid>
+
+    <TelerikGrid @ref="ClustersGrid1"
+    EnableLoaderContainer="true"
+    RowHeight="15"
+    Height="calc(100vh - 100px)"
+    Data="@ClusterDatas"
+    TItem="@ClusterLevel"
+    ScrollMode="@GridScrollMode.Virtual"
+    PageSize="@pagesize">
+
+        <GridColumns>
+            <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
+                <FooterTemplate>
+                    @if (times?.Count == 3)
+                    {
+                        @times[0]
+                        ;
+                    }
+                </FooterTemplate>
+            </GridColumn>
+        </GridColumns>
+
+        <RowTemplate Context="ClusterDatas">
+            <td class="@GetClassForClusters(ClusterDatas)">
+                @if (ClusterDatas.Volume != 0)
+                {
+                    @ClusterDatas.Volume.KiloFormat()
+                }
+            </td>
+        </RowTemplate>
+
+    </TelerikGrid>
+
+</div>
+
+@* <TelerikGrid @ref="ClustersGrid"
+EnableLoaderContainer="true"
+RowHeight="15"
+Height="100vh"
+Data="@ClusterDatas"
+TItem="@ClusterLevel"
+ScrollMode="@GridScrollMode.Virtual"
+PageSize="@pagesize">
+
+    <GridColumns>
+        <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header" />
+    </GridColumns>
+
+    <RowTemplate Context="ClusterDatas">
+        <td class="@GetClassForClusters(ClusterDatas)">
+            @if (ClusterDatas.Volume != 0)
+            {
+                @ClusterDatas.Volume.KiloFormat()
+            }
+        </td>
+    </RowTemplate>
+
+</TelerikGrid> *@
 
 @code {
+
+
+
+
+
+
+
     [Parameter]
     public int pagesize { get; set; }
 
@@ -68,11 +166,15 @@
 
     public TelerikGrid<ClusterLevel> ClustersGrid { get; set; }
 
-    public TelerikGrid<ClusterLevel>[] ClustersGrids { get; set; } = new TelerikGrid<ClusterLevel>[3];
+    public TelerikGrid<ClusterLevel> ClustersGrid3 { get; set; }
+    public TelerikGrid<ClusterLevel> ClustersGrid2 { get; set; }
+    public TelerikGrid<ClusterLevel> ClustersGrid1 { get; set; }
 
     List<ClusterLevel> ClusterDatas { get; set; } = new List<ClusterLevel>();
 
-    List<ClusterLevel>[] ClusterDataList { get; set; } = new List<ClusterLevel>[3];
+    List<ClusterLevel> ClusterDatas3 { get; set; } = new List<ClusterLevel>();
+    List<ClusterLevel> ClusterDatas2 { get; set; } = new List<ClusterLevel>();
+    List<ClusterLevel> ClusterDatas1 { get; set; } = new List<ClusterLevel>();
 
     int lasttradetickTime { get; set; } = -1;
 
@@ -104,6 +206,8 @@
 
     bool rendered = false;
 
+
+
     string idsubscription;
 
     protected override async void OnAfterRender(bool firstRender)
@@ -112,6 +216,7 @@
         {
             rendered = true;
             await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
+
 
             var res = _serverService.SubscribeForTicks(secutityMain.id, (t) => { ProcessClusterTick(t); }).Result;
 
@@ -263,11 +368,14 @@
         {
             try
             {
-                foreach (var i in Enumerable.Range(0,3))
-                {
-                    ClustersGrids[i].Data = ClusterDatas;
-                    ClustersGrids[i].Rebind();
-                }
+                ClustersGrid3.Data = ClusterDatas;
+                ClustersGrid3?.Rebind();
+
+                ClustersGrid2.Data = ClusterDatas;
+                ClustersGrid2?.Rebind();
+
+                ClustersGrid1.Data = ClusterDatas;
+                ClustersGrid1?.Rebind();
             }
             catch (Exception ex)
             {

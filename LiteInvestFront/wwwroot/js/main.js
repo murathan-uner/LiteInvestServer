@@ -330,3 +330,26 @@ document.addEventListener('click', function (event) {
         dropdownVisible = false;
     }
 });
+
+
+window.registerViewportChangeCallbackForChart = (dotnetHelper) => {
+    let _dotnetHelper = dotnetHelper;
+    window.addEventListener('resize', () => {
+        _dotnetHelper.invokeMethodAsync('OnResize', window.innerWidth, window.innerHeight);
+    });
+}
+
+window.initGoldenLayout = (windowId, idx) => {
+    new MainSplitter("main-splitter-container-" + windowId);
+    new Splitter("clusters-container-" + windowId);
+}
+
+window.getElementSizeById = (id) => {
+    var el = document.getElementById(id);
+    if (!el) return null;
+
+    return {
+        width: el.clientWidth,
+        height: el.clientHeight
+    };
+}

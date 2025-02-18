@@ -15,23 +15,20 @@
 @inject JsInteropService jsInteropService
 @inject IJSRuntime JSRuntime
 
-@*  *@
-@* *@
-
 
 <TelerikGrid @ref="QuotesGrid" Id="@GridTableId"
-OnRowClick="@OnRowClickHandler"
-OnRowContextMenu="@OnRowClickRight"
-OnRowRender="@RowRender"
-EnableLoaderContainer="true"
-RowHeight="15"
-Height="calc(100vh - 100px)"
-Data="@Quotes"
-TItem="@MarketDepthLevel"
-ScrollMode="@GridScrollMode.Virtual"
-Pageable="false"
-Sortable="false"
-PageSize="@pagesize">
+    OnRowClick="@OnRowClickHandler"
+    OnRowContextMenu="@OnRowClickRight"
+    OnRowRender="@RowRender"
+    EnableLoaderContainer="true"
+    RowHeight="15"
+    Height="calc(100vh - 100px)"
+    Data="@Quotes"
+    TItem="@MarketDepthLevel"
+    ScrollMode="@GridScrollMode.Virtual"
+    Pageable="false"
+    Sortable="false"
+    PageSize="@pagesize">
     <GridColumns>
         <GridColumn Width="40%" Field="@nameof(MarketDepthLevel.VolumeString)" HeaderClass="grid-header" />
         <GridColumn Width="40%" Field="@nameof(MarketDepthLevel.Price)" HeaderClass="grid-header" />
@@ -63,10 +60,7 @@ PageSize="@pagesize">
 </TelerikGrid>
 
 
-
 @code {
-
-
 
     [Parameter] public int pagesize { get; set; }
     [Parameter] public SecurityApi secutityMain { get; set; }
@@ -1143,7 +1137,6 @@ PageSize="@pagesize">
                 _uilogicService.SetNewMaxMin(secutityMain, maxpriceGRID, minprice);
 
             }
-
 
         }
 

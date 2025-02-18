@@ -134,13 +134,19 @@ public class Trade
 		}
 	}
 
+    /// <summary>
+    /// размер пузыря
+    /// </summary>
+    public decimal BubbleSize { get => bubbleSize; set { bubbleSize = value; } }
+    decimal bubbleSize;
 
-	/// <summary>
-	/// to take a line to save
-	/// взять строку для сохранения
-	/// </summary>
-	/// <returns>line with the state of the object/строка с состоянием объекта</returns>
-	public override string ToString()
+
+    /// <summary>
+    /// to take a line to save
+    /// взять строку для сохранения
+    /// </summary>
+    /// <returns>line with the state of the object/строка с состоянием объекта</returns>
+    public override string ToString()
     {
        return new StringBuilder()
             .Append(SecurityName!=null ? SecurityName : "").Append("; ")

@@ -1,23 +1,22 @@
 ﻿@using System.Collections.ObjectModel
+@using LiteInvestFront.Components.Common
 @using LiteInvestFront.Services
 @using LiteInvest.Entity.ServerEntity
 @inject UiLogicService _apidataService
 
-@inject IJSRuntime js;
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 @rendermode InteractiveServer
 
 <TelerikTileLayout Columns="OpenedInstruments.Count"
-                   ColumnWidth="auto"
-                   RowHeight="100vh"
-                   Reorderable="true"
-                   ColumnSpacing="0px"
-                   RowSpacing="0px"
-                   Resizable="false"
-                   OnReorder="@OnReorder">
-
-
+ColumnWidth="auto"
+RowHeight="100vh"
+Reorderable="true"
+ColumnSpacing="0px"
+RowSpacing="0px"
+Resizable="false"
+OnReorder="@OnReorder">
 
     <TileLayoutItems>
         @foreach (var security in OpenedInstruments)
@@ -47,7 +46,7 @@
             _apidataService.SelectedSecurityHash = id;
             _apidataService.SelectedSecurityHashChanged?.Invoke();
         }
-        js.InvokeVoidAsync("focusElementById", id);
+        JSRuntime.InvokeVoidAsync("focusElementById", id);
     }
 
     private bool shouldNOTrenderafterclick = false;
@@ -55,6 +54,18 @@
     public string lasthashForRender { get; set; } = "";
 
     ObservableCollection<SecurityApi> OpenedInstruments { get; set; } = new();
+    // ObservableCollection<SecurityApi> _OpenedInstruments;
+    // private ObservableCollection<SecurityApi> OpenedInstruments
+    // {
+    //     get => _OpenedInstruments;
+    //     set
+    //     {
+    //         if (!object.Equals(_OpenedInstruments, value))
+    //         {
+    //             _OpenedInstruments = value;
+    //         }
+    //     }
+    // }
 
     protected override void OnInitialized()
     {
@@ -80,6 +91,10 @@
 
                 OpenedInstruments.Add(sec);
                 _apidataService.openedInstruments++;
+
+                string windowId = sec.SpecialHash;
+                JSRuntime.InvokeVoidAsync("initGoldenLayout", [windowId, OpenedInstruments.Count - 1]);
+
                 InvokeAsync(StateHasChanged);
             };
 
