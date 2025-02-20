@@ -339,22 +339,75 @@ window.registerViewportChangeCallbackForChart = (dotnetHelper) => {
     });
 }
 
-//window.initGoldenLayout = (windowId, idx) => {
-//}
+window.myLayout; // Store layout globally
 
-window.initSplitter = (windowId, idx) => {
+window.initGoldenLayout = () => {
+    var config = {
+        settings: {
+            showPopoutIcon: false,
+            showMaximiseIcon: false,
+            showCloseIcon: false,
+            selectionEnabled: true
+        },
+        content: [{
+            type: 'row',
+            //content: [
+            //    {
+            //        type: 'component',
+            //        componentName: 'windows-component'
+            //    }
+            //]
+        }]
+    };
+    var myLayout = new GoldenLayout(config);
+
+    myLayout.init();
+
+    window.myLayout = myLayout;
+}
+
+window.initSplitter = (windowId, windowTitle, idx) => {
+
+    let _windowId = windowId;
+    let _windowTitle = windowTitle;
+
+    window.myLayout.registerComponent(windowTitle, function (container, state) {
+    });
 
     let observer = new MutationObserver(() => {
-        let mainSplitter = document.getElementById("main-splitter-container-" + windowId);
-        let clustersSplitter = document.getElementById("clusters-container-" + windowId);
+
+        let __windowId = _windowId;
+
+        let mainSplitter = document.getElementById("main-splitter-container-" + _windowId);
+        let clustersSplitter = document.getElementById("clusters-container-" + _windowId);
         if (mainSplitter) {
-            new MainSplitter("main-splitter-container-" + windowId);
+            new MainSplitter("main-splitter-container-" + _windowId);
         }
         if (clustersSplitter) {
-            new Splitter("clusters-container-" + windowId);
+            new Splitter("clusters-container-" + _windowId);
         }
         if (mainSplitter && clustersSplitter) {
             observer.disconnect();
+
+            var newItemConfig = {
+                type: 'component',
+                componentName: _windowTitle
+            };
+            window.myLayout.root.contentItems[0].addChild(newItemConfig);
+
+            let observerInternal = new MutationObserver(() => {
+                //let els = document.getElementsByClassName('lm_content');
+                let els = Array.from(document.getElementsByClassName('lm_content')) // Convert to array
+                    .filter(el => !Array.from(el.children).some(child => child.id.startsWith("windows-")));
+                let sourceElement = document.getElementById('windows-' + __windowId);
+                if (sourceElement && els && els.length > 0) {
+                    observerInternal.disconnect();
+                    let targetElement = els[0];
+                    $(sourceElement).appendTo($(targetElement));
+                }
+            });
+
+            observerInternal.observe(document.body, { childList: true, subtree: true });
         }
     });
 

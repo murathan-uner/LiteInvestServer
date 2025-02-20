@@ -36,7 +36,7 @@
 .main-splitter-container {
     display: flex;
     width: 100%;
-    height: calc(100vh - 100px);
+    height: calc(100vh - 88px);
     position: relative; /* Required for absolute gutter positioning */
 }
 
@@ -93,6 +93,19 @@
 
 .lm_content {
 }
+
+.lm_tabs {
+    width: 100%;
+}
+
+.lm_tab {
+    width: calc(100% - 35px);
+}
+
+.lm_header .lm_controls .lm_tabdropdown:before {
+    display: none;
+}
+
 
 /*.chooseColor {
     width: 10px;

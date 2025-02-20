@@ -2615,9 +2615,9 @@ lm.utils.copy( lm.controls.Header.prototype, {
 	 * @returns {void}
 	 */
 	_onHeaderClick: function( event ) {
-		if( event.target === this.element[ 0 ] ) {
+		//if( event.target === this.element[ 0 ] ) {
 			this.parent.select();
-		}
+		//}
 	},
 
 	/**

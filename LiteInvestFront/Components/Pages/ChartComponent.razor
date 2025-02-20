@@ -1,0 +1,264 @@
+﻿@using System.Collections.Concurrent
+@using System.Timers
+@using LiteInvestFront.Components.Common
+@inject IJSRuntime JSRuntime
+
+<TelerikChart @ref="MainChart" Transitions="false" RenderAs="@RenderingMode.Canvas" Width="100%" Height="@Constants.VIEWPORT_HEIGHT_SIZE">
+    <ChartLegend Visible="false"></ChartLegend>
+    <ChartPannable Enabled="true"></ChartPannable>
+    <ChartSeriesItems>
+
+        @* <ChartSeries Type="ChartSeriesType.Line"
+                    Data="@Ticks2"
+                    Field="@nameof(TradeApi.Price)"
+                    ColorField="@nameof(TradeApi.Color)"></ChartSeries> *@
+
+        <ChartSeries Type="ChartSeriesType.Bubble"
+                     Data="@TicksStandard"
+                     YField="@nameof(TradeApi.Price)"
+                     XField="@nameof(TradeApi.IndexForChart)"
+                     SizeField="@nameof(TradeApi.Volume)"
+                     ColorField="@nameof(TradeApi.Color)">
+        </ChartSeries>
+
+        <ChartSeries Type="ChartSeriesType.ScatterLine"
+                     Data="@Ticks"
+                     YField="@nameof(TradeApi.Price)"
+                     XField="@nameof(TradeApi.IndexForChart)" Padding="0" Margin="0">
+
+            <ChartSeriesMarkers Visible="false">
+            </ChartSeriesMarkers>
+
+            <ChartSeries Type="ChartSeriesType.Bubble"
+                         Data="@Ticks"
+                         AutoFit="false"
+                         YField="@nameof(TradeApi.Price)"
+                         XField="@nameof(TradeApi.IndexForChart)"
+                         SizeField="@nameof(TradeApi.BubbleSize)"
+                         ColorField="@nameof(TradeApi.Color)" Padding="0" Margin="0">
+                <ChartSeriesLabels Visible="true"
+                                   Template="chartSeriesLabelTemplate"
+                                   AriaTemplate="chartSeriesAriaTemplate" />
+            </ChartSeries>
+
+        </ChartSeries>
+
+        @*      YField="@nameof(TradeApi.Price)"
+        XField="@nameof(TradeApi.IndexForChart)
+        SizeField="@nameof(TradeApi.Volume)"> *@
+
+    </ChartSeriesItems>
+
+    @*    <ChartValueAxes>
+        <ChartValueAxis Min="0" Max="30" ></ChartValueAxis>
+    </ChartValueAxes> *@
+
+    <ChartXAxes>
+        <ChartXAxis Max="@i" Min="@(i-MaxAmount)" Visible="false" MajorUnit="5">
+        </ChartXAxis>
+    </ChartXAxes>
+
+    <ChartYAxes>
+        <ChartYAxis Min="@ChartYMin" Max="@ChartYMax" Visible="false">
+        </ChartYAxis>
+    </ChartYAxes>
+
+</TelerikChart>
+
+<script suppress-error="BL9992">
+    function chartSeriesLabelTemplate(context) {
+    return context.dataItem.Volume;
+    }
+
+</script>
+
+@code {
+
+    //TODO: 1) странное масштабирование на старте
+    //TODO: 2) бага с исчезнование -> лицензия телерика
+
+    private double BaseChartSize = 33; // Reference size for scaling
+
+    private double ViewportWidth = 0;
+    private double ViewportHeight = 0;
+    private double VolumeRatio = 1;
+
+    private int BaseBubbleCount = Constants.DEFAULT_CHART_AMOUNT; // Base number of bubbles
+    private int MaxAmount = Constants.DEFAULT_CHART_AMOUNT; // Dynamically updated
+
+    private double ChartYMin { get; set; } = (double)Constants.DEFAULT_CHART_Y_MIN;
+    private double ChartYMax { get; set; } = (double)Constants.DEFAULT_CHART_Y_MAX;
+
+    private ConcurrentQueue<TradeApi> TickQueue = new();
+    private List<TradeApi> Ticks { get; set; } = new();
+
+    private List<TradeApi> TicksStandard { get; set; } = new();
+    private List<TradeApi> AllTicks = new();
+
+    private TelerikChart MainChart { get; set; }
+
+    private Timer DataTimer;
+    private Timer RefreshTimer;
+
+    private Random _random = new();
+
+    private int i = 1;
+
+
+    protected override void OnInitialized()
+    {
+
+        // standard ticks
+        TicksStandard.Add(new TradeApi() { IndexForChart = 0, Volume = (double)Constants.DEFAULT_CHART_MAX_VOLUME });
+        //
+
+        // Timer for adding new data
+        DataTimer = new System.Timers.Timer(200);
+        DataTimer.Elapsed += AddTick;
+        DataTimer.Start();
+
+        // Timer for refreshing the chart display
+        RefreshTimer = new System.Timers.Timer(100);
+        RefreshTimer.Elapsed += ProcessTicksFromQueue;
+        RefreshTimer.Start();
+
+        base.OnInitialized();
+    }
+
+    private void ProcessTicksFromQueue(object? sender, ElapsedEventArgs e)
+    {
+        if (TickQueue.IsEmpty) return;
+
+        List<TradeApi> newTicks = new();
+        while (TickQueue.TryDequeue(out TradeApi tick))
+        {
+            newTicks.Add(tick);
+        }
+
+        if (newTicks.Count > 0)
+        {
+            InvokeAsync(() =>
+            {
+                Ticks.AddRange(newTicks);
+                if (Ticks.Count > MaxAmount)
+                {
+                    Ticks.RemoveRange(0, Ticks.Count - MaxAmount);
+                }
+                StateHasChanged();
+            });
+        }
+    }
+
+    private void AddTick(object? sender, ElapsedEventArgs e)
+    {
+        if (!ONOFF) return;
+
+        i++;
+        
+        var volume = _random.Next(1, 100);
+        var tick = new TradeApi()
+            {
+                IndexForChart = i,
+                Price = _random.Next(20, 70),
+                SecurityId = "si-3.25",
+                Side = Side.Buy,
+                Time = DateTime.Now,
+                Volume = volume,
+                BubbleSize = volume * VolumeRatio,
+                Color = _random.Next(0, 2) == 0 ? "red" : "green"
+            };
+
+        TickQueue.Enqueue(tick);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("window.registerViewportChangeCallbackForChart", DotNetObjectReference.Create(this));
+            // await JSRuntime.InvokeVoidAsync("registerElementSizeChangeCallback", [DotNetObjectReference.Create(this), "chart-pane"]);
+        }
+    }
+
+    [JSInvokable]
+    public void OnResize(int width, int height)
+    {
+        if (ViewportWidth == width && ViewportHeight == height) return;
+        ViewportWidth = width;
+        ViewportHeight = height;
+
+        // recalculate
+        var ViewportHeightRatio = (double)Constants.DEFAULT_WINDOWS_HEIGHT / ViewportHeight;
+        // VolumeRatio = Constants.DEFAULT_CHART_Y_RANGE / (ChartYMax - ChartYMin);
+        VolumeRatio = ViewportHeightRatio;
+
+        // Console.WriteLine($"volume ratio: {VolumeRatio} {ViewportHeightRatio}");
+
+        ChartYMin = (double)Constants.DEFAULT_CHART_Y_MIN_RATIO * ViewportHeight;
+        ChartYMax = (double)Constants.DEFAULT_CHART_Y_MAX_RATIO * ViewportHeight;
+        var maxVolume = (double)Constants.DEFAULT_CHART_MAX_VOLUME_RATIO * ViewportHeight;
+        TicksStandard[0].Volume = maxVolume;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    decimal higher = 0;
+    decimal lowre = 0;
+
+    private void OnMouseWheel()
+    {
+
+    }
+
+    bool ONOFF = true;
+    public void TurnOnOff()
+    {
+        ONOFF = !ONOFF;
+
+        // var copylist = AllTicks.ToList();
+
+        // foreach (var trade in copylist)
+        // {
+        //     Console.WriteLine($"index={trade.IndexForChart} | tick {trade.Price} ");
+        // }
+
+        // AllTicks.Clear();
+    }
+
+    public enum Side
+    {
+        /// <summary>
+        /// buy
+        /// купля
+        /// </summary>
+        Buy,
+
+        /// <summary>
+        /// sell
+        /// продажа
+        /// </summary>
+        Sell,
+
+        //пустое направление.
+        Empty
+    }
+
+    public class TradeApi
+    {
+        public string SecurityName { get; set; }
+        public string TransactionID { get; set; }
+        public string SecurityId { get; set; }
+        public DateTime Time { get; set; }
+        public Side Side { get; set; }
+
+        public double? Volume { get; set; }
+        public double BubbleSize { get; set; }
+
+        public decimal Price { get; set; }
+        public int IndexForChart { get; set; }
+
+        public string Color { get; set; }
+        public double Transparency { get; set; }
+    }
+}

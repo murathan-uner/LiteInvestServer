@@ -9,13 +9,13 @@
 
 @rendermode InteractiveServer
 
-<TelerikTileLayout Columns="OpenedInstruments.Count"
+@* <TelerikTileLayout Columns="OpenedInstruments.Count"
 ColumnWidth="auto"
 RowHeight="100vh"
 Reorderable="true"
 ColumnSpacing="0px"
 RowSpacing="0px"
-Resizable="false"
+Resizable="true"
 OnReorder="@OnReorder">
 
     <TileLayoutItems>
@@ -33,7 +33,15 @@ OnReorder="@OnReorder">
             </TileLayoutItem>
         }
     </TileLayoutItems>
-</TelerikTileLayout>
+</TelerikTileLayout> *@
+
+@foreach (var security in OpenedInstruments)
+{
+    <div id="@("windows-" + security.SpecialHash)">
+        @* <WorkWindowHeader Security="security" OnHeaderClick="(e) => focusWindowByHeaderClick(e)" OnClosingMain="(e) => OnClosingMain(e)"></WorkWindowHeader> *@
+        <WorkWindow OnMouseEnter="(e) => focusWindowByHeaderClick(e)" secHash="@security.SpecialHash" secutityMain="@security" WindowsOpened="@OpenedInstruments.Count" />
+    </div>
+}
 
 @code {
 
@@ -80,6 +88,8 @@ OnReorder="@OnReorder">
 
         if (firstRender)
         {
+            JSRuntime.InvokeVoidAsync("initGoldenLayout", null);
+
             _apidataService.LastwindowOpened += () =>
             {
                 lasthashForRender = "";
@@ -93,7 +103,8 @@ OnReorder="@OnReorder">
                 _apidataService.openedInstruments++;
 
                 string windowId = sec.SpecialHash;
-                JSRuntime.InvokeVoidAsync("initSplitter", [windowId, OpenedInstruments.Count - 1]);
+                string windowTitle = sec.Isin;
+                JSRuntime.InvokeVoidAsync("initSplitter", [windowId, windowTitle, OpenedInstruments.Count - 1]);
 
                 InvokeAsync(StateHasChanged);
             };

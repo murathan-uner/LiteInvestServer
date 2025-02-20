@@ -4,6 +4,8 @@
 @using LiteInvest.Entity.PlazaEntity
 @using LiteInvest.Entity.ServerEntity
 @using LiteInvestServerDll
+@using System.Collections.Concurrent
+@using System.Timers
 
 @inject UiLogicService _uilogicservice
 @inject ServerService _serverService
@@ -26,7 +28,7 @@
         EnableLoaderContainer="true"
         RowHeight="15"
         Height="100%"
-        Data="@ClusterDatas"
+        Data="@Ticks"
         TItem="@ClusterLevel"
         ScrollMode="@GridScrollMode.Virtual"
         PageSize="150">
@@ -70,9 +72,10 @@
 
     public TelerikGrid<ClusterLevel>[] ClustersGrids { get; set; } = new TelerikGrid<ClusterLevel>[3];
 
-    List<ClusterLevel> ClusterDatas { get; set; } = new List<ClusterLevel>();
+    private List<ClusterLevel> Ticks { get; set; } = new();
+    private ConcurrentQueue<ClusterLevel> TickQueue { get; set; } = new();
 
-    List<ClusterLevel>[] ClusterDataList { get; set; } = new List<ClusterLevel>[3];
+    private System.Timers.Timer RefreshTimer;
 
     int lasttradetickTime { get; set; } = -1;
 
@@ -99,10 +102,13 @@
         // ApiDataService.BuildNewTable += BuildNewTable;
         // ClusterDatas = BuildEmptyClusterLevels(initialquotes);
 
+        // Timer for refreshing the chart display
+        RefreshTimer = new System.Timers.Timer(200);
+        RefreshTimer.Elapsed += ProcessTicksFromQueue;
+        RefreshTimer.Start();
+
         base.OnInitialized();
     }
-
-    bool rendered = false;
 
     string idsubscription;
 
@@ -110,10 +116,9 @@
     {
         if (firstRender)
         {
-            rendered = true;
             await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
 
-            var res = _serverService.SubscribeForTicks(secutityMain.id, (t) => { ProcessClusterTick(t); }).Result;
+            var res = _serverService.SubscribeForTicks(secutityMain.id, (t) => { ProcessTicks(t); }).Result;
 
             if (res.Success)
                 idsubscription = res.Id;
@@ -126,29 +131,26 @@
         base.OnAfterRender(firstRender);
     }
 
-
-
     private void ScrollClusters(SecurityApi sec, int bestbidindex)
     {
-
         if (sec.SpecialHash != secutityMain.SpecialHash)
             return;
 
-
         Console.WriteLine($"Scrolling {bestbidindex} Clusters {secutityMain.SpecialHash} ");
-        busy = true;
-        UpdateClastersGrid();
 
         //не скроллит сразу почему то. а почему я не знаю
         Helper.CreateTimerAndStart(() =>
         {
-            WorkWindow.ScrollTo(bestbidindex, ClustersGrid);
-            UpdateClastersGrid();
-            busy = false;
+            InvokeAsync(() => _SyncScroll(bestbidindex));
 
-        }, 500, false);
+        }, 300, false);
+    }
 
-
+    private async void _SyncScroll(int bestbidindex)
+    {
+        await WorkWindow.ScrollTo(bestbidindex, ClustersGrid);
+        StateHasChanged();
+        UpdateGridData();
     }
 
     private void BuildEmptyClusterLevels(SecurityApi sec, ICollection<MarketDepthLevel> _initialOrderBook, Dictionary<decimal, int> initDictionary)
@@ -157,79 +159,105 @@
         if (sec.SpecialHash != secutityMain.SpecialHash)
             return;
 
-        ClusterDatas.Clear();
+        Ticks.Clear();
 
         foreach (var level in _initialOrderBook)
         {
-            ClusterDatas.Add(new ClusterLevel() { Price = level.Price });
+            Ticks.Add(new ClusterLevel() { Price = level.Price });
         }
 
         IndexesQuotes = initDictionary;
 
-        UpdateClastersGrid();
+        InvokeAsync(() => {
+            StateHasChanged();
+            UpdateGridData();
+        });
 
         Console.WriteLine($"Build New Clusters {secutityMain.SpecialHash}");
     }
 
-    bool busy = false;
-
-    private void ProcessClusterTick(/* string sec,  */List<Trade> ticks)
+    /*
+     * Running on worker's thread
+     */
+    private void ProcessTicks(/* string sec,  */List<Trade> ticks)
     {
-
         // if (sec != secutityMain.id)
         //     return;
 
-        var copyclusters = ClusterDatas.ToList();
-
         foreach (var tick in ticks)
         {
-            var agregatingTime = tick.Time.Minute - tick.Time.Minute % 5;
-
-            //Console.WriteLine($"real time {DateTime.Now} agreagatedtime = {agregatingTime}");
-
-            if (agregatingTime != lasttradetickTime)
-            {
-                Console.WriteLine($"Time For clusters Updated lastmintime={agregatingTime} timeNow = {lasttradetickTime}");
-
-                foreach (var cluster in copyclusters)
-                {
-                    cluster.AskVolume = 0;
-                    cluster.BidVolume = 0;
-                }
-
-                Console.WriteLine($"Cluster Table BUILDING ");
-
-                lasttradetickTime = agregatingTime;
-            }
-
-            decimal tickAgregatedLevel = tick.Price - tick.Price % (secutityMain.PriceStep * Scale);
-
-            if (IndexesQuotes != null && IndexesQuotes.ContainsKey(tickAgregatedLevel) && copyclusters.Count != 0)
-            {
-                var index = IndexesQuotes[tickAgregatedLevel];
-
-                var lastclusterItem = (ClusterLevel)copyclusters[index].Clone();
-
-                if (tick.Side == Side.Sell)
-                    lastclusterItem.AskVolume += tick.Volume;
-                if (tick.Side == Side.Buy)
-                    lastclusterItem.BidVolume += tick.Volume;
-
-                copyclusters[index] = lastclusterItem;
-
-                // Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
-            }
+            TickQueue.Enqueue(new ClusterLevel() { Price = tick.Price, AskVolume = tick.Volume, BidVolume = tick.Volume });
         }
 
-        ClusterDatas = copyclusters;
+        // var copyclusters = ClusterDataQueue.ToList();
 
-        if (busy)
-            return;
+        // foreach (var tick in ticks)
+        // {
+        //     var agregatingTime = tick.Time.Minute - tick.Time.Minute % 5;
 
+        //     Console.WriteLine($"real time {DateTime.Now} agreagatedtime = {agregatingTime}");
 
-        busy = true;
-        UpdateClastersGrid();
-        busy = false;
+        //     if (agregatingTime != lasttradetickTime)
+        //     {
+        //         Console.WriteLine($"Time For clusters Updated lastmintime={agregatingTime} timeNow = {lasttradetickTime}");
+
+        //         foreach (var cluster in copyclusters)
+        //         {
+        //             cluster.AskVolume = 0;
+        //             cluster.BidVolume = 0;
+        //         }
+
+        //         Console.WriteLine($"Cluster Table BUILDING ");
+
+        //         lasttradetickTime = agregatingTime;
+        //     }
+
+        //     decimal tickAgregatedLevel = tick.Price - tick.Price % (secutityMain.PriceStep * Scale);
+
+        //     if (IndexesQuotes != null && IndexesQuotes.ContainsKey(tickAgregatedLevel) && copyclusters.Count != 0)
+        //     {
+        //         var index = IndexesQuotes[tickAgregatedLevel];
+
+        //         var lastclusterItem = (ClusterLevel)copyclusters[index].Clone();
+
+        //         if (tick.Side == Side.Sell)
+        //             lastclusterItem.AskVolume += tick.Volume;
+        //         if (tick.Side == Side.Buy)
+        //             lastclusterItem.BidVolume += tick.Volume;
+
+        //         copyclusters[index] = lastclusterItem;
+
+        //         Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
+        //     }
+        // }
+
+        // MUST BE REPLACED(temporary code)
+        // ClusterDataQueue = new ConcurrentQueue<ClusterLevel>(copyclusters);
+    }
+
+    private void ProcessTicksFromQueue(object? sender, ElapsedEventArgs e)
+    {
+        if (TickQueue.IsEmpty) return;
+
+        List<ClusterLevel> newTicks = new();
+        while (TickQueue.TryDequeue(out ClusterLevel tick))
+        {
+            newTicks.Add(tick);
+        }
+
+        if (newTicks.Count > 0)
+        {
+            InvokeAsync(() =>
+            {
+                Ticks.AddRange(newTicks);
+                if (Ticks.Count > 1000)
+                {
+                    Ticks.RemoveRange(0, Ticks.Count - 1000);
+                }
+                StateHasChanged();
+                UpdateGridData();
+            });
+        }
     }
 
     private string GetClassForClusters(ClusterLevel _clusterLevel)
@@ -242,39 +270,19 @@
         return _clusterLevel.BidVolume < _clusterLevel.AskVolume ? "highlighted-item" : "highlighted-item2";
     }
 
-    public void Dispose()
+    public async void Dispose()
     {
-        _serverService.RemoveSubscribeForTicks(secutityMain.id, idsubscription);
-
-        // UiLogicService.NewTicks -= ProcessClusterTick;
         _uilogicservice.ScrollClusters -= ScrollClusters;
+        // UiLogicService.NewTicks -= ProcessClusterTick;
+
+        await _serverService.RemoveSubscribeForTicks(secutityMain.id, idsubscription);
     }
 
-    protected override bool ShouldRender()
+    private void UpdateGridData()
     {
-        Console.WriteLine($"Clusters Should Render {secutityMain.Isin} {DateTime.Now}");
-
-        return base.ShouldRender();
-    }
-
-    private void UpdateClastersGrid()
-    {
-        InvokeAsync(() =>
+        foreach (var i in Enumerable.Range(0, 3))
         {
-            try
-            {
-                foreach (var i in Enumerable.Range(0,3))
-                {
-                    ClustersGrids[i].Data = ClusterDatas;
-                    ClustersGrids[i].Rebind();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-        }).GetAwaiter().GetResult();
+            ClustersGrids[i].Rebind();
+        }
     }
-
-
 }

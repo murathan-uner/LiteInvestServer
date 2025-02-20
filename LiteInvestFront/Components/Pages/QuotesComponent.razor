@@ -1,5 +1,6 @@
 ﻿@using System.Collections.Concurrent
 @using System.Collections.ObjectModel
+@using LiteInvestFront.Components.Common
 @using LiteInvestFront.Services
 @using LiteInvest.Entity.Helpers
 @using LiteInvest.Entity.PlazaEntity
@@ -22,7 +23,7 @@
     OnRowRender="@RowRender"
     EnableLoaderContainer="true"
     RowHeight="15"
-    Height="calc(100vh - 100px)"
+    Height="@Constants.VIEWPORT_HEIGHT_SIZE"
     Data="@Quotes"
     TItem="@MarketDepthLevel"
     ScrollMode="@GridScrollMode.Virtual"
