@@ -1,0 +1,41 @@
+.algo-popup {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+    .algo-popup.hidden {
+        display: none;
+    }
+
+.popup-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 4px 0;
+    box-sizing: border-box;
+}
+
+.popup-label {
+    margin: 8px 0;
+    font-size: var(--algo-font-size-semi);
+    color: var(--algo-color-secondary-text);
+}
+
+.popup-input {
+    width: 80px;
+    padding: 4px 8px;
+    box-sizing: border-box;
+    border: 1px solid var(--algo-color-border);
+    border-radius: 4px;
+    text-align: center;
+    font-size: var(--algo-font-size-semi);
+    outline: none;
+}

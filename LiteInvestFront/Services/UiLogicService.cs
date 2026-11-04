@@ -19,11 +19,12 @@ using Binance.Net.Objects.Models.Spot;
 using Binance.Net.Interfaces.Clients;
 using Binance.Net.Objects.Models.Spot.Socket;
 using CryptoExchange.Net.Interfaces;
+using Telerik.Windows.Documents.Spreadsheet.Expressions.Functions;
 
 namespace LiteInvestFront.Services;
 
 
-
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 /// <summary>
 /// Раньше выполнял функцию апи дата сервис, теперь выполняет только часть отвечающую за графическую логику. 
@@ -34,59 +35,52 @@ public class UiLogicService:IDisposable
 
     public int openedInstruments { get; set; } = 0;
 
-	public string userName { get; set; }
-	public Action<SecurityApi, double, double> NewMaxMin { get; set; }
-	public void SetNewMaxMin(SecurityApi security, double max, double min)
-	{
-		NewMaxMin?.Invoke(security, max, min);
-	}
+	public string userName { get; set; } = string.Empty;
 
-	public Action <SecurityApi,int>? NewScale { get; set; }
-	public void UpdateMaxMinWithNewScale(SecurityApi sec,int newscale)
-	{
-		NewScale?.Invoke(sec,newscale);
-	}
+	public Action<List<SecurityApi>>? InstrumentsLoadAction;
+	//public Action<SecurityApi>? InstrumentOpenAction;
 
-	public Action <SecurityApi,ICollection<MarketDepthLevel>, Dictionary<decimal, int>> BuildNewTable { get; set; }
+	public Action<string, int>? ScaleChangeAction;
+	public Action<string, int, int>? OrderVolumeUpdateAction; // This will be removed when moving WorkWindowSettings component to JS // Temporary use for this version
+
+    public Action <SecurityApi,ICollection<MarketDepthLevel>, Dictionary<decimal, int>>? BuildNewTable { get; set; }
 	//initialquotes
 	public void SendInitialQuotes(SecurityApi sec, ICollection<MarketDepthLevel> _initialOrderBook, Dictionary<decimal, int> indexesQuotes)
 	{
 		BuildNewTable?.Invoke(sec,_initialOrderBook, indexesQuotes);
 	}
 
-	public Action<SecurityApi> NewSecOpened { get; set; }
-
-
-	
-	public Task OpenInstrument(SecurityApi sec)
+	public SecurityApi GenerateClonedSecurity(SecurityApi sec)
 	{
+        var clone = (SecurityApi)sec.Clone();
+        clone.SpecialHash = Guid.NewGuid().ToString() + DateTime.Now;
+		return clone;
+    }
 
-		var clone = (SecurityApi)sec.Clone();
-		clone.SpecialHash = (Guid.NewGuid().ToString()) + DateTime.Now;
-		NewSecOpened?.Invoke(clone);
+    //public void OpenInstrument(SecurityApi sec)
+    //{
+    //    InstrumentOpenAction?.Invoke(sec);
+    //}
 
-		return Task.CompletedTask;
+	public void NotifyAllInstrumentOpened(List<SecurityApi> secs)
+	{
+        InstrumentsLoadAction?.Invoke(secs);
 	}
 
-	public void Dispose()
+	public void NotifyScaleChanged(string specialHash, int scaleIndex)
+	{
+		ScaleChangeAction?.Invoke(specialHash, scaleIndex);
+    }
+
+    public void NotifyOrderVolumeUpdated(string specialHash, int index, int newVolume)
+    {
+        OrderVolumeUpdateAction?.Invoke(specialHash, index, newVolume);
+    }
+
+    public void Dispose()
 	{
 		GC.SuppressFinalize(this);
 	}
 
-	public Action LastwindowOpened { get; set; }
-
-	public void LastWindowWasOpened()
-	{
-		LastwindowOpened?.Invoke();
-	}
-
-	public Action <SecurityApi,int> ScrollClusters { get; set; }
-
-	public void ScrollClustes(SecurityApi secmain, int bestbidIndex)
-	{
-		ScrollClusters?.Invoke(secmain,bestbidIndex);
-	}
-
 	public string SelectedSecurityHash = "";
-	public Action SelectedSecurityHashChanged;
 }

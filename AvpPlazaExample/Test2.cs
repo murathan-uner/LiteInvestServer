@@ -12,7 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using LiteInvest.Entity.PlazaEntity;
-using RouterLogger = PlazaEngine.Engine.RouterLogger;
+using RouterLoggerEngine = PlazaEngine.Engine.RouterLoggerEngine;
 
 /*
  Сценарий 2.
@@ -94,7 +94,7 @@ namespace AvpPlazaTester
                 {
                     decimal price = side == Side.Buy ? sec.BestBid - sec.PriceStep * priceDistance : sec.BestAsk + sec.PriceStep * priceDistance;
                     Order o = new Order(sec.Id, side, 1, price, portfolio, $"{sec.ShortName}-Client{i}");
-                    RouterLogger.Log(o.ToString(), "Test_Scenario");
+                    RouterLoggerEngine.Log(o.ToString(), "Test_Scenario");
                     plaza.ExecuteOrderAsync(o);
                 }
             }
@@ -158,7 +158,7 @@ namespace AvpPlazaTester
                 {
                     case Order.OrderStateType.None:
                         break;
-                    case Order.OrderStateType.Activ:
+                    case Order.OrderStateType.Active:
                         orderActiv++;
                         break;
                     case Order.OrderStateType.Pending:

@@ -1,4 +1,6 @@
-﻿using System.Collections.Concurrent;
+﻿using Newtonsoft.Json;
+
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Runtime.Serialization;
 using System.Text;
@@ -99,6 +101,11 @@ namespace LiteInvest.Entity.PlazaEntity
             */
         }
 
+
+        [DataMember]
+        public int Sess_id { get; set; }     //sess_id  Идентификатор торговой сессии
+
+
         [DataMember]
         public string SecurityId { get; set; }
 
@@ -168,6 +175,7 @@ namespace LiteInvest.Entity.PlazaEntity
         [DataMember]
         internal Side side;
 
+        [JsonIgnore]
         [DataMember]
         public Side Side { get => side; set { side = value; } }
 
@@ -554,6 +562,7 @@ namespace LiteInvest.Entity.PlazaEntity
             return new StringBuilder()
                 .Append(numberUser).Append("; ")
                 .Append(ExchangeOrderId).Append("; ")
+                .Append(SecIsin).Append("; ")
                 .Append(SecurityId).Append("; ")
                 .Append(side == Side.Buy? "Buy" : side == Side.Sell ? "Sell" : "None").Append("; ")
                 .Append(priceOrder).Append("; ")
@@ -562,6 +571,7 @@ namespace LiteInvest.Entity.PlazaEntity
                 .Append(Comment).Append("; ")
                 .Append(PortfolioNumber).Append("; ")
                 .Append(state).Append("; ")
+                .Append(timeCreate.ToLongTimeString())
                 .ToString();
         }
 
@@ -615,7 +625,7 @@ namespace LiteInvest.Entity.PlazaEntity
             /// принята биржей и выставленна в систему
             /// </summary>
             [EnumMember]
-            Activ,
+            Active,
 
             /// <summary>
             /// waiting for registration

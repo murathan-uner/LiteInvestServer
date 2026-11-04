@@ -1,4 +1,8 @@
-﻿using System.Globalization;
+﻿using LiteInvest.Entity.ServerEntity;
+
+using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Text;
 
 namespace LiteInvest.Entity.PlazaEntity
@@ -10,49 +14,34 @@ namespace LiteInvest.Entity.PlazaEntity
     public class MyTrade : IMyTrade
     {
 
-
-
-        /// <summary>
-        /// Клиентская сделка, совершённая на бирже
-        /// </summary>
-        /// <param name="replmsg"></param>
-        //internal MyTrade(StreamDataMessage replmsg)
-        //{
-        //    price = Convert.ToDecimal(replmsg["price"].asDecimal());
-        //    numberTrade = replmsg["id_deal"].asUnicodeString();
-        //    securityId = replmsg["isin_id"].asUnicodeString();
-        //    time = replmsg["moment"].asDateTime();
-        //    volume = replmsg["xamount"].asInt();
-
-        //    string portfolioBuy = replmsg["code_buy"].asUnicodeString();
-        //    string portfolioSell = replmsg["code_sell"].asUnicodeString();
-        //    comment = "";
-        //    numberOrderMarket = "";
-        //    portfolio = "";
-
-        //    if (!string.IsNullOrWhiteSpace(portfolioBuy))
-        //    {
-        //        numberOrderUser = replmsg["ext_id_buy"].asInt();
-        //        numberOrderMarket = replmsg["public_order_id_buy"].asUnicodeString();
-        //        side = Side.Buy;
-        //        comment = replmsg["comment_buy"].asUnicodeString();
-        //        portfolio = replmsg["code_buy"].asUnicodeString();
-        //    }
-        //    else if (!string.IsNullOrWhiteSpace(portfolioSell))
-        //    {
-
-        //        numberOrderUser = replmsg["ext_id_sell"].asInt();
-        //        numberOrderMarket = replmsg["public_order_id_sell"].asUnicodeString();
-        //        side = Side.Sell;
-        //        comment = replmsg["comment_sell"].asUnicodeString();
-        //        portfolio = replmsg["code_sell"].asUnicodeString();
-        //    }
-
-        //}
         public MyTrade()
         {
 
         }
+
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.None)]
+        public Guid guid { get; set; } = Guid.NewGuid();
+
+        /// <summary>
+        /// Комиссия по сделке транслируемая биржей
+        /// </summary>
+        public decimal FeeBoard { get; set; }
+
+
+        public BoardEnum Board;
+
+        /// <summary>
+        /// размер единой комиссии
+        /// </summary>
+        public decimal Commission { get; set; }
+
+
+        /// <summary>
+        /// Размер прибыли по закрывающей позиции.
+        /// </summary>
+        public decimal MarginPoint { get; set; } = 0;
+
 
         /// <summary>
         /// Комментарий к сделке, перешедший из ордера
@@ -153,6 +142,7 @@ namespace LiteInvest.Entity.PlazaEntity
                 .Append(NumberOrderUser).Append("; ")
                 .Append(NumberOrderMarket).Append("; ")
                 .Append(NumberTrade).Append("; ")
+                .Append(FeeBoard).Append("; ")
                 .ToString();
         }
     }

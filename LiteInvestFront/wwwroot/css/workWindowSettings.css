@@ -1,7 +1,4 @@
-﻿﻿.settings-icon {
-}
-
-.workWindowSettings__content {
+﻿.workWindowSettings__content {
     display: grid;
     grid-template-columns: min-content 1fr;
     grid-template-rows: 1fr;

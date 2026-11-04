@@ -1,6 +1,8 @@
 ﻿namespace LiteInvestFront.Components.Common
 {
-    public class Constants
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+    public abstract class Constants
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
     {
         public const double DEFAULT_WINDOWS_HEIGHT = 900; // pixel
         public const double DEFAULT_CHART_FULL_WIDTH = 2000; // pixel
@@ -18,5 +20,11 @@
         public const double DEFAULT_CHART_MAX_VOLUME_RATIO = DEFAULT_CHART_MAX_VOLUME / DEFAULT_WINDOWS_HEIGHT;
 
         public const string VIEWPORT_HEIGHT_SIZE = "calc(100vh - 88px)";
+
+        public const string PlusHotKey = "Equal";
+        public const string MinusHotKey = "Minus";
+        public const string CancelHotKey = "KeyC";
+        public const string CenterHotKey = "KeyM";
+        public const string AutomaticCenterHotKey = "KeyA";
     }
 }

@@ -176,10 +176,18 @@ public class MarketDepth
 
         for (int i = 0; Asks != null && i < Asks.Count; i++)
         {
-            newDepth.Asks.Add(new MarketDepthLevel());
-            newDepth.Asks[i].Ask = Asks[i].Ask;
-            newDepth.Asks[i].Bid = Asks[i].Bid;
-            newDepth.Asks[i].Price = Asks[i].Price;
+            var d = new MarketDepthLevel();
+            try
+            {
+                d.Ask = Asks[i].Ask;
+                d.Bid = Asks[i].Bid;
+                d.Price = Asks[i].Price;
+                newDepth.Asks.Add(d);
+            }
+            catch
+            {
+                //игнор 
+            }
         }
 
 
@@ -187,10 +195,18 @@ public class MarketDepth
 
         for (int i = 0; Bids != null && i < Bids.Count; i++)
         {
-            newDepth.Bids.Add(new MarketDepthLevel());
-            newDepth.Bids[i].Ask = Bids[i].Ask;
-            newDepth.Bids[i].Bid = Bids[i].Bid;
-            newDepth.Bids[i].Price = Bids[i].Price;
+            var d = new MarketDepthLevel();
+            try
+            {
+                d.Ask = Bids[i].Ask;
+                d.Bid = Bids[i].Bid;
+                d.Price = Bids[i].Price;
+                newDepth.Bids.Add(d);
+            }
+            catch
+            {
+                //игнор
+            }
         }
 
         return newDepth;
@@ -220,7 +236,8 @@ public class MarketDepthLevel :ICloneable
             Bid = Bid,
             Price = Price,
             Type = Type,
-            _side = _side
+            _side = _side,
+            Id = Id,
         };
     }
 
@@ -242,18 +259,34 @@ public class MarketDepthLevel :ICloneable
 
     public decimal Volume { get => Ask == 0 ? Bid : Ask; }
 
-    public string VolumeString
+    public decimal VolumeSum
     {
-        get
+	    get => Bid + Ask;
+    }
+
+    //public string VolumeString
+    //{
+    //    get
+    //    {
+    //        if (Ask != 0 && Bid !=0)
+    //        {
+    //            return Bid.ToString("####0.#####") + " | " + Ask.ToString("####0.#####");
+    //        }
+    //        else
+    //        {
+    //            return Volume.ToString("####0.#####");
+    //        }
+    //    }
+    //}
+    public string VolumeString()
+    {
+        if (Ask != 0 && Bid != 0)
         {
-            if (Ask != 0 && Bid !=0)
-            {
-                return Bid.ToString("####0.#####") + " | " + Ask.ToString("####0.#####");
-            }
-            else
-            {
-                return Volume.ToString("####0.#####");
-            }
+            return Bid.ToString("####0.#####") + " | " + Ask.ToString("####0.#####");
+        }
+        else
+        {
+            return Volume.ToString("####0.#####");
         }
     }
 

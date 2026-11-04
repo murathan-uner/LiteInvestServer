@@ -1,0 +1,37 @@
+﻿@using Telerik.Blazor.Components
+
+<div class="input-container">
+    <TelerikNumericTextBox Decimals="3" Placeholder="123" Arrows="false" Value="numericValue" />
+    <TelerikButton Class="input-container-button" OnClick="OnPoolSummClicked">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 20">
+            <path d="M 20.292969 5.2929688 L 9 16.585938 L 4.7070312 12.292969 L 3.2929688 13.707031 L 9 19.414062 L 21.707031 6.7070312 L 20.292969 5.2929688 z"></path>
+        </svg>
+
+    </TelerikButton>
+</div>
+
+
+@code {
+    private decimal? numericValue;
+
+    private void OnPoolSummClicked()
+    {
+
+    }
+}
+
+<style>
+    .input-container {
+        display: flex;
+    }
+
+    .input-container-button {
+        border: none;
+        background-color: transparent;
+        transition: background-color 0.3s ease;
+    }
+
+        .input-container-button:hover {
+            background-color: rgba(200, 200, 200, 0.3);
+        }
+</style>

@@ -19,12 +19,14 @@ using System.Xml.Serialization;
 
 using AvpPlazaTester;
 
+using LiteInvest.Entity.Helpers;
 using LiteInvest.Entity.PlazaEntity;
+using LiteInvest.Entity.ServerEntity;
 
 using PlazaEngine;
 using PlazaEngine.Engine;
 
-using RouterLogger = LiteInvest.Entity.PlazaEntity.RouterLogger;
+using ServerLogger = LiteInvest.Entity.PlazaEntity.ServerLogger;
 
 
 namespace AvpPlazaExample
@@ -80,7 +82,7 @@ namespace AvpPlazaExample
                 plaza = new PlazaConnector("11111111", EmulatorCheckBox.IsChecked ?? true,  testTrading: true)
                 {
                     Limit = 30,
-                    LoadTicksFromStart = false,
+                    LoadTicksFromStart = LoadAllTicksCheckBox.IsChecked??false,
                 };
             }
             else if (RadioReal.IsChecked ?? false)
@@ -89,7 +91,7 @@ namespace AvpPlazaExample
                 plaza = new PlazaConnector("02mMLX144T2yxnfzEUrCjUKzXKciQKJ", EmulatorCheckBox.IsChecked ?? true, testTrading: false, appname: "osaApplication",2)
                 {
                     Limit = 30,
-                    LoadTicksFromStart = false,
+                    LoadTicksFromStart = LoadAllTicksCheckBox.IsChecked ?? false,
                 };
             }
             else
@@ -105,6 +107,32 @@ namespace AvpPlazaExample
             catch (Exception ex)
             {
                 Debug.WriteLine(ex.Message);
+            }
+
+            if (EmulatorCheckBox.IsChecked ?? true)
+            {
+                string data = "C:\\ServerData";
+                
+                string securitiesBdName = $"{data}\\securities.xml";
+                if (File.Exists(securitiesBdName))
+                {
+                 var Securities = Helper.ReadXml<ConcurrentDictionary<string, SecurityApi>>(securitiesBdName);
+                    foreach (var sec in Securities)
+                    {
+                        plaza.Securities.TryAdd(sec.Key, new Security(sec.Value.ShortName, sec.Value.FullName, SecurityType.Futures, sec.Value.ClassCode, sec.Value.Lot)
+                        {
+                            Id = sec.Value.id,
+                            Name = sec.Value.ShortName,
+                            ShortName = sec.Value.ShortName,
+                            PriceStep = sec.Value.PriceStep,
+                            PriceLimitLow = sec.Value.PriceLimitLow,
+                            PriceLimitHigh = sec.Value.PriceLimitHigh,
+                            PriceStepCost = 1,
+
+                        });
+                    }
+                    Plaza_UpdateSecurity();
+                }
             }
 
             plaza.MarketDepthChangeEvent += Plaza_MarketDepthChangeEvent;
@@ -129,19 +157,49 @@ namespace AvpPlazaExample
             RadioTest.IsEnabled = false;
         }
 
+        DateTime timeStartTick = DateTime.MaxValue;
+        long ticksPackCount = 0;
+        long ticksOneCount = 0;
         private void Plaza_TicksLoadedEvent()
         {
-            LogMessage("Тики загружены и вышли в режим Оналйн");
+            string s = $"Тики ticksOneCount={ticksOneCount} загружены ticksPackCount={ticksPackCount} пачек и вышли в режим Оналйн timeStartTick={timeStartTick.ToLongTimeString()} end={DateTime.Now.ToLongTimeString()}";
+            LogMessage(s);
+            Console.WriteLine(s);
         }
 
+        DateTime timeNewTickCollectionEvent = DateTime.Now;
         private void Plaza_NewTickCollectionEvent(Dictionary<string, List<Trade>> ticks)
         {
+            
+            DateTime timeNewTick = DateTime.MinValue;
+            string sec = "";
+            if (timeStartTick == DateTime.MaxValue)
+            {
+                timeStartTick = DateTime.Now;
+            }
+            ticksPackCount++;
+            foreach (var item in ticks)
+            {
+                if (item.Value.Count > 0)
+                {
+                    ticksOneCount = ticksOneCount + item.Value.Count;
+                    timeNewTick = item.Value[0].Time;
+                    sec = item.Value[0].SecurityName;
+                }
+            }
+            if (DateTime.Now.Subtract(timeNewTickCollectionEvent) > TimeSpan.FromSeconds(10))
+            {
+                string s = $"Грузим тики ticksOneCount={ticksOneCount} загружены ticksPackCount={ticksPackCount} пачек timeStartTick={timeStartTick.ToLongTimeString()} время тика {sec} = {timeNewTick:yyyy.MM.dd HH.mm.ss.fff}";
+                LogMessage(s);
+                Console.WriteLine(s);
+                timeNewTickCollectionEvent = DateTime.Now;
+            }
             if (ticksWindow != null)
             {
-                
+
                 foreach (var item in ticks)
                 {
-                    
+
                     foreach (var item1 in item.Value)
                     {
                         ticksWindow.Dispatcher.Invoke(() => ticksWindow.ListBoxTicks.Items.Insert(0, $"{item1}"));
@@ -432,7 +490,7 @@ namespace AvpPlazaExample
                 o.Comment = TextBoxComment.Text;
 
                 await plaza.ExecuteOrderAsync(o);
-                RouterLogger.Log(o.ToString(), "Test_Scenario");
+                ServerLogger.Log(o.ToString(), "Test_Scenario");
             }
         }
 
@@ -443,7 +501,7 @@ namespace AvpPlazaExample
             foreach (var o in orders)
             {
                 await plaza.CancelOrder(((Order)o).NumberUserOrderId);
-                RouterLogger.Log(o.ToString(), "Test_Scenario");
+                ServerLogger.Log(o.ToString(), "Test_Scenario");
             }
 
         }
@@ -472,7 +530,7 @@ namespace AvpPlazaExample
                 if (p.XPosValueCurrent != 0)
                 {
                     Order o = new Order(p.SecurityId, p.XPosValueCurrent > 0 ? Side.Sell : Side.Buy, Math.Abs(p.XPosValueCurrent), p.PortfolioName, $"Close-Client{i++} ");
-                    RouterLogger.Log(o.ToString(), "Test_Scenario");
+                    ServerLogger.Log(o.ToString(), "Test_Scenario");
                     await plaza.ExecuteOrderAsync(o);
                 }
             }
@@ -505,10 +563,10 @@ namespace AvpPlazaExample
             var orders = plaza.Orders.Values.ToList();
             foreach (var o in orders)
             {
-                if (o.State == Order.OrderStateType.Activ)
+                if (o.State == Order.OrderStateType.Active)
                 {
                     await plaza.CancelOrder(o.NumberUserOrderId);
-                    RouterLogger.Log(o.ToString(), "Test_Scenario");
+                    ServerLogger.Log(o.ToString(), "Test_Scenario");
                 }
             }
         }
@@ -532,10 +590,10 @@ namespace AvpPlazaExample
         private async void Plaza_OrderCancel(Order o, string? arg2)
         {
             if (test2Started 
-            && o.State == Order.OrderStateType.Activ)
+            && o.State == Order.OrderStateType.Active)
             {
                 await plaza.CancelOrder(o.NumberUserOrderId);
-                RouterLogger.Log(o.ToString(), "Test_Scenario");
+                ServerLogger.Log(o.ToString(), "Test_Scenario");
             }
         }
 
@@ -592,6 +650,18 @@ namespace AvpPlazaExample
             TestAggregateGlass testAggregateGlass = new TestAggregateGlass(plaza);
             aggregateGlassWindow = new AggregateGlassWindow(testAggregateGlass);
             aggregateGlassWindow.Show();
+
+        }
+
+        private void Button_AggregateCluster_Click(object sender, RoutedEventArgs e)
+        {
+            if (plaza == null)
+            {
+                MessageBox.Show("Установите соединение с PLAZA", "Коннектор PLAZA не активен");
+                return;
+            }
+            
+            TestAggregateCluster testAggregateCluster = new TestAggregateCluster(plaza, LogMessage);
 
         }
     }

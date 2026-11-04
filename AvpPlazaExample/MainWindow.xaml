@@ -34,8 +34,9 @@
                     <Button Margin="98,50,0,0" Width="100" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" Content="Show Ticks" Click="Button_Click_ShowTicks" Grid.Column="1"/>
                     <Button Margin="98,90,0,0" Width="100" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" Content="Close Connection" Click="Button_Close_Connection" Grid.Column="1" Visibility="Hidden"/>
                     <Button Margin="98,90,0,0" Width="100" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" Content="Aggregate Glass" Click="Button_AggregateGlass_Click" Grid.Column="1"/>
-                    
-                    
+
+                    <Button Margin="98,160,0,0" Width="100" Height="25" HorizontalAlignment="Left" VerticalAlignment="Top" Content="Aggregate Cluster" Click="Button_AggregateCluster_Click"  Grid.Column="1"/>
+
                     <ListView x:Name="GlassView" ItemsSource="{Binding Levels}"  d:ItemsSource="{d:SampleData ItemCount=5}" HorizontalAlignment="Left" Margin="260,5,0,60" Width="200" FontSize="11" Grid.Column="1">
                         <ListView.View>
                             <GridView>
@@ -62,7 +63,6 @@
                             </GridView>
                         </ListView.View>
                     </ListView>
-                    <Label Content="Multi Sender Orders to MOEX" HorizontalAlignment="Left" Margin="43,165,0,0" VerticalAlignment="Top" Grid.Column="1"/>
                     <Label d:Content="Security name" Content="{Binding SelectedItem, ElementName=SecuritiBox}" Margin="43,190,0,0"  HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="1"/>
                     <ComboBox Name="ComboBoxSide"  Margin="43,220,0,0" Width="100" HorizontalAlignment="Left"  VerticalAlignment="Top" Grid.Column="1">
                         <ComboBoxItem Content="Buy"/>
@@ -85,6 +85,7 @@
                     <Button Content="Cancel All Selected Orders" Margin="573,0,0,20"  HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="Button_CancelSelectedOrder" Grid.Column="1" />
                     <RadioButton x:Name="RadioReal" Grid.Column="1" Content="Real" HorizontalAlignment="Left" Margin="33,10,0,0" VerticalAlignment="Top"/>
                     <RadioButton x:Name="RadioTest" Grid.Column="1" Content="Test" IsChecked="True" HorizontalAlignment="Left" Margin="33,30,0,0" VerticalAlignment="Top"/>
+                    <CheckBox x:Name="LoadAllTicksCheckBox" Content="Load All Ticks" HorizontalAlignment="Left" Margin="3,60,0,0" VerticalAlignment="Top" IsChecked="False" Grid.Column="1"/>
                     <TextBox x:Name="TextBoxComment" Text="" Width="100" Margin="103,368,0,0"  HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="1"/>
                     <Label Content="Comment" Margin="43,365,0,0"  HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="1"/>
 
@@ -146,7 +147,7 @@
                             <ListView.View>
                                 <GridView>
                                     <GridViewColumn Header="SecurityId" DisplayMemberBinding="{Binding SecurityId}" Width="150"/>
-                                    <GridViewColumn Header="ValueCurrent" DisplayMemberBinding="{Binding ValueCurrent}" Width="150" />
+                                    <GridViewColumn Header="ValueCurrent" DisplayMemberBinding="{Binding XPosValueCurrent}" Width="150" />
                                 </GridView>
                             </ListView.View>
                         </ListView>

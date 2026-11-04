@@ -1,0 +1,511 @@
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+body.resizing {
+    user-select: none; /* Standard */
+    -webkit-user-select: none; /* Chrome/Safari */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE/Edge */
+}
+
+.algo-dialog {
+    font-size: var(--algo-font-size-normal);
+    color: var(--algo-color-primary-text);
+}
+
+.algo-dialog-wrapper {
+    position: fixed;
+    top: 50px;
+    left: 50px;
+    z-index: 10000;
+}
+
+.algo-dialog {
+    width: 700px;
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    user-select: none; /* Standard */
+    -webkit-user-select: none; /* Chrome/Safari */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE/Edge */
+}
+
+.algo-dialog-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+    .algo-dialog-modal .algo-dialog {
+        /* Reset wrapper positioning for modal */
+        position: static;
+        top: auto;
+        left: auto;
+        transform: none;
+        margin: auto;
+    }
+
+.algo-dialog-titlebar {
+    background: #f0f0f0;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: move;
+}
+.algo-dialog-title {
+    font-weight: bold;
+    font-size: var(--algo-font-size-normal);
+}
+.algo-dialog-modal .algo-dialog-titlebar {
+    cursor: auto;
+}
+.algo-dialog.no-titlebar {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+.algo-dialog-close {
+    cursor: pointer;
+}
+
+.algo-dialog-content {
+    /*    padding: 12px;*/
+    /*    overflow: auto;*/
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
+}
+
+.algo-dialog-tab,
+.algo-dialog-btn {
+    /*    border-radius: 8px;*/
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 4px 10px;
+    cursor: pointer;
+    color: var(--algo-color-primary-text);
+}
+    .algo-dialog-tab:hover,
+    .algo-dialog-btn:hover {
+        background: #eee;
+    }
+    .algo-dialog-tab.active {
+        background: #ddd;
+        border-color: blueviolet;
+/*        border-color: #aaa;*/
+/*        color: #000;*/
+    }
+    .algo-dialog-tab:disabled,
+    .algo-dialog-btn.disabled {
+        background: #eee;
+        cursor: not-allowed;
+    }
+        .algo-dialog-btn.disabled:hover {
+            background: #eee;
+        }
+.algo-dialog-btn-filled {
+    border: 1px solid #ddd;
+    background: #ddd;
+}
+    .algo-dialog-btn-filled:hover {
+        background: #eee;
+    }
+
+.algo-dialog-tabs {
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+.algo-dialog-table,
+.algo-dialog-tabs,
+.algo-dialog-search-wrapper {
+    font-size: var(--algo-font-size-normal);
+}
+
+.algo-dialog-search-wrapper {
+    position: relative;
+}
+.algo-dialog-search {
+    width: 100%;
+    padding: 8px 8px 8px 32px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    outline: none;
+}
+.algo-dialog-search-icon {
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+}
+    .algo-dialog-search-icon svg {
+        width: 100%;
+        height: 100%;
+        fill: #888;
+    }
+
+.algo-dialog-table-wrapper {
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable; /* prevents layout shift */
+/*    margin-right: -10px;*/
+    flex-grow: 1;
+    min-height: 0;
+    position: relative;
+    display: block;
+}
+    .algo-dialog-table-wrapper::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    .algo-dialog-table-wrapper::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+        border: 3px solid transparent;
+        background-clip: content-box;
+    }
+.algo-dialog-table {
+    border-spacing: 0;
+    table-layout: fixed;
+    height: 100%;
+    width: calc(100% + 10px);
+}
+    .algo-dialog-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background-color: #f1f1f1;
+    }
+    .algo-dialog-table thead,
+    .algo-dialog-table tbody {
+        display: table;
+        width: 100%;
+    }
+    .algo-dialog-table th,
+    .algo-dialog-table td {
+        text-align: left;
+        border-bottom: 1px solid #ccc;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        backface-visibility: hidden; /* subpixel rendering | helps force better GPU rendering */
+        box-sizing: border-box;
+    }
+    .algo-dialog-table td {
+        padding: 6px 6px 6px 6px;
+        display: inline-block;
+        height: 28px;
+    }
+    .algo-dialog-table th {
+        display: inline-block;
+        border-bottom: none;
+        padding: 6px 0px 6px 6px;
+        position: sticky;
+        background-color: #f1f1f1;
+        border-right: 1px solid #ddd;
+        top: 0;
+        z-index: 2;
+        font-weight: normal;
+    }
+        .algo-dialog-table th:last-child {
+            border-right: 0;
+        }
+    .algo-dialog-table tr td:first-child {
+        text-align: center;
+    }
+    .algo-dialog-table tr:hover {
+        background: #f5f5f5;
+    }
+    .algo-dialog-table tr,
+    .algo-dialog-table th {
+        cursor: pointer;
+    }
+        .algo-dialog-table th.sortable-header[style*="text-align: right"] {
+            padding-right: 14px;
+        }
+        .algo-dialog-table th.sortable-header[style*="text-align: right"]:last-child,
+        .algo-dialog-table td[style*="text-align: right"]:last-child {
+            padding-right: 20px;
+        }
+        .algo-dialog-table th.sortable-header[style*="text-align: center"] {
+            padding-left: 0;
+        }
+        .algo-dialog-table th:last-child .sort-icon {
+            right: 10px;
+        }
+    .algo-dialog-table tr:hover td {
+        position: relative;
+    }
+        .algo-dialog-table tr:hover td::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--algo-color-item-hover-alpha);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .algo-dialog-table tr td.has-button {
+            position: relative;
+            z-index: 1;
+            padding: 0 !important;
+            overflow: visible;
+        }
+    .algo-dialog-table .list-close-icon {
+        color: red;
+        background: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translateY(-50%) translateX(-50%);
+        z-index: 2;
+    }
+        .algo-dialog-table .list-close-icon:hover {
+            border: 1px solid gray;
+        }
+.algo-dialog-table-empty {
+    text-align: center;
+    padding: 8px;
+    color: gray;
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.sort-icon {
+    position: absolute;
+    width: 10px;
+    right: 4px;
+    top: calc(50% + 2px);
+    transform: translateY(-50%);
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.column-resizer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10;
+}
+
+.noborder-right {
+    border-right: 0 !important;
+}
+
+/* Context Menu Styles - Base */
+.algo-dialog-context-menu {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border-radius: 6px;
+    padding: 4px 0;
+    z-index: 10001;
+    min-width: 160px;
+    display: none;
+    font-size: var(--algo-font-size-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+}
+.algo-dialog-context-menu-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+    .algo-dialog-context-menu-item.has-submenu::after {
+        content: none;
+    }
+    .algo-dialog-context-menu-item.has-submenu::after {
+        content: '';
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+    }
+    .algo-dialog-context-menu-item:hover {
+        background-color: #f0f0f0;
+    }
+.algo-dialog-context-menu-item-text {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.algo-dialog-context-menu-caret {
+    position: absolute;
+    right: 8px; /* Match the right padding of the menu item */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.algo-dialog-context-menu-separator {
+    height: 1px;
+    background-color: #eee;
+    margin: 4px 0;
+}
+.algo-dialog-context-submenu {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border-radius: 6px;
+    padding: 4px 0;
+    min-width: 160px;
+    display: none;
+}
+.algo-dialog-context-menu-icon {
+    margin-right: 8px;
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.algo-dialog-context-submenu-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+    .algo-dialog-context-submenu-item:hover {
+        background-color: #f0f0f0;
+    }
+.algo-dialog-context-submenu-item-text {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.algo-dialog-context-submenu-item-check {
+    width: 10px;
+    height: 10px;
+    margin-left: 8px;
+    visibility: hidden;
+}
+.algo-dialog-context-submenu-item.checked .algo-dialog-context-submenu-item-check {
+    visibility: visible;
+}
+
+.algo-dialog-resizer {
+    position: absolute;
+    background: transparent;
+    z-index: 10;
+}
+
+.algo-dialog-resizer-n {
+    top: 0;
+    left: 5px;
+    right: 5px;
+    height: 5px;
+    cursor: n-resize;
+}
+
+.algo-dialog-resizer-e {
+    top: 5px;
+    right: 0;
+    bottom: 5px;
+    width: 5px;
+    cursor: e-resize;
+}
+
+.algo-dialog-resizer-s {
+    bottom: 0;
+    left: 5px;
+    right: 5px;
+    height: 5px;
+    cursor: s-resize;
+}
+
+.algo-dialog-resizer-w {
+    top: 5px;
+    left: 0;
+    bottom: 5px;
+    width: 5px;
+    cursor: w-resize;
+}
+
+.algo-dialog-resizer-ne {
+    top: 0;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    cursor: ne-resize;
+}
+
+.algo-dialog-resizer-nw {
+    top: 0;
+    left: 0;
+    width: 10px;
+    height: 10px;
+    cursor: nw-resize;
+}
+
+.algo-dialog-resizer-se {
+    bottom: 0;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    cursor: se-resize;
+}
+
+.algo-dialog-resizer-sw {
+    bottom: 0;
+    left: 0;
+    width: 10px;
+    height: 10px;
+    cursor: sw-resize;
+}
+
+.algo-dialog-resizing {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}

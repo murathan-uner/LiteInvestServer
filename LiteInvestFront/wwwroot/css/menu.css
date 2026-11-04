@@ -1,97 +1,122 @@
-﻿.top-menu {
-    justify-content: space-between;
-    display: flex;
-    align-items: center;
-    flex-direction: row;
-    background-color: #3b3d4b;
-    padding-top: 8px;
-    padding-bottom: 8px;
-    font-family: Montserrat;
+﻿.k-appbar {
+    box-shadow: none;
+    --kendo-color-primary: #3b3d4b;
 }
 
-.top-menu__section {
-    display: flex;
-    align-items: center;
+.k-appbar .k-input {
+    width: 100%;
 }
 
-.top-menu__login {
-    padding: 12px;
+.k-menu:not(.k-context-menu) > .k-item {
+    --kendo-color-subtle: white;
+    font-size: 1rem;
 }
 
-    .top-menu__login span {
-        cursor: pointer;
-        color: #FFFFFF;
+    .k-menu:not(.k-context-menu) > .k-item:hover, .k-menu:not(.k-context-menu) > .k-item.k-hover,
+    .k-menu:not(.k-context-menu) > .k-item:active, .k-menu:not(.k-context-menu) > .k-item.k-active {
+        --kendo-color-on-app-surface: white;
+        --kendo-color-primary: white;
     }
 
-.brand {
-    margin: 12px;
-    font: 24px/120% Montserrat;
-    text-decoration: none;
-    color: #FFFFFF;
-}
-
-.instrument-header {
-    display: flex;
-    box-sizing: border-box;
-    justify-content: space-between;
-}
-
-    .instrument-header.picked {
-        background-color: #f0f0f0;
+    .k-menu:not(.k-context-menu) > .k-item:focus, .k-menu:not(.k-context-menu) > .k-item.k-focus {
+        box-shadow: none;
     }
 
-.instrument-header__content {
-    white-space: nowrap;
-    display: grid;
-    grid-template-columns: min-content min-content;
+.k-menu-popup {
+    border-radius: .25rem;
+/*    border: 1px solid #ccc;*/
 }
-
-    .instrument-header__content svg {
-        cursor: pointer;
+    .k-menu-popup .k-menu-item {
+        font-size: 1rem;
+        --kendo-line-height: 1.8;
     }
-
-.dropdown-toggle {
-    cursor: pointer;
-    padding: 10px;
-    color: white;
-    display: inline-block;
-    position: relative;
-}
-
-.dropdown-items {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    background-color: #ffffff;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    width: 200px;
-    box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-    padding: 5px 0;
-    box-sizing: border-box;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-    .dropdown-items.show {
-        display: block;
-        opacity: 1;
-        pointer-events: auto;
-        transform: translateY(10px);
-    }
-
-    .dropdown-items span {
-        display: block;
-        padding: 10px;
-        color: #333;
-        cursor: pointer;
-        text-align: left;
-        transition: background-color 0.3s ease;
-    }
-
-        .dropdown-items span:hover {
-            background-color: #f1f1f1;
+        .k-menu-popup .k-menu-item.k-first {
+            padding-top: 4px;
         }
+        .k-menu-popup .k-menu-item.k-last {
+            padding-bottom: 4px;
+        }
+        .k-menu-group .k-item:hover>.k-link {
+            background-color: #e0e0e0;
+        }
+        .k-menu-group .k-item>.k-link:active {
+            color: #292b2c;
+            background-color: #e0e0e0;
+        }
+        .k-menu-group .k-item:focus>.k-link {
+            box-shadow: none;
+        }
+        .k-menu-popup .k-menu-item .k-menu-link-text {
+            padding-left: 4px;
+        }
+        .k-menu .k-menu-item .k-menu-expand-arrow {
+/*            display: none;*/
+        }
+
+.k-menu .k-menu-item:hover .k-link,
+.k-menu .k-menu-item.k-hover .k-link {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: #fff;
+    text-decoration: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+/*.k-menu .k-menu-item .k-link {
+    padding: 8px 16px;
+    border-radius: 4px;
+}*/
+
+.logo {
+    font-size: 24px;
+    margin: 10px 10px 9px 10px;
+    text-decoration: none;
+    color: #fff;
+}
+
+.action-label,
+.action-input {
+    font-size: 16px;
+    font-weight: 500;
+}
+.action-label {
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden; /* Optional: hides overflow */
+    text-overflow: ellipsis; /* Optional: shows "..." if overflowed */
+    display: inline-block; /* Required for width/overflow to apply */
+    max-width: 80vw;
+}
+.action-input {
+    outline: none;
+    text-align: center;
+}
+
+.action-item {
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    color: #fff;
+    padding: 6px 9px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    display: inline-block;
+}
+    .action-item:hover {
+        color: #fff;
+        text-decoration: none;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+.action-item-fill {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+    .action-item-fill:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+
+.action-item-icon {
+    padding: 6px 9px;
+}
+.action-item-text {
+    padding: 6px 12px;
+}

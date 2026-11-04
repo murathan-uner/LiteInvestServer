@@ -1,950 +1,2345 @@
-﻿namespace LiteInvestServerDll;
+﻿
+
+
+using Aggregate;
+
+using ConnectorService;
+
+using LiteInvest.Entity.Helpers;
+using LiteInvest.Entity.PlazaEntity;
+using LiteInvest.Entity.Server2;
+using LiteInvest.Entity.ServerEntity;
+
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 using PlazaEngine.Engine;
 
+using System;
 using System.Collections.Concurrent;
-using System.Text.Json;
-using LiteInvest.Entity.Helpers;
-using LiteInvest.Entity.PlazaEntity;
-using LiteInvest.Entity.ServerEntity;
-using LiteInvest.Entity.Server2;
+using System.Collections.Frozen;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using ConnectorService;
+using System.Text.Json;
 
-public class ServerService
+using static System.Runtime.InteropServices.JavaScript.JSType;
+
+
+namespace LiteInvestServerDll
 {
-
-    public bool crypto { get; set; } = false;
-
-    ConcurrentDictionary<string, SecurityApi> Securities = new();
-    ///База юзеров 
-    ConcurrentDictionary<string, User> UsersContext = new ConcurrentDictionary<string, User>();
-    //База ордеров по юзеру
-    ConcurrentDictionary<string, ConcurrentDictionary<string, Order>> Orders = new();
-    //База ордеров по юзеру
-    ConcurrentDictionary<string, ConcurrentDictionary<string, Trade>> Trades = new();
-    //ключ - юзер
-    //ключ 2 - sec ID
-    ConcurrentDictionary<string, ConcurrentDictionary<string, Pos>> OpenedPositions = new();
-    ConcurrentDictionary<string, ConcurrentDictionary<string, List<Pos>>> ClosedPositions = new();
-
-    //это словарь наоборот
-    // ключ - sec_id
-    // далее по юзерам идет разбивка. 
-    ConcurrentDictionary<string, ConcurrentDictionary<string, Pos>> PositionsForProfit = new();
-
-    ConcurrentDictionary<string, PositionOnBoard> RealPositions = new();
-
-    PlazaConnector plaza = null;
-    AggregateGlass aggregateGlass;
-
-    object savelocker = new object();
-
-    static string data = "C:\\ServerData";
-    DirectoryInfo directoryInfo = new DirectoryInfo(data);
-
-    PlazaOptions plazasimulation = new PlazaOptions();
-
-    string securitiesBdName = $"{data}\\securities.xml";
-    string userdBdName = $"{data}\\users.xml";
-    string ordersBdName = $"{data}\\orders.xml";
-    string tradesBdName = $"{data}\\trades.xml";
-
-    string openedpositionsdbname = $"{data}\\openedpositions.xml";
-
-
-    public class ResponseHandMade
+    public class ServerService : IDisposable
     {
-        public bool IsSuccessfull { get; set; }
-        public string Message { get; set; }
+        private const string MASTER_TAB_ID = "main";
+        public static string SERVER_WARNING_USER_NOT_LOGGED_IN = "user not logged in";
+        public static string SERVER_WARNING_LOADING_ORDERS = "wait for loading";
+        public static string SERVER_ERROR_NO_USER = "no user";
+        public static string SERVER_ERROR_NULL_SECURITY = "null security";
 
-        public ResponseHandMade(bool isSuccessfull, string message)
+        #region Variables ConcurrentDictionarys
+
+        public bool crypto { get; set; } = false;
+
+        
+        ConcurrentDictionaryDB<SecurityApi> Securities
         {
-            IsSuccessfull = isSuccessfull;
-            Message = message;
+            get => serviceDB?.GetSecuritys();
         }
-    }
+
+        ///База юзеров 
+        //ConcurrentDictionary<string, User> UsersContext
+        ConcurrentDictionaryDB<User> UsersContext
+        {
+            get => serviceDB?.GetUsersContext();
+        }
+        //База ордеров по юзеру
+        ConcurrentDictionary<string, ConcurrentDictionary<int, Order>> Orders
+        {
+            get => serviceDB?.GetOrders();
+        }
+        //База сделок по юзеру
+        // key 1 - username,
+        // key 2 - tradeMarketNumber
+
+        ConcurrentDictionary<string, ConcurrentDictionary<string, MyTrade>> Trades
+        {
+            get => serviceDB?.GetTrades();
+        }
+
+        /// <summary>
+        /// ключ 1 - юзер
+        /// ключ 2 - sec ID
+        /// </summary>
+        ConcurrentDictionary<string, ConcurrentDictionary<string, Pos>> OpenedPositions
+        {
+            get => serviceDB?.GetOpenedPositions();
+        }
+
+        //ключ - юзер
+        //ключ 2 - sec ID
+        ConcurrentDictionary<string, ConcurrentDictionary<string, List<Pos>>> ClosedPositions
+        {
+            get => serviceDB?.GetClosedPositions();
+        } //= new();
 
 
-    static JwtOptions jwtOptions { get; set; } = new JwtOptions("T6zPWbOrHXVEbOgJtZr91GqTLSAMPy52Y88+VD3RG90wrFO0bH2M/k5JAkDdvBB1", 24);
-    public JwtProvider jwtProvider { get; set; } = new JwtProvider(jwtOptions);
+        ConcurrentDictionary<string, PositionOnBoard> RealPositions = new();
 
-    ///PLAZA WORDER MAIN
-
-    /* // Тест сохранения 
-    Orders.TryAdd("1", new ConcurrentDictionary<string, Order>());
-    Orders["1"] = new ConcurrentDictionary<string, Order>();
-    Orders["1"]["2"] = new Order();
-
-    try
-    {
-        Helper.SaveXml(Orders, ordersBdName);
-    }
-    catch (Exception ex)
-    {
-
-    }*/
-
-    async void LogMessageAsync(string message)
-    {
-        var dt = DateTime.Now.ToString("H:mm:ss.fff");
-        await Console.Out.WriteLineAsync($"{dt} {message}").ConfigureAwait(false);
-    }
-
-    public List<int> ScaleList;
-
-    public ServerService()
-    {
-
-
-		if (!Directory.Exists(data))
-            System.IO.Directory.CreateDirectory(directoryInfo.ToString());
-
-
-        //TODO: Перепишу всю эту часть, когда сделаю нормальное сохранение. 
-
-        if (File.Exists(securitiesBdName))
-            Securities = Helper.ReadXml<ConcurrentDictionary<string, SecurityApi>>(securitiesBdName);
-
-        if (File.Exists(userdBdName))
-            UsersContext = Helper.ReadXml<ConcurrentDictionary<string, User>>(userdBdName);
-
-        if (File.Exists(ordersBdName))
-            Orders = Helper.ReadXml<ConcurrentDictionary<string, ConcurrentDictionary<string, Order>>>(ordersBdName);
-
-
-        //Trades = Helper.ReadXml<ConcurrentDictionary<string, ConcurrentDictionary<string, Trade>>>(tradesBdName);
-
-        if (File.Exists(openedpositionsdbname))
-            OpenedPositions = Helper.ReadXml<ConcurrentDictionary<string, ConcurrentDictionary<string, Pos>>>(openedpositionsdbname);
-
-
-
-        //тестовое сохраннение 
-        //OpenedPositions = new ConcurrentDictionary<string, ConcurrentDictionary<string, Pos>>();
-        //OpenedPositions.TryAdd("somekey", new ConcurrentDictionary<string, Pos>());
-        //OpenedPositions["somekey"].TryAdd("pos1", new Pos() { secid = "1", secName = "pa" });
-
-
-        //ClosedPositions = Helper.ReadXml<ConcurrentDictionary<string, ConcurrentDictionary<string, List<Pos>>>>($"{data}\\{nameof(ClosedPositions)}.xml");
-
-        string admin = "adminadminov";
-        string basicuser = "samujan1@yandex.ru";
-
-        if (!UsersContext.ContainsKey(admin))
-            UsersContext.TryAdd(admin, new User(admin, "adminPass#1R") { Admin = true, CanTrade = false });
-
-        if (!UsersContext.ContainsKey(basicuser))
-            UsersContext.TryAdd(basicuser, new User(basicuser, "pass2") { Admin = false, CanTrade = true });
-
-       
-
-   
-    }
-
-
-    private bool simulation { get; set; }
-
-    public void Start(bool _simulation)
-    {
-        simulation = _simulation;
-
-		Console.WriteLine($"simulation PLAZA {_simulation}");
-
-		plaza = new PlazaConnector("02mMLX144T2yxnfzEUrCjUKzXKciQKJ", _simulation, testTrading: false, appname: "osaApplication")
-		{
-			Limit = 30,
-			LoadTicksFromStart = false,
-		};
-
-        ScaleList = PlazaOptions.ScaleList;
-        aggregateGlass = AggregateGlass.Build(plaza, ScaleList);    
-        aggregateGlass.NewInsideQuotesEvent += AggregateGlass_NewInsideQuotesEvent;
         
 
-        plaza.UpdatePosition += pos =>
-		{
-			RealPositions[pos.SecurityId] = pos;
-			LogMessageAsync($"New Pos Info sec_id={pos.SecurityId} {pos.XPosValueCurrent} ");
-		};
+        PlazaConnector plaza = null;
+        AggregateGlass aggregateGlass;
+        AggregateCluster aggregateCluster;
 
-		plaza.TicksLoadedEvent += () => LogMessageAsync($"Ticks Ready To Go!");
-		plaza.NewMyTradeEvent += ProcessNewMyTrade;
-		plaza.OrderLoadedEvent += () => LogMessageAsync($"Orders Loaded!");
-
-		plaza.OrderChangedEvent += async (plazaOrder, reason) =>
-		{
-
-			if (plazaOrder == null)
-				return;
-
-			var username = plazaOrder.Comment;
-
-			try
-			{
-				if (!UsersContext.ContainsKey(username) || username == string.Empty)
-					return;
-
-				if (!Orders.ContainsKey(username))
-					Orders.TryAdd(username, new());
-
-				Orders[username][plazaOrder.ExchangeOrderId] = plazaOrder;
-
-
-				var user = UsersContext[username];
-                if (user?.PrivateOrderEventsForUsers?.Values == null)
-                {
-                    return;
-                }
-                foreach (var orderaction in user.PrivateOrderEventsForUsers.Values)
-				{
-					orderaction?.Invoke(plazaOrder);
-				}
-
-				LogMessageAsync($"Order add to DB {plazaOrder} id={plazaOrder.ExchangeOrderId}");
-			}
-			catch (Exception ex)
-			{
-				LogMessageAsync($"Problems adding order {ex.Message}");
-			}
-
-			//-----------------------------
-
-
-			LogMessageAsync($"New Order user ({username}) {plazaOrder.State} number = {plazaOrder.ExchangeOrderId} error ={reason}");
-
-
-			//далее по подпискам на сокеты мы должны отправить инфу о новом состоянии юзера..
-		};
-
-		plaza.NewTickCollectionEvent += ticksDictionary =>
-		{
-			//NOTE: Проще проверить все тики
-			//Или из подписки найти обновленные тики. 
-			//вопрос.. блять
-
-			//-----------------------------
-			//TODO: Рефакторить!
-
-			if (ticksDictionary == null)
-				return;
-
-
-			foreach (var tick in ticksDictionary)
-			{
-				// if(tick.Value.Count!=0)
-				// LogMessageAsync($"tiks arrive {tick.Key} count = {tick.Value.Count()} priceFirst = {tick.Value.First().Price}");
-			}
-
-			try
-			{
+        object savelocker = new object();
 
 
 
-
-				//-----------------------------
-
-				//проверяем всех наших подписантов
-				foreach (var secIdsubcription in SubscriptionsForTicks)
-				{
-					//LogMessageAsync($"sec {secIdsubcription.Key}");
-					//в тиках есть тики, которые мы должны отправить
-
-					//
-
-					if (ticksDictionary.ContainsKey(secIdsubcription.Key) && ticksDictionary[secIdsubcription.Key].Count != 0)
-					{
-
-						var ticks = ticksDictionary[secIdsubcription.Key];
-
-
-						foreach (var action in secIdsubcription.Value)
-						{
-							//TODO: временная заплатка
-
-							// LogMessageAsync($"{socket.Key} Sending pack of ticks");
-							action.Value?.Invoke(ticks);
-
-						}
-
-
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				LogMessageAsync($"Problems with websocket TICKS {ex.Message}");
-			}
-		};
-
-		plaza.MarketDepthChangeEvent += orderbook =>
-		{
-
-			if (orderbook == null)
-				return;
-
-			try
-			{
-				if (SubscriptionsForOrderBook.ContainsKey(orderbook.SecurityId)
-				&& SubscriptionsForOrderBook[orderbook.SecurityId] != null
-				&& SubscriptionsForOrderBook[orderbook.SecurityId].Count != 0)
-				{
-					foreach (var subscription in SubscriptionsForOrderBook[orderbook.SecurityId].Values)
-					{
-						subscription?.Invoke(orderbook);
-					}
-				}
-
-			}
-			catch (Exception ex)
-			{
-				LogMessageAsync("Order Book WebSockets error->" + ex.Message);
-			}
-		};
-
-
-		Helper.CreateTimerAndStart(CalculatePnls, 5000);
-		Helper.CreateTimerAndStart(SaveDb, 5000);
-
-		plaza.UpdateSecurity += sec =>
-		{
-			Securities[sec.Id] = new SecurityApi()
-			{
-				id = sec.Id,
-				ShortName = sec.ShortName,
-				ClassCode = sec.ClassCode,
-				Isin = sec.Name,
-				FullName = sec.FullName,
-				Type = sec.Type.ToString(),
-				Lot = sec.Lot,
-				PriceStep = sec.PriceStep,
-				Decimals = sec.Decimals,
-				PriceLimitHigh = sec.PriceLimitHigh,
-				PriceLimitLow = sec.PriceLimitLow,
-			};
-		};
-
-
-		if (plaza.Emulation)
-		{
-			foreach (var sec in Securities)
-			{
-                plaza.Securities.TryAdd(sec.Key, new Security(sec.Value.ShortName, sec.Value.FullName, SecurityType.Futures, sec.Value.ClassCode, sec.Value.Lot)
-                {
-                    Id = sec.Value.id,
-                    Name = "Emulation Security",
-                    ShortName = sec.Value.ShortName,
-                    PriceStep = sec.Value.PriceStep,
-                    PriceLimitLow = sec.Value.PriceLimitLow,
-                    PriceLimitHigh = sec.Value.PriceLimitHigh,
-                    PriceStepCost = 1,
-
-                });
-			}
-		}
-
-		plaza.Connect();
-
-	}
-
-    /// <summary>
-    /// Пришел агрегированный стакан 
-    /// </summary>
-    /// <param name="insideQuotes"></param>
-    /// <exception cref="NotImplementedException"></exception>
-    private void AggregateGlass_NewInsideQuotesEvent(InsideQuotes insideQuotes)
-    {
-        if (!SubscriptionsForScaledOrderBook.ContainsKey(insideQuotes.SecurityId) // не подписывались на этот инструмент
-            || SubscriptionsForScaledOrderBook[insideQuotes.SecurityId] == null
-            )
+        public class ResponseHandMade
         {
-            return;
-        }
-        foreach (var subscription in SubscriptionsForScaledOrderBook[insideQuotes.SecurityId])
-        {
-            subscription.Value?.Invoke(insideQuotes);
-        }
+            public bool IsSuccessfull { get; set; }
+            public string Message { get; set; }
 
-
-
-    }
-
-    #region HelperMethods
-
-    void CalculatePnls()
-    {
-        try
-        {
-            if (plaza == null || plaza.ticksplaza == null)
-                return;
-
-            foreach (var pos in PositionsForProfit)
+            public ResponseHandMade(bool isSuccessfull, string message)
             {
-
-                if (!plaza.ticksplaza.AllTicks.ContainsKey(pos.Key))
-                    continue;
-
-                var tickPrice = plaza.ticksplaza.AllTicks[pos.Key].Price;
-
-                foreach (var userPos in pos.Value)
-                {
-                    if (userPos.Value == null)
-                        continue;
-
-                    userPos.Value.CalculateUnrealizedPnl(tickPrice);
-                    // LogMessageAsync($"PNL updated for {userPos.Key} sec_id ={pos.Key}");
-                }
+                IsSuccessfull = isSuccessfull;
+                Message = message;
             }
         }
-        catch (Exception ex)
-        {
-            LogMessageAsync("CalculatePnls error->" + ex.Message);
-        }
-    }
 
-    void SaveDb()
-    {
-        lock (savelocker)
+        async void LogMessageAsync(string message)
+        {
+            var dt = DateTime.Now.ToString("H:mm:ss.fff");
+            await Console.Out.WriteLineAsync($"{dt} {message}").ConfigureAwait(false);
+        }
+
+        public List<int> ScaleList;
+
+
+        PositionManager positionManager;
+
+        RiskManager riskManager;
+
+        PlazaOptions plazaOptions;
+
+        ServiceDB serviceDB;
+
+        public AccountManager accountManager;
+
+        
+
+        private readonly IDbContextFactory<AppDBContext> dbContextFactory;
+
+        #endregion variablesConcurrentDictionarys
+
+
+        #region Constructor, start, init
+        public ServerService(IDbContextFactory<AppDBContext> _dbContextFactory)
+        {
+            dbContextFactory = _dbContextFactory;
+            using (var db = dbContextFactory.CreateDbContext()) { /* Initialization connect DB */ }
+        }
+
+
+
+        public void Start(PlazaOptions _plazaOptions, ServiceDB _serviceDB, AccountManager _accountManager)
+        {
+            serviceDB = _serviceDB;
+            serviceDB.Open();
+            
+            accountManager = _accountManager;
+            accountManager.Open(this, serviceDB, dbContextFactory);
+
+            plazaOptions = _plazaOptions;
+
+            riskManager = new RiskManager(this, UsersContext);
+            
+
+            positionManager = new PositionManager(this);
+
+            AddUserAdmin();
+
+            bool simulation = _plazaOptions.Simulation;
+
+            Console.WriteLine($"simulation PLAZA {simulation}");
+
+            plaza = new PlazaConnector("02mMLX144T2yxnfzEUrCjUKzXKciQKJ", simulation, testTrading: false, appname: "osaApplication")
+            {
+                Limit = 30,
+                LoadTicksFromStart = false,
+            };
+
+
+
+            ScaleList = PlazaOptions.ScaleList;
+            aggregateGlass = AggregateGlass.Build(plaza, ScaleList);
+            aggregateGlass.NewInsideQuotesEvent += AggregateGlass_NewInsideQuotesEvent;
+
+            aggregateCluster = AggregateCluster.Build(plaza, ScaleList);
+            aggregateCluster.NewInsideClusterEvent += AggregateCluster_NewInsideClusterEvent;
+
+            plaza.UpdatePosition += pos =>
+            {
+                RealPositions[pos.SecurityId] = pos;
+                LogMessageAsync($"New Pos Info sec_id={pos.SecurityId} {pos.XPosValueCurrent} ");
+            };
+
+            plaza.TicksLoadedEvent += Plaza_TicksLoadedEvent; ;
+            plaza.NewMyTradeEvent += ProcessNewMyTrade;
+            plaza.OrderLoadedEvent += Plaza_OrderLoadedEvent;
+            plaza.OrderChangedEvent += Plaza_OrderChangedEvent;
+            plaza.SecuritiesLoadedEvent += Plaza_SecuritiesLoadedEvent;
+
+            plaza.NewTickCollectionEvent += ticksDictionary =>
+            {
+                if (ticksDictionary == null)
+                    return;
+               
+                try
+                {
+
+                    //проверяем всех наших подписантов
+                    foreach (var secIdsubcription in SubscriptionsForTicks)
+                    {
+                    
+                        if (ticksDictionary.ContainsKey(secIdsubcription.Key) && ticksDictionary[secIdsubcription.Key].Count != 0)
+                        {
+
+                            var ticks = ticksDictionary[secIdsubcription.Key];
+
+                            foreach (var action in secIdsubcription.Value)
+                            {
+                                //TODO: временная заплатка
+
+                                // LogMessageAsync($"{socket.Key} Sending pack of ticks");
+                                Task.Run(()=> action.Value?.Invoke(ticks));
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogMessageAsync($"Problems with websocket TICKS {ex.Message}");
+                }
+            };
+
+
+            plaza.UpdateSecurity += sec =>
+            {
+                var secInDB = DBManager.GetObjectFromDB<SecurityApi>(query => query.Where(o => o.id == sec.Id)).FirstOrDefault();
+
+                if (secInDB != null)
+                {
+                    secInDB.id = sec.Id;
+                    secInDB.ShortName = sec.ShortName;
+                    secInDB.ClassCode = sec.ClassCode;
+                    secInDB.Isin = sec.Name;
+                    secInDB.FullName = sec.FullName;
+                    secInDB.Type = sec.Type.ToString();
+                    secInDB.Lot = sec.Lot;
+                    secInDB.PriceStep = sec.PriceStep;
+                    secInDB.PriceStepCost = sec.PriceStepCost;
+                    secInDB.Decimals = sec.Decimals;
+                    secInDB.PriceLimitHigh = sec.PriceLimitHigh;
+                    secInDB.PriceLimitLow = sec.PriceLimitLow;
+                    secInDB.DateUpdateFromMoex = sec.Expiration;
+                }
+                else
+                {
+                    secInDB = new SecurityApi()
+                    {
+                        id = sec.Id,
+                        ShortName = sec.ShortName,
+                        ClassCode = sec.ClassCode,
+                        Isin = sec.Name,
+                        FullName = sec.FullName,
+                        Type = sec.Type.ToString(),
+                        Lot = sec.Lot,
+                        PriceStep = sec.PriceStep,
+                        PriceStepCost = sec.PriceStepCost,
+                        Decimals = sec.Decimals,
+                        PriceLimitHigh = sec.PriceLimitHigh,
+                        PriceLimitLow = sec.PriceLimitLow,
+                        DateUpdateFromMoex = sec.Expiration
+                    };
+                }
+                Securities[sec.Id] = secInDB;
+            };
+
+
+            if (plaza.Emulation)
+            {
+                foreach (var sec in Securities)
+                {
+                    plaza.Securities.TryAdd(sec.Key, new Security(sec.Value.ShortName, sec.Value.FullName, SecurityType.Futures, sec.Value.ClassCode, sec.Value.Lot)
+                    {
+                        Id = sec.Value.id,
+                        Name =sec.Value.ShortName,// "Emulation Security",
+                        ShortName = sec.Value.ShortName,
+                        PriceStep = sec.Value.PriceStep,
+                        PriceLimitLow = sec.Value.PriceLimitLow,
+                        PriceLimitHigh = sec.Value.PriceLimitHigh,
+                        PriceStepCost = sec.Value.PriceStepCost != 0? sec.Value.PriceStepCost : 1 ,
+
+                    });
+                }
+            }
+
+            plaza.Connect();
+
+        }
+
+        private bool plazaAllTicksLoaded = false;
+        private void Plaza_TicksLoadedEvent()
+        {
+            plazaAllTicksLoaded = true;
+        }
+
+        public bool GetConnectorAllDataIsReady(BoardEnum board)
+        {
+            if (board == BoardEnum.FortsMoex)
+            {
+                return plazaAllTicksLoaded && plazaAllOrderLoaded && plazaAllSecuritiesLoaded;
+            }
+            return false;
+        }
+
+        private bool plazaAllSecuritiesLoaded = false;
+
+        private void Plaza_SecuritiesLoadedEvent()
+        {
+            foreach (var item in Securities)
+            {
+                var sec = item.Value;
+                if (sec.DateUpdateFromMoex < DateTime.UtcNow.AddHours(3).Date)
+                {
+                    Securities.TryRemove(item);
+                }
+
+            }
+            plazaAllSecuritiesLoaded = true;
+        }
+
+        #endregion Constructor, start, init 
+
+        #region Users, Tabs, Instruments, Instrument profiles
+
+        // Data Structure
+        // User --> Tabs --> Instruments --> Profiles
+        //      User : Tabs | 1 : n
+        //      Tab : Instruments | 1 : n
+        //      Instrument : Profile | 1 : 1
+
+        private void AddUserAdmin()
+        {
+            string admin = "adminadminov";
+            string basicuser = "samujan1@yandex.ru";
+
+            if (!UsersContext.ContainsKey(admin))
+                UsersContext.TryAdd(admin, new User(admin, "adminPass#1R") { Admin = true, CanInput = true });
+            UsersContext.TryGetValue(admin, out var user);
+            user.CanInput = true;
+
+            if (!UsersContext.ContainsKey(basicuser))
+                UsersContext.TryAdd(basicuser, new User(basicuser, "pass2") { Admin = false, CanInput = true });
+            UsersContext.TryGetValue(basicuser, out user);
+            user.CanInput = true;
+        }
+
+
+        /// <summary>
+        /// Взять пользователя по его имени
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
+        public User? GetUser(string userName)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out var user))
+            {
+                return user;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Get the best buy/sell price or if it is zero/null, get the last price
+        /// </summary>
+        /// <param name="secId"></param>
+        /// <returns></returns>
+        public (decimal BestBid, decimal BestAsk) GetBestBidAskPrice(string secId)
+        {
+            (MarketDepthLevel BestBid, MarketDepthLevel BestAsk) bestPrice =  aggregateGlass.GetBestBidAskPrice(secId);
+
+            if (bestPrice.BestBid == null || bestPrice.BestAsk == null || bestPrice.BestBid?.Price == 0 || bestPrice.BestAsk?.Price == 0)
+            {
+                decimal lastPrice = GetLastPrice(secId);
+                return (lastPrice, lastPrice);
+            }
+            return (bestPrice.BestBid.Price, bestPrice.BestAsk.Price);
+        }
+
+        public decimal GetLastPrice(string secId)
+        {
+            if (plaza?.ticksplaza?.AllTicks.TryGetValue(secId,out var t)??false)
+            {
+                decimal lastPrice = t?.Price ?? 0;
+                return lastPrice;
+            }
+            return 0;
+        }
+
+        public List<SecurityApi> GetAllSecurities()
+        {
+            if (Securities == null || Securities.IsEmpty)
+                return [];
+
+            return [.. Securities.Values.OrderBy(s => s.ShortName)];
+        }
+
+        public SecurityApi? GetSecurity(string secId)
+        {
+            if (Securities.TryGetValue(secId, out var sec))
+            {
+                return sec;
+            }
+            return null;
+        }
+
+        public TabProfile? GetUserMasterTab(string userName)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user))
+            {
+                return user.MasterTab;
+            }
+
+            return null;
+        }
+
+        //public ConcurrentDictionary<string, TabProfile>? GetUserTabs(string userName)
+        //{
+        //    if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user))
+        //    {
+        //        return user.Tabs;
+        //    }
+
+        //    return null;
+        //}
+        public List<TabProfile>? GetUserTabs(string userName)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user))
+            {
+                return user.Tabs;
+            }
+
+            return null;
+        }
+
+        public static TabProfile GenerateDefaultTab(string tabId)
+        {
+            var profile = new TabProfile
+            {
+                Id = tabId
+            };
+
+            return profile;
+        }
+
+        /// <summary>
+        /// Get table based dialog profile by user name and dialog type
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public DialogProfile? GetDialogProfile(string userName, DialogType type)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user))
+            {
+                return type switch
+                {
+                    DialogType.InstrumentPicker => user.InstrumentPickerProfile,
+                    DialogType.ActiveOrders => user.ActiveOrdersDialogProfile,
+                    DialogType.ActivePositions => user.ActivePositionsDialogProfile,
+                    _ => null
+                };
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Get user favorite security profiles by user name
+        /// </summary>
+        /// <param name="userName">logged in user name</param>
+        /// <returns></returns>
+        public ConcurrentDictionary<string /* security id */, SecurityProfile> GetUserFavoriteInstruments(string userName)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user))
+            {
+                return user.FavoriteInstruments ?? [];
+            }
+
+            return [];
+        }
+
+        /// <summary>
+        /// Get user favorite security profile by user name and security id
+        /// </summary>
+        /// <param name="userName">logged in user name</param>
+        /// <param name="secId">security id</param>
+        /// <returns></returns>
+        public SecurityProfile? GetUserFavoriteInstrument(string userName, string secId)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user) && !string.IsNullOrEmpty(secId))
+            {
+                if (user.FavoriteInstruments == null)
+                    return null;
+
+                if (user.FavoriteInstruments.TryGetValue(secId, out SecurityProfile? profile))
+                    return profile;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Get user recent security profiles by user name
+        /// </summary>
+        /// <param name="userName">logged in user name</param>
+        /// <returns></returns>
+        public ConcurrentDictionary<string /* security id */, (int /* order index */, SecurityProfile)> GetUserRecentInstruments(string userName)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user))
+            {
+                return user.RecentInstruments ?? [];
+            }
+
+            return [];
+        }
+
+        /// <summary>
+        /// Get user recent security profile by user name and security id
+        /// </summary>
+        /// <param name="userName">logged in user name</param>
+        /// <param name="secId">security id</param>
+        /// <returns></returns>
+        public SecurityProfile? GetUserRecentInstrument(string userName, string secId)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user) && !string.IsNullOrEmpty(secId))
+            {
+                if (user.RecentInstruments == null)
+                    return null;
+
+                if (user.RecentInstruments.TryGetValue(secId, out (int, SecurityProfile) value))
+                    return value.Item2;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Get user's all security profiles
+        /// </summary>
+        /// <param name="userName">logged in user name</param>
+        /// <returns></returns>
+        public ConcurrentDictionary<string /* tab id */, ConcurrentDictionary<string /* security special hash */, SecurityProfile>> GetUserInstruments(string userName)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user))
+            {
+                return user.Instruments ?? [];
+            }
+
+            return [];
+        }
+
+        /// <summary>
+        /// Get user's all security profiles by tab id
+        /// </summary>
+        /// <param name="userName">logged in user name</param>
+        /// <param name="tabId">null: master tab, GUID: child tab</param>
+        /// <returns></returns>
+        public ConcurrentDictionary<string /* security special hash */, SecurityProfile> GetUserInstrumentsByTab(string userName, string? tabId)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user))
+            {
+                var instruments = user.Instruments ?? [];
+
+                string _tabId = string.IsNullOrEmpty(tabId) ? MASTER_TAB_ID : tabId;
+
+                if (instruments.TryGetValue(_tabId, out var tabInstruments))
+                {
+                    return tabInstruments;
+                }
+            }
+
+            return [];
+        }
+
+        /// <summary>
+        /// Get user security profile by user name and instrument's GUID
+        /// </summary>
+        /// <param name="userName">logged in user name</param>
+        /// <param name="tabId">tab id</param>
+        /// <param name="specialHash">dynamically generated security's GUID</param>
+        /// <returns></returns>
+        public SecurityProfile? GetUserInstrument(string userName, string? tabId, string specialHash)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user) && !string.IsNullOrEmpty(specialHash))
+            {
+                var instruments = user.Instruments;
+                if (instruments == null)
+                    return null;
+
+                string _tabId = string.IsNullOrEmpty(tabId) ? MASTER_TAB_ID : tabId;
+
+                if (instruments.TryGetValue(_tabId, out var tabInstruments))
+                {
+                    if (tabInstruments.TryGetValue(specialHash, out var profile))
+                    {
+                        return profile;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Get user security profile by user name and security id
+        /// </summary>
+        /// <param name="userName">logged in user name</param>
+        /// <param name="specialHash">security id</param>
+        /// <returns></returns>
+        public SecurityProfile? GetUserInstrumentBySecId(string userName, string? tabId, string secId)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user) && !string.IsNullOrEmpty(secId))
+            {
+                var instruments = user.Instruments;
+                if (instruments == null)
+                    return null;
+
+                string _tabId = string.IsNullOrEmpty(tabId) ? MASTER_TAB_ID : tabId;
+
+                if (instruments.TryGetValue(_tabId, out var tabInstruments))
+                {
+                    var profile = tabInstruments.Values.FirstOrDefault(p => p.Id == secId);
+                    return profile;
+                }
+            }
+            return null;
+        }
+
+        public SecurityProfile GenerateDefaultInstrument(string secId)
+        {
+            var profile = new SecurityProfile
+            {
+                Id = secId,
+                Scale = 0,
+                LikeTradesVolume = [.. plazaOptions.LikeTradesVolume],
+                LikeTradesVolumeIndex = 0,
+                AutomaticScrollFlag = false
+            };
+
+            return profile;
+        }
+
+        public ConcurrentDictionary<string, int>? GetUsersInstrumentOrders(string userName, string? tabId)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user))
+            {
+                var orders = user.InstrumentOrders;
+                if (orders == null)
+                    return null;
+
+                string _tabId = string.IsNullOrEmpty(tabId) ? MASTER_TAB_ID : tabId;
+
+                if (orders.TryGetValue(_tabId, out var tabInstrumentOrders))
+                {
+                    return tabInstrumentOrders;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Add/Update child tab profile
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="tabId"></param>
+        public async void SaveMasterTab(string userName, TabProfile tab)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user))
+                return;
+
+            await Task.Run(() =>
+            {
+                user.MasterTab = tab;
+            });
+        }
+
+        /// <summary>
+        /// Add/Update child tab profile
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="tabId"></param>
+        public async void SaveTab(string userName, string tabId)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || string.IsNullOrEmpty(tabId))
+                return;
+
+            await Task.Run(() =>
+            {
+                user.Tabs ??= [];
+                //user.Tabs[tabId] = GenerateDefaultTab(tabId);
+                if (!user.Tabs.Exists(x => x.Id == tabId))
+                {
+                    Console.WriteLine($">>> Saved a default tab: {tabId}");
+                    user.Tabs.Add(GenerateDefaultTab(tabId));
+                }
+            });
+        }
+
+        /// <summary>
+        /// Add/Update child tab profile
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="tab"></param>
+        public async void SaveTab(string userName, TabProfile tab)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || string.IsNullOrEmpty(tab.Id))
+                return;
+
+            await Task.Run(() =>
+            {
+                //if (tab.Left < 0) tab.Left = 0;
+                //if (tab.Top < 0) tab.Top = 0;
+                //if (tab.Width < 0) tab.Width = 0;
+                //if (tab.Height < 0) tab.Height = 0;
+                
+                // TODO - detect tab's miniziation
+                if (tab.Left < -1000 && tab.Top < -1000)
+                {
+                    tab.Left = 0;
+                    tab.Top = 0;
+                    tab.Width = 0;
+                    tab.Height = 0;
+                }
+                if (tab.Width < 0) tab.Width = 0;
+                if (tab.Height < 0) tab.Height = 0;
+
+                user.Tabs ??= [];
+                //user.Tabs[tab.Id] = tab;
+                var index = user.Tabs.FindIndex(t => t.Id == tab.Id);
+                if (index != -1)
+                {
+                    Console.WriteLine($">>> Updated tab: {tab.Caption}, {tab.Id}");
+                    user.Tabs[index] = tab;
+                }
+                else
+                {
+                    Console.WriteLine($">>> Added tab: {tab.Caption}, {tab.Id}");
+                    user.Tabs.Add(tab);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Add/Update child tabs profile
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="tabs"></param>
+        public async void SaveTabs(string userName, List<TabProfile> tabs)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user))
+                return;
+
+            await Task.Run(() =>
+            {
+                user.Tabs ??= [];
+                foreach (var tab in tabs)
+                {
+                    if (string.IsNullOrEmpty(tab.Id))
+                        continue;
+
+                    // detect tab's miniziation
+                    if (tab.Left < -1000 && tab.Top < -1000)
+                    {
+                        tab.Left = 0;
+                        tab.Top = 0;
+                        tab.Width = 0;
+                        tab.Height = 0;
+                    }
+                    if (tab.Width < 0) tab.Width = 0;
+                    if (tab.Height < 0) tab.Height = 0;
+
+                    //user.Tabs[tab.Id] = tab;
+                    var index = user.Tabs.FindIndex(t => t.Id == tab.Id);
+                    if (index != -1)
+                    {
+                        Console.WriteLine($">>> Updated tab(F): {tab.Caption}, {tab.Id}");
+                        tab.Caption = user.Tabs[index].Caption; // to avoid missing caption change from child
+                        user.Tabs[index] = tab;
+                    }
+                    else
+                    {
+                        Console.WriteLine($">>> Added tab(F): {tab.Caption}, {tab.Id}");
+                        user.Tabs.Add(tab);
+                    }
+                }
+            });
+        }
+
+        /// <summary>
+        /// Save user table based dialog profile
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="type"></param>
+        /// <param name="profile"></param>
+        public async void SaveDialogProfile(string userName, DialogType type, DialogProfile? profile)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user))
+            {
+                await Task.Run(() =>
+                {
+                    switch (type)
+                    {
+                        case DialogType.InstrumentPicker:
+                            user.InstrumentPickerProfile = (InstrumentPickerProfile?)profile;
+                            break;
+                        case DialogType.ActiveOrders:
+                            user.ActiveOrdersDialogProfile = (ActiveOrdersDialogProfile?)profile;
+                            break;
+                        case DialogType.ActivePositions:
+                            user.ActivePositionsDialogProfile = (ActivePositionsDialogProfile?)profile;
+                            break;
+                    }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Save user favorite securities
+        /// Called when
+        ///     - adding a favorite
+        ///     - the instrument already exists in the favorite list and closing it
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="secId"></param>
+        /// <param name="profile">null: adding a favorite</param>
+        public async void SaveUserFavoriteInstrument(string userName, string secId, SecurityProfile? profile)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || string.IsNullOrEmpty(secId))
+                return;
+
+            await Task.Run(() =>
+            {
+                user.FavoriteInstruments ??= [];
+                profile ??= GenerateDefaultInstrument(secId);
+                user.FavoriteInstruments[secId] = profile;
+            });
+        }
+
+        /// <summary>
+        /// Add user recent security or replace the order to the top of the list
+        /// Called when
+        ///     - closing an instrument
+        ///     - opening a new instrument
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="secId"></param>
+        /// <param name="profile"></param>
+        public async void SaveUserRecentInstrument(string userName, string secId, SecurityProfile profile)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || string.IsNullOrEmpty(secId))
+                return;
+
+            await Task.Run(() =>
+            {
+
+                // D, C, B, A(closing) => A, D, C, B
+                // D, C, B, A => opening E => E, D, C, B, A
+
+                user.RecentInstruments ??= [];
+                int lastOrderIndex;
+                if (user.RecentInstruments.TryGetValue(secId, out (int, SecurityProfile) value))
+                {
+                    if (user.RecentInstruments[secId].Item1 == user.RecentInstrumentsLastOrderIndex)
+                        // current profile is the last one, so do not change the order index
+                        lastOrderIndex = user.RecentInstrumentsLastOrderIndex ?? 0;
+                    else
+                        lastOrderIndex = (user.RecentInstrumentsLastOrderIndex ?? -1) + 1;
+                }
+                else
+                {
+                    lastOrderIndex = (user.RecentInstrumentsLastOrderIndex ?? -1) + 1;
+                }
+
+                user.RecentInstruments[secId] = (lastOrderIndex, profile);
+                user.RecentInstrumentsLastOrderIndex = lastOrderIndex;
+            });
+        }
+
+        /// <summary>
+        /// Save user instrument profile
+        /// Called every time any setting's changed
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="tabId"></param>
+        /// <param name="specialHash"></param>
+        /// <param name="profile"></param>
+        public async void SaveUserInstrument(string userName, string? tabId, string specialHash, SecurityProfile profile)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || string.IsNullOrEmpty(specialHash))
+                return;
+
+            string _tabId = string.IsNullOrEmpty(tabId) ? MASTER_TAB_ID : tabId;
+
+            await Task.Run(() =>
+            {
+                user.Instruments ??= [];
+                var tabDict = user.Instruments.GetOrAdd(_tabId, _ => new ConcurrentDictionary<string, SecurityProfile>());
+                tabDict[specialHash] = profile;
+            });
+        }
+
+        public async void SaveUserInstrumentsOrder(string userName, string? tabId, List<SecurityApi> secs)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || secs.Count == 0)
+                return;
+
+            string _tabId = string.IsNullOrEmpty(tabId) ? MASTER_TAB_ID : tabId;
+
+            await Task.Run(() =>
+            {
+                user.InstrumentOrders ??= [];
+                var tabDict = user.InstrumentOrders.GetOrAdd(_tabId, _ => new ConcurrentDictionary<string, int>());
+
+                for (var i = 0; i < secs.Count; i++)
+                {
+                    var sec = secs[i];
+                    tabDict[sec.SpecialHash] = i;
+                }
+            });
+        }
+
+        // When adding new instrument
+        public async void SaveUserInstrumentOrder(string userName, string? tabId, string specialHash)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || string.IsNullOrEmpty(specialHash))
+                return;
+
+            string _tabId = string.IsNullOrEmpty(tabId) ? MASTER_TAB_ID : tabId;
+
+            await Task.Run(() =>
+            {
+                user.InstrumentOrders ??= [];
+                var tabDict = user.InstrumentOrders.GetOrAdd(_tabId, _ => new ConcurrentDictionary<string, int>());
+
+                if (tabDict.IsEmpty)
+                {
+                    tabDict[specialHash] = 0;
+                }
+                else if (!tabDict.ContainsKey(specialHash))
+                {
+                    var lastOrder = tabDict.OrderByDescending(x => x.Value).FirstOrDefault().Value;
+                    tabDict[specialHash] = lastOrder + 1;
+                }
+            });
+        }
+
+        public async void ReplaceUserInstrumentOrder(string userName, string? tabId, string oldSpecialHash, string newSpecialHash)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || string.IsNullOrEmpty(oldSpecialHash) || string.IsNullOrEmpty(newSpecialHash))
+                return;
+            if (user.InstrumentOrders == null || !user.InstrumentOrders.ContainsKey(oldSpecialHash))
+                return;
+
+            string _tabId = string.IsNullOrEmpty(tabId) ? MASTER_TAB_ID : tabId;
+
+            await Task.Run(() =>
+            {
+                if (user.InstrumentOrders.TryGetValue(_tabId, out var tabDict))
+                {
+                    var order = tabDict.FirstOrDefault(x => x.Key == oldSpecialHash).Value;
+                    tabDict.TryRemove(oldSpecialHash, out _);
+                    tabDict[newSpecialHash] = order;
+                }
+            });
+        }
+
+        /// <summary>
+        /// Remove child tab id
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="tabId"></param>
+        public async void DeleteTab(string userName, string tabId)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || string.IsNullOrEmpty(tabId) || user.Tabs == null)
+                return;
+
+            await Task.Run(() =>
+            {
+                //user.Tabs.TryRemove(tabId, out _);
+                var item = user.Tabs.FirstOrDefault(t => t.Id == tabId);
+                if (item != null)
+                {
+                    user.Tabs.Remove(item);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Remove user table based dialog profile
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="type"></param>
+        public async void DeleteDialogProfile(string userName, DialogType type)
+        {
+            if (!string.IsNullOrWhiteSpace(userName) && UsersContext.TryGetValue(userName, out User? user))
+            {
+                await Task.Run(() =>
+                {
+                    switch (type)
+                    {
+                        case DialogType.InstrumentPicker:
+                            user.InstrumentPickerProfile = null;
+                            break;
+                        case DialogType.ActiveOrders:
+                            user.ActiveOrdersDialogProfile = null;
+                            break;
+                        case DialogType.ActivePositions:
+                            user.ActivePositionsDialogProfile = null;
+                            break;
+                    }
+                });
+            }
+        }
+
+        public async void DeleteUserFavoriteInstrument(string userName, string secId)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || string.IsNullOrEmpty(secId))
+                return;
+
+            await Task.Run(() =>
+            {
+                user.FavoriteInstruments.TryRemove(secId, out _);
+            });
+        }
+
+        public async void DeleteUserRecentInstrument(string userName, string secId)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || string.IsNullOrEmpty(secId))
+                return;
+
+            await Task.Run(() =>
+            {
+                user.RecentInstruments.TryRemove(secId, out _);
+                user.RecentInstrumentsLastOrderIndex = -1;
+            });
+        }
+
+        /// <summary>
+        /// Delete user Instrument
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="tabId"></param>
+        /// <param name="specialHash"></param>
+        public async void DeleteUserInstrumentAsync(string userName, string? tabId, string specialHash)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || string.IsNullOrEmpty(specialHash))
+                return;
+
+            string _tabId = string.IsNullOrEmpty(tabId) ? MASTER_TAB_ID : tabId;
+
+            await Task.Run(() =>
+            {
+                if (user.Instruments.TryGetValue(_tabId, out var tabDict))
+                {
+                    tabDict.TryRemove(specialHash, out _);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Delete user's all Instruments of a tab
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="tabId"></param>
+        public async void DeleteUserInstrumentsAsync(string userName, string? tabId)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user))
+                return;
+
+            string _tabId = string.IsNullOrEmpty(tabId) ? MASTER_TAB_ID : tabId;
+
+            await Task.Run(() =>
+            {
+                user.Instruments.TryRemove(_tabId, out _);
+            });
+        }
+
+        /// <summary>
+        /// Delete user Instrument order
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="tabId"></param>
+        /// <param name="specialHash"></param>
+        public async void DeleteUserInstrumentOrderAsync(string userName, string? tabId, string specialHash)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user) || string.IsNullOrEmpty(specialHash))
+                return;
+
+            string _tabId = string.IsNullOrEmpty(tabId) ? MASTER_TAB_ID : tabId;
+            
+            await Task.Run(() =>
+            {
+                if (user.InstrumentOrders.TryGetValue(_tabId, out var tabDict))
+                {
+                    tabDict.TryRemove(specialHash, out _);
+                }
+            });
+        }
+
+        /// <summary>
+        /// Delete user's all Instrument orders for a tab
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="tabId"></param>
+        public async void DeleteUserInstrumentOrdersAsync(string userName, string? tabId)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || !UsersContext.TryGetValue(userName, out User? user))
+                return;
+
+            string _tabId = string.IsNullOrEmpty(tabId) ? MASTER_TAB_ID : tabId;
+
+            await Task.Run(() =>
+            {
+                user.InstrumentOrders.TryRemove(_tabId, out _);
+            });
+        }
+
+        #endregion Users, Tabs, Instruments, Instrument profiles
+
+        #region HelperMethods
+
+        private void AggregateCluster_NewInsideClusterEvent(InsideClusters insideClusters)
+        {
+            if (!SubscriptionsForScaledCluster.ContainsKey(insideClusters.SecurityId) // не подписывались на этот инструмент
+                || SubscriptionsForScaledCluster[insideClusters.SecurityId] == null
+                )
+            {
+                return;
+            }
+            foreach (var subscription in SubscriptionsForScaledCluster[insideClusters.SecurityId])
+            {
+                subscription.Value?.Invoke(insideClusters);
+            }
+        }
+        /// <summary>
+        /// Пришел агрегированный стакан 
+        /// </summary>
+        /// <param name="insideQuotes"></param>
+        /// <exception cref="NotImplementedException"></exception>
+        private void AggregateGlass_NewInsideQuotesEvent(InsideQuotes insideQuotes)
+        {
+            if (!SubscriptionsForScaledOrderBook.ContainsKey(insideQuotes.SecurityId) // не подписывались на этот инструмент
+                || SubscriptionsForScaledOrderBook[insideQuotes.SecurityId] == null
+                )
+            {
+                return;
+            }
+            foreach (var subscription in SubscriptionsForScaledOrderBook[insideQuotes.SecurityId])
+            {
+                subscription.Value?.Invoke(insideQuotes);
+            }
+
+        }
+
+
+
+        /// <summary>
+        /// принудительное закрытие позиций по просадке
+        /// </summary>
+        public event Action<User> MarginClosePosition;
+        #endregion HelperMethods
+
+        #region Subscribtion
+
+        /// <summary>
+        /// Подписки на агрегированный сткан
+        /// ключ - id инструмента, value - callback метод обработки в клиенте
+        /// </summary>
+        ConcurrentDictionary<string, ConcurrentDictionary<string, Action<InsideQuotes>>> SubscriptionsForScaledOrderBook { get; set; } = new();
+
+        /// <summary>
+        /// key 1 - SecId, key 2 - guid
+        /// </summary>
+        ConcurrentDictionary<string, ConcurrentDictionary<string, Action<List<Trade>>>> SubscriptionsForTicks { get; set; } = new();
+
+        ConcurrentDictionary<string, ConcurrentDictionary<string, Action<InsideClusters>>> SubscriptionsForScaledCluster { get; set; } = new();
+
+        //ConcurrentDictionary<string, Action> SubscriptionsForInitialOrdersReady { get; set; } = new();
+
+        //public async Task<SubscriptionAnswer> SubscribeForInitialOrdersReady(string username, Action action)
+        //{
+        //    if (username == null || !UsersContext.ContainsKey(username))
+        //        return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+        //    var result = SubscriptionsForInitialOrdersReady.TryAdd(username, action);
+
+        //    return new SubscriptionAnswer()
+        //    {
+        //        Success = result,
+        //        Id = username
+        //    };
+        //}
+
+        //public async Task<SubscriptionAnswer> RemoveSubscribeForInitialOrdersReady(string username)
+        //{
+        //    if (username == null || !UsersContext.ContainsKey(username))
+        //        return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+        //    var result = SubscriptionsForInitialOrdersReady.TryRemove(username, out var _);
+
+        //    return new SubscriptionAnswer()
+        //    {
+        //        Success = result,
+        //        Id = username
+        //    };
+        //}
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public async Task<SubscriptionAnswer> SubscribeForPrivateOrders(string username, Action<List<Order>> action)
+        {
+            if (username == null || !UsersContext.TryGetValue(username, out User? user))
+                return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+            string guid = Guid.NewGuid().ToString();
+            if (user.PrivateOrderEventsForUsers == null)
+            {
+                user.PrivateOrderEventsForUsers = new ConcurrentDictionary<string, Action<List<Order>>>();
+            }
+            var result = user.PrivateOrderEventsForUsers.TryAdd(guid, action);
+
+            return new SubscriptionAnswer()
+            {
+                Success = result,
+                Id = guid
+            };
+
+        }
+
+        public async Task<SubscriptionAnswer> RemoveSubscribtionForPrivateOrders(string username, string id)
+        {
+            if (username == null || !UsersContext.TryGetValue(username, out User? user) || id == null)
+                return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+            if (!user.PrivateOrderEventsForUsers.ContainsKey(id))
+                return new SubscriptionAnswer { Success = true, ErrorMessage = "No Such Subscription", Id = id };
+
+            var result = user.PrivateOrderEventsForUsers.TryRemove(id, out var _);
+
+            return new SubscriptionAnswer()
+            {
+                Success = result,
+                Id = id
+            };
+
+        }
+
+        /// <summary>
+        /// TODO: надо сделать проверку ключа.
+        /// </summary>
+        public async Task<SubscriptionAnswer> SubscribeForFinanceResult(string username, Action<List<FinanceResult>> action)
+        {
+            if (username == null || !UsersContext.ContainsKey(username))
+                return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+            string guid = Guid.NewGuid().ToString();
+
+            bool result = riskManager.SubscribeForFinanceResult(username, action);
+
+            return new SubscriptionAnswer()
+            {
+                Success = result,
+                Id = guid
+            };
+
+        }
+
+        public async Task<SubscriptionAnswer> RemoveSubscribtionForFinanceResult(string username, string id)
+        {
+            if (username == null || !UsersContext.ContainsKey(username) || id == null)
+                return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+            bool result = riskManager.UnSubscribeForFinanceResult(username, id);
+
+            return new SubscriptionAnswer()
+            {
+                Success = result,
+                Id = id
+            };
+
+        }
+
+
+
+
+        /// <summary>
+        /// Subscription aggregate Glass 
+        /// </summary>
+        /// <param name="secid"></param>
+        /// <param name="action"></param>
+        /// <returns></returns>
+        public async Task<SubscriptionAnswer> SubscribeForScaledOrderBook(string secid, Action<InsideQuotes> action)
+        {
+            //if (!UsersContext.ContainsKey(username))
+            //	return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+            if (!SubscriptionsForScaledOrderBook.ContainsKey(secid))
+                SubscriptionsForScaledOrderBook[secid] = new();
+
+
+            if (!plaza.Securities.ContainsKey(secid))
+                return new SubscriptionAnswer() { Success = false, ErrorMessage = "No Sec Found" };
+
+            aggregateGlass.SubscribAllScaledGlass(secid, plazaOptions.Simulation);
+
+            aggregateGlass.ChangeMinMaxSizeGlassEvent += (s) => { /*Console.WriteLine($"ChangeMinMaxSizeGlassEvent {s}");*/ };
+
+
+            string guid = Guid.NewGuid().ToString();
+            //проверить будет ли это автоматом работать
+            var result = SubscriptionsForScaledOrderBook[secid].TryAdd(guid, action);
+
+            return new SubscriptionAnswer()
+            {
+                Success = result,
+                Id = guid
+            };
+
+        }
+
+        public async Task<SubscriptionAnswer> RemoveSubscribeForScaledOrderBook(string secid, string id)
+        {
+            //проверить будет ли это автоматом работать
+            SubscriptionsForScaledOrderBook.TryGetValue(secid, out var value);
+            bool result = value?.TryRemove(id, out var _) ?? true; // автоматом не работает
+
+            return new SubscriptionAnswer()
+            {
+                Success = result,
+                Id = id
+            };
+
+        }
+
+        /// <summary>
+        /// Subscription aggregate Glass 
+        /// </summary>
+        /// <param name="secid"></param>
+        /// <param name="action"></param>
+        /// <returns></returns>
+        public async Task<SubscriptionAnswer> SubscribeForAggregateCluster(string secid, Action<InsideClusters> action)
+        {
+            //if (!UsersContext.ContainsKey(username))
+            //	return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+            if (!SubscriptionsForScaledCluster.ContainsKey(secid))
+                SubscriptionsForScaledCluster[secid] = new();
+
+
+            if (!plaza.Securities.ContainsKey(secid))
+                return new SubscriptionAnswer() { Success = false, ErrorMessage = "No Sec Found" };
+
+
+
+            aggregateCluster.SubscribAllScaledCluster(secid, plazaOptions.Simulation);
+
+            string guid = Guid.NewGuid().ToString();
+            //проверить будет ли это автоматом работать
+            var result = SubscriptionsForScaledCluster[secid].TryAdd(guid, action);
+
+            return new SubscriptionAnswer()
+            {
+                Success = result,
+                Id = guid
+            };
+
+        }
+
+        public SubscriptionAnswer SubscribeForTicks(string secid, Action<List<Trade>> action)
+        {
+            //if (!UsersContext.ContainsKey(username))
+            //	return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+
+            if (!plaza.Securities.ContainsKey(secid))
+                return new SubscriptionAnswer() { Success = false, ErrorMessage = "No Sec Found" };
+
+            plaza.TryRegisterTicks(plaza.Securities[secid], plazaOptions.Simulation);
+
+            string guid = Guid.NewGuid().ToString();
+            //проверить будет ли это автоматом работать
+
+            if (!SubscriptionsForTicks.ContainsKey(secid))
+                SubscriptionsForTicks[secid] = new();
+
+            var result = SubscriptionsForTicks[secid].TryAdd(guid, action);
+
+            return new SubscriptionAnswer()
+            {
+                Success = result,
+                Id = guid
+            };
+
+        }
+
+
+        public async Task<SubscriptionAnswer> RemoveSubscribeForTicks(string secid, string id)
+        {
+            if (id == null)
+                return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
+
+            //проверить будет ли это автоматом работать
+            SubscriptionsForTicks.TryGetValue(secid, out var value);
+            var result = value?.TryRemove(id, out var _) ?? true;
+
+            return new SubscriptionAnswer()
+            {
+                Success = result,
+                Id = id
+            };
+
+        }
+
+
+        #endregion
+
+        #region MyTrade
+
+        void ProcessNewMyTrade(MyTrade newMytrade)
         {
             try
             {
-                Helper.SaveXml(Securities, securitiesBdName);
-                //Helper.SaveXml(Trades, tradesBdName);
-                Helper.SaveXml(Orders, ordersBdName);
-                Helper.SaveXml(UsersContext, userdBdName);
-                Helper.SaveXml(OpenedPositions, openedpositionsdbname);
-                //Helper.SaveXml(ClosedPositions, $"{data}\\{nameof(ClosedPositions)}.xml");
+                var username = newMytrade.Comment;
+
+                if (Trades.TryGetValue(username, out var userTrades) && userTrades.ContainsKey(newMytrade.NumberTrade))
+                {
+                    return; // сделка уже учтена
+                }
+                else
+                {
+                    if (userTrades == null)
+                    {
+                        userTrades = new ConcurrentDictionary<string, MyTrade>();
+                        Trades.TryAdd(username, userTrades);
+                    }
+                    userTrades.TryAdd(newMytrade.NumberTrade, newMytrade);
+                }
+
+                if (string.IsNullOrWhiteSpace(username) || !UsersContext.ContainsKey(username))
+                    return;
+
+                if (!OpenedPositions.ContainsKey(username))
+                    OpenedPositions.TryAdd(username, new ConcurrentDictionary<string, Pos>());
+
+                OpenedPositions[username].TryGetValue(newMytrade.SecurityId, out var posvalue);
+
+                if (posvalue == null)
+                {
+                    
+                    var secname = Securities.ContainsKey(newMytrade.SecurityId) ? Securities[newMytrade.SecurityId].Isin : "Empty";
+
+                    Securities.TryGetValue(newMytrade.SecurityId, out var sec);
+
+                    OpenedPositions[username][newMytrade.SecurityId] = new Pos()
+                    {
+                        SecId = newMytrade.SecurityId,
+                        SecName = secname,
+                        Board = newMytrade.Board,
+                        PriceStep = sec?.PriceStep ?? 1,
+                        PriceStepCost = sec?.PriceStepCost??1,
+                        
+                    };
+
+                    LogMessageAsync($"Creating new Pos for {username} ");
+                }
+
+                var resultAddingTrade = OpenedPositions[username][newMytrade.SecurityId].AddTrade(newMytrade);
+
+                PositionManager.CalculateRealizedPnl(OpenedPositions[username][newMytrade.SecurityId]);
+
+                LogMessageAsync($"Update for {username} sec_id={newMytrade.SecurityId} pos {OpenedPositions[username][newMytrade.SecurityId].PosValue}");
+
+                if (resultAddingTrade != null && resultAddingTrade.Closed)
+                {
+                    if (!ClosedPositions.ContainsKey(username))
+                        ClosedPositions.TryAdd(username, new());
+
+                    var closedpos = OpenedPositions[username][newMytrade.SecurityId];
+
+                    if (!ClosedPositions[username].ContainsKey(newMytrade.SecurityId))
+                        ClosedPositions[username][newMytrade.SecurityId] = new List<Pos>();
+
+                    ClosedPositions[username][newMytrade.SecurityId].Add(closedpos);
+                    PositionManager.CalculateRealizedPnl(closedpos);
+
+                    closedpos.UnRealizedPnl = 0;
+                    closedpos.UnRealizedPnlPoints = 0;
+
+                    if (OpenedPositions[username].TryRemove(newMytrade.SecurityId, out var _))
+                    {
+                        LogMessageAsync($"Pos Deleted {username} sec_id={newMytrade.SecurityId} ");
+                    }
+
+                    //удаляем вообще какие либо позы юзера, потому что потом будет
+                    //по этому словарю будем считать прибыль сами
+                    try
+                    {
+                        if (OpenedPositions[username].Values.Count == 0)
+                            OpenedPositions.TryRemove(username, out var _);
+                    }
+                    catch  (Exception ex) // игнор
+                    {
+                        Console.WriteLine(ex);
+                    }
+                }
+
+                //добавилось остаточная позиция, как то так... 
+                if (resultAddingTrade != null && resultAddingTrade.RestNewTrade != null)
+                {
+                    ProcessNewMyTrade(resultAddingTrade.RestNewTrade);
+                }
             }
             catch (Exception ex)
             {
-                LogMessageAsync("DB ERROR ->" + ex.Message);
+                LogMessageAsync("Process new My Trade error ->" + ex.Message + ex.StackTrace);
             }
         }
-    }
+
+        #endregion MyTrade
 
 
-    #region Подписки(взамен сокетов)
+        #region Login
 
-    /// <summary>
-    /// ключ - айди инструмента
-    /// следющий ключ - хеш
-    /// (есть проблемы, если наш юзер отклбчится как то криво, мы не сможем удалить это)...
-    /// </summary>
-    ConcurrentDictionary<string,  ConcurrentDictionary<string,Action<MarketDepth>>> SubscriptionsForOrderBook { get; set; } = new();
-
-    /// <summary>
-    /// Подписки на агрегированный сткан
-    /// ключ - id инструмента, value - callback метод обработки в клиенте
-    /// </summary>
-    ConcurrentDictionary<string, ConcurrentDictionary<string, Action<InsideQuotes>>> SubscriptionsForScaledOrderBook { get; set; } = new(); 
-
-    ConcurrentDictionary<string,  ConcurrentDictionary<string, Action<List<Trade>>>> SubscriptionsForTicks { get; set; } = new();
-
-
-
-	/// <summary>
-	/// TODO: надо сделать проверку ключа.
-	/// </summary>
-	public async Task<SubscriptionAnswer> SubscribeForPrivateOrders(string username, Action<Order> action)
-    {
-        if (!UsersContext.ContainsKey(username))
-            return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
-
-        string guid = Guid.NewGuid().ToString();
-        var result = UsersContext[username].PrivateOrderEventsForUsers.TryAdd(guid, action);
-
-        return new SubscriptionAnswer()
+        public async Task<LoginInfo> Login(string login, string pass)
         {
-            Success = result,
-            Id = guid
-        };
-
-    }
-
-	public async Task<SubscriptionAnswer> RemoveSubscribtionForPrivateOrders(string username, string id)
-	{
-		if (!UsersContext.ContainsKey(username))
-			return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
-
-        if (!UsersContext[username].PrivateOrderEventsForUsers.ContainsKey(id))
-			return new SubscriptionAnswer { Success = true, ErrorMessage = "No Such Subscription", Id = id };
-
-		var result = UsersContext[username].PrivateOrderEventsForUsers.TryRemove(id,out var _);
-
-		return new SubscriptionAnswer()
-		{
-			Success = result,
-			Id = id
-		};
-
-	}
-
-    /*  Заменил на SubscribeForScaledOrderBook
-     * /// <summary> 
-    /// Проблема этого метода, что секьюритис самой плазы долго получаем... 
-    /// </summary>
-    /// <param name="secid"></param>
-    /// <param name="action"></param>
-    /// <returns></returns>
-	public async Task<SubscriptionAnswer> SubscribeForOrderBook(string secid /, string username,/ ,Action<MarketDepth> action)
-	{
-		//if (!UsersContext.ContainsKey(username))
-		//	return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
-
-		if (!SubscriptionsForOrderBook.ContainsKey(secid))
-			SubscriptionsForOrderBook[secid] = new();
-
-
-        if (!plaza.Securities.ContainsKey(secid) )
-            return new SubscriptionAnswer() { Success = false, ErrorMessage = "No Sec Found" };
-
-        plaza.RegisterMarketDepth(plaza.Securities[secid], simulation);
-
-		string guid = Guid.NewGuid().ToString();
-        //проверить будет ли это автоматом работать
-        var result = SubscriptionsForOrderBook[secid].TryAdd(guid, action);
-
-		return new SubscriptionAnswer()
-		{
-			Success = result,
-			Id = guid
-		};
-
-	}*/
-
-    /// <summary>
-    /// Подписка на новый агрегированный стакан AVP
-    /// </summary>
-    /// <param name="secid"></param>
-    /// <param name="action"></param>
-    /// <returns></returns>
-	public async Task<SubscriptionAnswer> SubscribeForScaledOrderBook(string secid, Action<InsideQuotes> action)
-    {
-        //if (!UsersContext.ContainsKey(username))
-        //	return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
-
-        if (!SubscriptionsForScaledOrderBook.ContainsKey(secid))
-            SubscriptionsForScaledOrderBook[secid] = new();
-
-
-        if (!plaza.Securities.ContainsKey(secid))
-            return new SubscriptionAnswer() { Success = false, ErrorMessage = "No Sec Found" };
-
-
-
-        aggregateGlass.SubscribAllScaledGlass(secid, plazasimulation.Simulation);
-
-        string guid = Guid.NewGuid().ToString();
-        //проверить будет ли это автоматом работать
-        var result = SubscriptionsForScaledOrderBook[secid].TryAdd(guid, action);
-
-        return new SubscriptionAnswer()
-        {
-            Success = result,
-            Id = guid
-        };
-
-    }
-
-
-    public async Task<SubscriptionAnswer> SubscribeForTicks(string secid, Action<List<Trade>> action)
-    {
-		//if (!UsersContext.ContainsKey(username))
-		//	return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
-
-
-		if (!plaza.Securities.ContainsKey(secid))
-			return new SubscriptionAnswer() { Success = false, ErrorMessage = "No Sec Found" };
-
-        plaza.TryRegisterTicks(plaza.Securities[secid], simulation);
-
-		string guid = Guid.NewGuid().ToString();
-        //проверить будет ли это автоматом работать
-
-        if (!SubscriptionsForTicks.ContainsKey(secid))
-            SubscriptionsForTicks[secid] = new();
-
-        var result = SubscriptionsForTicks[secid].TryAdd(guid, action);
-
-        return new SubscriptionAnswer()
-        {
-            Success = result,
-            Id = guid
-        };
-
-    }
-
-
-	public async Task<SubscriptionAnswer> RemoveSubscribeForOrderBook(string secid,  string id)
-	{
-		//проверить будет ли это автоматом работать
-		var result = SubscriptionsForOrderBook[secid].TryRemove(id, out var _);
-
-		return new SubscriptionAnswer()
-		{
-			Success = result,
-			Id = id
-		};
-
-	}
-
-	public async Task<SubscriptionAnswer> RemoveSubscribeForTicks(string secid,  string id)
-	{
-		//if (!UsersContext.ContainsKey(username))
-		//	return new SubscriptionAnswer { Success = false, ErrorMessage = "No User Found", Id = "" };
-
-		//проверить будет ли это автоматом работать
-		var result = SubscriptionsForTicks[secid].TryRemove(id, out var _);
-
-		return new SubscriptionAnswer()
-		{
-			Success = result,
-			Id = id
-		};
-
-	}
-
-
-	#endregion
-
-	void ProcessNewMyTrade(MyTrade newMytrade)
-    {
-        try
-        {
-            var username = newMytrade.Comment;
-
-            if (!UsersContext.ContainsKey(username))
-                return;
-
-            if (!OpenedPositions.ContainsKey(username))
-                OpenedPositions.TryAdd(username, new ConcurrentDictionary<string, Pos>());
-
-            OpenedPositions[username].TryGetValue(newMytrade.SecurityId, out var posvalue);
-
-            if (posvalue == null)
+            if (!UsersContext.ContainsKey(login))
             {
-                var secname = Securities.ContainsKey(newMytrade.SecurityId) ? Securities[newMytrade.SecurityId].Isin : "Empty";
-
-                OpenedPositions[username][newMytrade.SecurityId] = new Pos()
-                {
-                    secid = newMytrade.SecurityId,
-                    secName = secname
-                };
-                LogMessageAsync($"Creating new Pos for {username} ");
+                return new LoginInfo { errorMessage = "User doesn't exist" };
             }
 
-            var resultAddingTrade = OpenedPositions[username][newMytrade.SecurityId].AddTrade(newMytrade);
-            LogMessageAsync($"Update for {username} sec_id={newMytrade.SecurityId} pos {OpenedPositions[username][newMytrade.SecurityId].PosValue}");
+            var user = UsersContext[login];
 
-            //-------------------------- Позиции для подсчета прибыли ------------------------//
-
-            PositionsForProfit.TryGetValue(newMytrade.SecurityId, out var valuekeypair);
-            if (valuekeypair == null) PositionsForProfit[newMytrade.SecurityId] = new();
-            PositionsForProfit[newMytrade.SecurityId][username] = OpenedPositions[username][newMytrade.SecurityId];
-
-            //---------------------------Позиции для подсчета прибыли -----------------------//
-
-            if (resultAddingTrade != null && resultAddingTrade.Closed)
+            if (!user.CanInput)
             {
-                if (!ClosedPositions.ContainsKey(username))
-                    ClosedPositions[username] = new();
+                return new LoginInfo { errorMessage = "User access denied" };
+            }
 
-                var closedpos = OpenedPositions[username][newMytrade.SecurityId];
+            if (user.Password != pass)
+            {
+                return new LoginInfo { errorMessage = "Incorrect password" };
+            }
 
-                if (!ClosedPositions[username].ContainsKey(newMytrade.SecurityId))
-                    ClosedPositions[username][newMytrade.SecurityId] = new List<Pos>();
+            var authResponse = JwtProvider.GenerateToken(user);
+            user.TimeLastLogin = DateTime.Now;
+            user.AccessToken = authResponse.token;
+            user.RefreshToken = JwtProvider.GenerateRefreshToken();
+            authResponse.refreshToken = user.RefreshToken;
+            //Console.WriteLine("Refresh token(1): " + user.RefreshToken);
 
-                ClosedPositions[username][newMytrade.SecurityId].Add(closedpos);
+            return authResponse;
+        }
 
-                if (OpenedPositions[username].TryRemove(newMytrade.SecurityId, out var _))
+
+        public (LoginInfo, User?) Login(string token)
+        {
+            KeyValuePair<string, User> user = UsersContext.FirstOrDefault(u => u.Value.AccessToken == token || u.Value.RefreshToken == token);
+            if (user.Key == null || user.Value == null)
+            {
+                return (new LoginInfo { errorMessage = "User doesn't exist" }, null);
+            }
+
+            if (!user.Value.CanInput)
+            {
+                return (new LoginInfo { errorMessage = "User access denied" }, null);
+            }
+
+            var authResponse = JwtProvider.GenerateToken(user.Value);
+            authResponse.refreshToken = user.Value.RefreshToken;
+            user.Value.TimeLastLogin = DateTime.Now;
+
+            //Console.WriteLine("Refresh token(2): " + user.Value.RefreshToken);
+
+            return (authResponse, user.Value);
+        }
+
+        public bool Logout(string token)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(token)) return false;
+
+                var user = UsersContext.FirstOrDefault(u => u.Value.AccessToken == token || u.Value.RefreshToken == token);
+                if (!string.IsNullOrWhiteSpace(user.Key))
                 {
-                    LogMessageAsync($"Pos Deleted {username} sec_id={newMytrade.SecurityId} ");
+                    user.Value.AccessToken = string.Empty;
+                    user.Value.RefreshToken = string.Empty;
+                    user.Value.TimeLastLogin = DateTime.MinValue;
                 }
 
-                //удаляем вообще какие либо позы юзера, потому что потом будет
-                //по этому словарю будем считать прибыль сами
-                if (OpenedPositions[username].Values.Count == 0)
-                    OpenedPositions.TryRemove(username, out var _);
-
-                if (PositionsForProfit.ContainsKey(newMytrade.SecurityId) && PositionsForProfit[newMytrade.SecurityId].ContainsKey(username))
-                {
-                    PositionsForProfit[newMytrade.SecurityId].TryRemove(username, out var _);
-
-                    //удаляем вообще все намеки на остатки... 
-                    if (PositionsForProfit[newMytrade.SecurityId].Values.Count == 0)
-                        PositionsForProfit.TryRemove(newMytrade.SecurityId, out _);
-                }
+                return true;
             }
-
-            //добавилось остаточная позиция, как то так... 
-            if (resultAddingTrade != null && resultAddingTrade.RestNewTrade != null)
+            catch
             {
-                ProcessNewMyTrade(resultAddingTrade.RestNewTrade);
+                return false;
             }
         }
-        catch (Exception ex)
+
+
+        #endregion Login
+
+        #region Order
+
+        /// <summary>
+        /// SendOrder on Plaza FORTS MOEX
+        /// </summary>
+        /// <param name="clientOrder">Order</param>
+        /// <param name="userName">Trader</param>
+        /// <param name="isRiskManager">true if you are a Risk Manager</param>
+        /// <returns></returns>
+        public async Task<Order> SendOrder(ClientOrder clientOrder, string userName, bool isRiskManager = false, 
+                                                [CallerMemberName] string tag = "",
+                                                [CallerFilePath] string sourceFilePath = "",
+                                                [CallerLineNumber] int sourceLineNumber = 0)
         {
-            LogMessageAsync("Process new My Trade error ->" + ex.Message);
+            try
+            {
+                if (!UsersContext.ContainsKey(userName))
+                {
+                    return new Order { Error = "Трейдер не найден" };
+                }
+
+                var user = UsersContext[userName];
+
+                if (!user.CanInput)
+                {
+                    OnAttentionMessageAsync(AttentionMessageType.Error, userName, clientOrder.SecID, "Данному трейдеру торговля запрещена.");
+                    return new Order { Error = "Данному трейдеру торговля запрещена." };
+                }
+                if (!plaza.Securities.ContainsKey(clientOrder.SecID))
+                {
+                    return new Order { Error = "Финансовй инструмент не найден" };
+                }
+                
+                var price = clientOrder?.Price ?? 0;
+                var sec = plaza.Securities[clientOrder.SecID];
+
+                Order plazaOrder = clientOrder.Market ?
+                   new Order(sec, clientOrder.Side, clientOrder.Volume, plaza.Portfolio.Number, userName) :
+                    new Order(sec, clientOrder.Side, clientOrder.Volume, price, plaza.Portfolio.Number, userName);
+
+
+                if (clientOrder.NumberOrderId != null && clientOrder.NumberOrderId != 0)
+                    plazaOrder.NumberUserOrderId = (int)clientOrder.NumberOrderId;
+
+                if (!isRiskManager)
+                {
+                    var response = riskManager.CanUserPlaceOrder(plazaOrder, user, BoardEnum.FortsMoex);
+                    if (!response.Data)
+                    {
+                        OnAttentionMessageAsync(AttentionMessageType.Error, userName, clientOrder.SecID, response.Message);
+                        plazaOrder.State = Order.OrderStateType.Fail;
+                        return new Order { Error = response.Message };
+                    }
+                }
+
+                LogMessageAsync($"Sending Order {userName} price={plazaOrder.PriceOrder} ");
+
+                ServerLogger.Log($"Service Send Order {plazaOrder}, {userName}, {isRiskManager}, {tag}, {sourceFilePath}, {sourceLineNumber}", "SeviceSendOrder");
+
+                await plaza.ExecuteOrderAsync(plazaOrder).ConfigureAwait(false);
+
+                return plazaOrder;
+            }
+            catch (Exception ex)
+            {
+                return new Order { Error = ex.Message };
+            }
         }
-    }
-	#endregion HelperMethods
 
-	#region mapMethods
-
-	//public ReturnType<bool> Register(UserCredentials userCredentials)
-	//{
-	//    if (UsersContext.ContainsKey(userCredentials.LoginEmail))
-	//    {
-	//        return new ReturnType<bool>(false, "User already exists");
-	//    }
-
-	//    UsersContext.TryAdd(userCredentials.LoginEmail, new User(userCredentials.LoginEmail, userCredentials.Password)
-	//    {
-	//        Limit = 20000,
-	//        CanTrade = true,
-	//        Admin = false,
-	//    });
-
-	//    return new ReturnType<bool>(true);
-	//}
-
-	
-
-	public async Task <LoginInfo> Login(string login, string pass)
-    {
-        if (!UsersContext.ContainsKey(login))
+        /// <summary>
+        /// Получить все позиции по одному пользователю
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
+        public List<Pos> GetAllPositionsForUser(string userName)
         {
-            return new LoginInfo { errorMessage = "User doesn't exist" };
-        }
+            try
+            {
 
-        var user = UsersContext[login];
-
-        if (user.Password != pass)
-        {
-			return new LoginInfo { errorMessage = "Incorrect password" };
-        }
-
-        var authResponse = jwtProvider.GenerateToken(user);
-
-        return authResponse;
-    }
-
-    public bool Logout()
-    {
-        try
-        {
-            //TODO: по идее здесь можно вырубить все подписки юзера и т.д.
-
-            return true;
-
-        }
-        catch (Exception ex)
-        {
-            return false;
-        }
-		return false;
-	}
-
-    //public ReturnType<List<KeyValuePair<string, User>>> RiskManagerGetUsers(string userName)
-    //{
-    //    if (!UsersContext.ContainsKey(userName))
-    //        return new ReturnType<List<KeyValuePair<string, User>>>(null, "User not found");
-
-    //    if (!UsersContext[userName].Admin)
-    //        return new ReturnType<List<KeyValuePair<string, User>>>(null, "No Admin rights");
-
-    //    try
-    //    {
-    //        var usersList = UsersContext.ToList().Where(a => !a.Value.Admin).ToList();
-    //        return new ReturnType<List<KeyValuePair<string, User>>>(usersList);
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        return new ReturnType<List<KeyValuePair<string, User>>>(null, ex.Message);
-    //    }
-    //}
-
-    //public ReturnType<bool> RiskManagerChangeLimitUser(string userName, string usernametochange, decimal newlimit)
-    //{
-    //    if (!UsersContext.ContainsKey(userName))
-    //        return new ReturnType<bool>(false, "User not found");
-
-    //    if (!UsersContext[userName].Admin)
-    //        return new ReturnType<bool>(false, "No Admin rights");
-
-    //    try
-    //    {
-    //        UsersContext[usernametochange].Limit = newlimit;
-    //        return new ReturnType<bool>(true);
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        return new ReturnType<bool>(false, ex.Message);
-    //    }
-    //}
-
-    //public ReturnType<bool> RiskManagerCanTrade(string userName, string usernametochange, bool cantrade)
-    //{
-    //    if (!UsersContext.ContainsKey(userName))
-    //        return new ReturnType<bool>(false, "User not found");
-
-    //    if (!UsersContext[userName].Admin)
-    //        return new ReturnType<bool>(false, "No Admin rights");
-
-    //    if (UsersContext[usernametochange].Admin)
-    //    {
-    //        return new ReturnType<bool>(false, "You cannot change settings for admin to trade");
-    //    }
-
-    //    try
-    //    {
-    //        UsersContext[usernametochange].CanTrade = cantrade;
-    //        return new ReturnType<bool>(true);
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        return new ReturnType<bool>(false, ex.Message);
-    //    }
-    //}
-
-    //public ReturnType<bool> RiskManagerCloseAllPositions(string userName)
-    //{
-    //    if (!UsersContext.ContainsKey(userName))
-    //        return new ReturnType<bool>(false, "User not found");
-
-    //    if (!UsersContext[userName].Admin)
-    //        return new ReturnType<bool>(false, "No Admin rights");
-
-    //    if (plaza == null)
-    //        return new ReturnType<bool>(false, "Plaza Not Ready");
-
-    //    try
-    //    {
-    //        foreach (var pos in RealPositions.Values)
-    //        {
-    //            var sec = plaza.Securities[pos.SecurityId];
-    //            var order = new Order(sec, pos.XPosValueCurrent > 0 ? Side.Sell : Side.Buy, pos.XPosValueCurrent, plaza.Portfolio.Number, userName);
-    //            LogMessageAsync("Sending close orders of positions " + order.ToString());
-    //        }
-    //        return new ReturnType<bool>(true);
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        return new ReturnType<bool>(false, ex.Message);
-    //    }
-    //}
-
-    public async Task<Order> SendOrder(ClientOrder clientOrder, string userName)
-    {
-        try
-        {
-            if (!UsersContext.ContainsKey(userName))
-                return new Order { Error = "User not found" };
-
-            var user = UsersContext[userName];
-
-            if (!user.CanTrade)
-				return new Order { Error = "User cannot trade!" };
-
-            if (!plaza.Securities.ContainsKey(clientOrder.SecID))
-				return new Order { Error = "No Security Id Found" };
-	
-            var price = (decimal)clientOrder.Price;
-            var sec = plaza.Securities[clientOrder.SecID];
-
-            Order plazaOrder = clientOrder.Market ?
-               new Order(sec, clientOrder.Side, clientOrder.Volume, plaza.Portfolio.Number, userName) :
-                new Order(sec, clientOrder.Side, clientOrder.Volume, price, plaza.Portfolio.Number, userName);
-
-            if (clientOrder.NumberOrderId != null && clientOrder.NumberOrderId != 0)
-                plazaOrder.NumberUserOrderId = (int)clientOrder.NumberOrderId;
-
-            LogMessageAsync($"Sending Order {userName} price={plazaOrder.PriceOrder} ");
-
-            await plaza.ExecuteOrderAsync(plazaOrder).ConfigureAwait(false);
-
-            return plazaOrder;
-        }
-        catch (Exception ex)
-        {
-            return  new Order { Error = ex.Message };
-        }
-    }
-
-    public List<Pos> GetOpenPositions(string userName)
-    {
-        try
-        {
-            if (!OpenedPositions.ContainsKey(userName))
+                if (string.IsNullOrWhiteSpace(userName))
+                {
+                    return new List<Pos>() { };
+                }
+                var positions = new List<Pos>();
+                if (OpenedPositions.TryGetValue(userName, out ConcurrentDictionary<string, Pos>? value))
+                {
+                    positions = value.Values.ToList();
+                }
+                if (ClosedPositions.TryGetValue(userName, out ConcurrentDictionary<string, List<Pos>>? value1))
+                {
+                    value1.Values.Select(p => { positions.AddRange(p); return true; }).Count();
+                }
+                return positions;
+            }
+            catch (Exception ex)
+            {
                 return new List<Pos>() { };
+            }
+        }
 
-            var positions = OpenedPositions[userName].Values.ToList();
-            return positions;
-        }
-        catch (Exception ex)
+        /// <summary>
+        /// Получить открытые позиции для одного пользователя
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
+        public List<Pos> GetOpenPositionsForUser(string userName)
         {
-            return new List<Pos>() { };
+            try
+            {
+                var positions = new List<Pos>();
+                if (string.IsNullOrWhiteSpace(userName))
+                {
+                    return positions;
+                }
+                if (OpenedPositions.TryGetValue(userName, out ConcurrentDictionary<string, Pos>? value))
+                {
+                    positions = value.Values.ToList();
+                }
+                return positions;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return [];
+            }
         }
+
+        /// <summary>
+        /// Получить закрытые позиции для одного пользователя
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
+        public List<Pos> GetClosedPositionsForUser(string userName)
+        {
+            try
+            {
+                var positions = new List<Pos>();
+                if (string.IsNullOrWhiteSpace(userName))
+                {
+                    return positions;
+                }
+                if (ClosedPositions.TryGetValue(userName, out ConcurrentDictionary<string, List<Pos>>? value1))
+                {
+                    value1.Values.Select(p => { positions.AddRange(p); return true; }).Count();
+                }
+                return positions;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return [];
+            }
+        }
+
+        public Pos? GetOpenPositionsForUserAndSec(string userName, string secid)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(userName))
+                {
+                    return null;
+                }
+                if (OpenedPositions.TryGetValue(userName, out ConcurrentDictionary<string, Pos>? value))
+                {
+                    var pos = value.Values.FirstOrDefault(x => x.SecId == secid);
+                    return pos;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Получить все позиции 
+        /// </summary>
+        /// <returns></returns>
+        public List<Pos> GetAllPositions()
+        {
+            try
+            {
+                List<Pos>? positions = new List<Pos>();
+                List<string>? userOpenedPositionsKeys = OpenedPositions.Keys.ToList();
+
+                for (int i = 0; i < userOpenedPositionsKeys.Count; i++)
+                {
+                    string? userKey = userOpenedPositionsKeys[i];
+                    if (OpenedPositions.TryGetValue(userKey, out var pos))
+                    {
+                        pos.Values.Select(p => { positions.AddRange(p); return true; }).Count();
+                    }
+                }
+
+                List<string>? userClosedPositionsKeys = ClosedPositions.Keys.ToList();
+
+                for (int i = 0; i < userClosedPositionsKeys.Count; i++)
+                {
+                    string? userKey = userClosedPositionsKeys[i];
+                    if (ClosedPositions.TryGetValue(userKey, out var pos))
+                    {
+                        pos.Values.Select(p => { positions.AddRange(p); return true; }).Count();
+                    }
+                }
+
+                return positions;
+            }
+            catch (Exception ex)
+            {
+                return new List<Pos>() { };
+            }
+        }
+
+        /// <summary>
+        /// Получить все закрытые позиции 
+        /// </summary>
+        /// <returns></returns>
+        public ConcurrentDictionary<string, ConcurrentDictionary<string, List<Pos>>>? GetAllClosePositions()
+        {
+            try
+            {
+                return ClosedPositions;
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Получить все открытые позиции 
+        /// ключ 1 - юзер
+        /// ключ 2 - sec ID
+        /// </summary>
+        /// <returns></returns>
+        public ConcurrentDictionary<string, ConcurrentDictionary<string, Pos>>? GetAllOpenPositions()
+        {
+            try
+            {
+                return OpenedPositions;
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+
+
+        /// <summary>
+        /// Получить все открытые позиции на бирже по портфелю
+        /// </summary>
+        /// <returns></returns>
+        public List<PositionOnBoard> GetBoardPosition()
+        {
+            var realPositions = RealPositions.Values.ToList();
+            realPositions.Select(p =>
+            {
+                if (string.IsNullOrWhiteSpace(p.SecurityShortName))
+                {
+                    if (Securities.TryGetValue(p.SecurityId, out var sec))
+                    {
+                        p.SecurityShortName = sec.ShortName;
+                    }
+                }
+                return true;
+            }).Count();
+
+            return realPositions;
+        }
+
+
+        /// <summary>
+        /// Close Position User By Security
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="security"></param>
+        /// <returns></returns>
+        public async Task<ServerResponce<int>> ClosePositionBySecurity(string userName, string? security)
+        {
+            try
+            {
+                ///////////////////////////////////////////
+                // NEED TO ASK - Why does it use closed position???
+                ///////////////////////////////////////////
+                var positions = GetAllPositionsForUser(userName).Where(p => p.PosValue != 0).ToList();
+                var n = positions == null ? 0 : positions?.Count;
+
+                Console.WriteLine($"ClosePositionBySecurity {n}");
+
+                if (n == 0)
+                {
+                    return new ServerResponce<int>(0, "Not Open Positions");
+                }
+
+                int pc = 0;
+                for (int i = 0; i < n; i++)
+                {
+                    var p = positions[i];
+                    if (p.PosValue != 0 && (string.IsNullOrWhiteSpace(security) || p.SecId == security || p.SecName == security || Securities[p.SecId].ShortName == security))
+                    {
+                        ClientOrder clientOrder = new ClientOrder()
+                        {
+                            Market = true,
+                            SecID = p.SecId,
+                            Volume = (int)p.CurrentPos,
+                            Side = p.Side == Side.Buy ? Side.Sell : Side.Buy
+                        };
+                        pc++;
+
+                        Console.WriteLine($"ClosePositionBySecurity-SendOrder {clientOrder.Volume} {clientOrder.Side}");
+                        await SendOrder(clientOrder, userName,true);
+                        Console.WriteLine($"ClosePositionBySecurity-SentOrder");
+                    }
+                }
+
+                Console.WriteLine($"Positions closed");
+                return new ServerResponce<int>(pc, "Positions closed");
+
+
+            }
+            catch (Exception ex)
+            {
+                return new ServerResponce<int>(-1, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Close All User Position
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
+        public async Task<ServerResponce<int>> CloseAllPosition(string userName)
+        {
+            try
+            {
+                var positions = GetAllPositionsForUser(userName).Where(p => p.PosValue != 0).ToList();
+
+                if (positions.Count() == 0)
+                {
+                    return new ServerResponce<int>(0, "Not Open Positions");
+                }
+
+                int pc = 0;
+                for (int i = 0; i < positions.Count(); i++)
+                {
+                    var p = positions[i];
+                    if (p.PosValue != 0)
+                    {
+                        ClientOrder clientOrder = new ClientOrder()
+                        {
+                            Market = true,
+                            SecID = p.SecId,
+                            Volume = (int)p.CurrentPos,
+                            Side = p.Side == Side.Buy ? Side.Sell : Side.Buy
+                        };
+                        pc++;
+                        await SendOrder(clientOrder, userName, true);
+                    }
+                }
+                
+                return new ServerResponce<int>(pc, "Positions closed");
+
+
+            }
+            catch (Exception ex)
+            {
+                return new ServerResponce<int>(-1, ex.Message);
+            }
+        }
+
+
+        private bool plazaAllOrderLoaded = false;
+
+        private void Plaza_OrderLoadedEvent()
+        {
+            OrdersUpdate();
+            plazaAllOrderLoaded = true;
+        }
+
+        private void Plaza_OrderChangedEvent(Order order, string? reason)
+        {
+            Console.WriteLine($"Plaza_OrderChangedEvent {order.PriceOrder} {order.Volume} {order.VolumeExecuted}");
+            if (!plazaAllOrderLoaded && !plazaOptions.Simulation)
+            {
+                // TODO - TEST
+                return;
+            }
+            AttentionMessageType messageType = AttentionMessageType.Info;
+
+            if (order.State == Order.OrderStateType.Fail)
+            {
+                messageType = AttentionMessageType.Error;
+                OnAttentionMessageAsync(messageType, order.Comment, order.SecurityId, reason);
+            }
+
+            Console.WriteLine($"{DateTime.Now.ToLongTimeString()}; {order}; {reason}");
+            var username = order.Comment;
+            if (!Orders.ContainsKey(username))
+            {
+                Orders[username] = new ConcurrentDictionary<int, Order>();
+            }
+            Orders[username][order.NumberUserOrderId] = order;
+            if (UsersContext.ContainsKey(username) && UsersContext[username].PrivateOrderEventsForUsers != null)
+            {
+                foreach (var actionOrderEvent in UsersContext[username].PrivateOrderEventsForUsers)
+                {
+                    Console.WriteLine($"Plaza_OrderChangedEvent-Notify {order.PriceOrder} {order.Volume} {order.VolumeExecuted}");
+                    actionOrderEvent.Value?.Invoke(new List<Order>() { order });
+                }
+            }
+        }
+
+        private void OrdersUpdate()
+        {
+            var orders = plaza.Orders;  //key = NumberUserOrderId
+            var allOrdersUsername = orders.Select(o => o.Value.Comment).Distinct().ToList();
+            for (int i = 0; i < allOrdersUsername.Count; i++)
+            {
+                var username = allOrdersUsername[i];
+                if (!Orders.ContainsKey(username))
+                {
+                    Orders[username] = new ConcurrentDictionary<int, Order>();
+                }
+                var ordersUser = orders.Values.Where(o => o.Comment == username).ToList();
+
+                ordersUser.Select(o => Orders[username].AddOrUpdate(o.NumberUserOrderId, o, (NumberUserOrderId, uo) => { uo.State = o.State; return uo; })).Count();
+
+                if (UsersContext.ContainsKey(username) && UsersContext[username].PrivateOrderEventsForUsers != null)
+                {
+                    foreach (var actionOrderEvent in UsersContext[username].PrivateOrderEventsForUsers)
+                    {
+                        actionOrderEvent.Value?.Invoke(ordersUser.Where(o => o.State == Order.OrderStateType.Active || o.State == Order.OrderStateType.Partial).ToList());
+                    }
+                }
+                // check lost actice orders
+                var lostOrders = Orders[username].Values.Where((o) =>
+                {
+                    if ((o.State == Order.OrderStateType.Active
+                        || o.State == Order.OrderStateType.Pending
+                        || o.State == Order.OrderStateType.Partial)
+                        && !orders.ContainsKey(o.NumberUserOrderId))
+                    {
+                        o.State = Order.OrderStateType.None;
+                        return true;
+                    }
+                    return false;
+                }).ToList();
+                Debug.WriteLine($"Check lost actice orders {lostOrders.Count()}");
+            }
+        }
+
+        /// <summary>
+        /// Get all order for user
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
+        public ServerResponce<List<Order>?> GetOrdersForUser(string userName)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(userName))
+                {
+                    return new ServerResponce<List<Order>?>([], SERVER_WARNING_USER_NOT_LOGGED_IN); ;
+                }
+                if (!plazaAllOrderLoaded)
+                {
+                    return new ServerResponce<List<Order>?>([], SERVER_WARNING_LOADING_ORDERS);
+                }
+                if (!Orders.ContainsKey(userName))
+                {
+                    return new ServerResponce<List<Order>?>([], SERVER_ERROR_NO_USER);
+                }
+
+                var result = Orders[userName].Values.ToList();
+                return new ServerResponce<List<Order>?>(result ?? []);
+            }
+            catch (Exception ex)
+            {
+                return new ServerResponce<List<Order>?>(null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Get active orders for user
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
+        public ServerResponce<List<Order>?> GetActiveOrdersForUser(string userName)
+        {
+            try
+            {
+                // TODO - test code
+                if (!plazaAllOrderLoaded)
+                {
+                    return new ServerResponce<List<Order>?>(null, SERVER_WARNING_LOADING_ORDERS);
+                }
+
+                if (!Orders.TryGetValue(userName, out ConcurrentDictionary<int, Order>? orderDict))
+                {
+                    return new ServerResponce<List<Order>?>(null);
+                }
+
+                var result = orderDict.Values.Where(o => o.State == Order.OrderStateType.Active || o.State == Order.OrderStateType.Partial).ToList();
+                return new ServerResponce<List<Order>?>(result);
+            }
+            catch (Exception ex)
+            {
+                return new ServerResponce<List<Order>?>(null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Get canceled orders for user
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
+        public ServerResponce<List<Order>?> GetCanceledOrdersForUser(string userName)
+        {
+            try
+            {
+                // TODO - test code
+                if (!plazaAllOrderLoaded)
+                {
+                    return new ServerResponce<List<Order>?>(null, SERVER_WARNING_LOADING_ORDERS);
+                }
+
+                if (!Orders.TryGetValue(userName, out ConcurrentDictionary<int, Order>? orderDict))
+                {
+                    return new ServerResponce<List<Order>?>(null);
+                }
+
+                var result = orderDict.Values.Where(o => o.State == Order.OrderStateType.Cancel || o.State == Order.OrderStateType.Fail).ToList();
+                return new ServerResponce<List<Order>?>(result);
+            }
+            catch (Exception ex)
+            {
+                return new ServerResponce<List<Order>?>(null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Get executed orders for user
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
+        public ServerResponce<List<Order>?> GetExecutedOrdersForUser(string userName)
+        {
+            try
+            {
+                // TODO - test code
+                if (!plazaAllOrderLoaded)
+                {
+                    return new ServerResponce<List<Order>?>(null, SERVER_WARNING_LOADING_ORDERS);
+                }
+
+                if (!Orders.TryGetValue(userName, out ConcurrentDictionary<int, Order>? orderDict))
+                {
+                    return new ServerResponce<List<Order>?>(null);
+                }
+
+                var result = orderDict.Values.Where(o => o.State == Order.OrderStateType.Done).ToList();
+                return new ServerResponce<List<Order>?>(result);
+            }
+            catch (Exception ex)
+            {
+                return new ServerResponce<List<Order>?>(null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Отменить один ордер
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="order"></param>
+        /// <returns></returns>
+        public ServerResponce<bool> CancelOrder(string userName, int orderId)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(userName) || !UsersContext.ContainsKey(userName))
+                {
+                    return new ServerResponce<bool>(false, "User not found");
+                }
+
+                //plaza.CancelOrder(order.NumberUserOrderId);
+                plaza.CancelOrder(orderId);
+                return new ServerResponce<bool>(true);
+            }
+            catch (Exception ex)
+            {
+                return new ServerResponce<bool>(false, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Отменить все ордера пользователя
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="order"></param>
+        /// <returns></returns>
+        public ServerResponce<int> CancelAllUserOrder(string userName)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(userName))
+                {
+                    return new ServerResponce<int>(0, "User not found");
+                }
+
+                if (!UsersContext.ContainsKey(userName))
+                    return new ServerResponce<int>(0, "User not found");
+
+                var orders = plaza.Orders;
+                var count = orders.Where(pair =>
+                {
+                    var o = pair.Value;
+                    if (o.Comment == userName && (o.State == Order.OrderStateType.Active
+                                                 || o.State == Order.OrderStateType.Pending
+                                                 || o.State == Order.OrderStateType.Partial))
+                    {
+                        plaza.CancelOrder(o.NumberUserOrderId);
+                        return true;
+                    }
+                    return false;
+
+                }).Count();
+
+                
+                return new ServerResponce<int>(count, "Orders canceled");
+
+            }
+            catch (Exception ex)
+            {
+                return new ServerResponce<int>(0, ex.Message);
+            }
+        }
+
+
+        #endregion Order
+
+        #region FinanceResult
+
+        public List<FinanceResult> GetFinanceResult(string userName)
+        {
+            if (userName == null || !UsersContext.ContainsKey(userName))
+            {
+                return new List<FinanceResult>();
+            }
+            List<FinanceResult> r = riskManager.GetFinanceResult(userName);
+            return r;
+        }
+
+
+        public List<FinanceResult> GetAllFinanceResult()
+        {
+            List<FinanceResult> r = riskManager.GetFinanceResult();
+            return r;
+        }
+
+
+
+        #endregion
+
+        #region AttentionMessage
+
+        /// <summary>
+        /// Activate an event with a message to the user
+        /// </summary>
+        /// <param name="messageType"></param>
+        /// <param name="message"></param>
+        /// <param name="userName"
+        public async Task OnAttentionMessageAsync(AttentionMessageType messageType, string userName, string secId,  string message)
+        {
+            try
+            {
+                await Task.Run(() => AttentionMessageForTraderEvent?.Invoke(messageType, userName, secId, message)).ConfigureAwait(false);
+                ServerLogger.Log($"{userName}; {message}", "AttentionMessage");
+            }
+            catch (Exception ex)
+            {
+                ServerLogger.Log(ex.Message);
+            }
+        }
+
+
+
+        /// <summary>
+        /// Trader event with attention grabbing message
+        /// string 1 - username,string 2  - SecId,  string 3 - message
+        /// 
+        /// </summary>
+        public event Action<AttentionMessageType, string, string, string> AttentionMessageForTraderEvent;
+
+        #endregion AttentionMessage
+
+        #region Dispose
+
+        public void Dispose()
+        {
+            try
+            {
+
+                //TODO: переписать этот кошмар... 
+
+                if (plaza != null)
+                {
+                    plaza.Stop();
+                    plaza.Dispose();
+                }
+                serviceDB?.Close();
+                GC.SuppressFinalize(this);
+            }
+            catch (Exception ex)
+            {
+
+            }
+        }
+
+        #endregion Dispose
     }
 
+    #region Enum
 
-    public ServerResponce<List<Order>> GetOrders(string userName)
+    /// <summary>
+    /// AttentionMessageType
+    /// </summary>
+    public enum AttentionMessageType
     {
-        try
-        {
-            if (!Orders.ContainsKey(userName))
-                return new ServerResponce<List<Order>>(new List<Order>(),"No such user");
-
-            var result = Orders[userName].Values.Where(o => o.State == Order.OrderStateType.Activ || o.State == Order.OrderStateType.Partial).ToList();
-            return new ServerResponce<List<Order>>(result ?? new List<Order>());
-        }
-        catch (Exception ex)
-        {
-            return new ServerResponce<List<Order>>(null, ex.Message);
-        }
+        CriticalError,     // Red
+        Error,  // Black
+        Info,    // Grey
+        IntermediatePriority    //blue
     }
 
-    public ServerResponce<bool> CancelOrder(string userName, Order order)
-    {
-        try
-        {
-            if (!UsersContext.ContainsKey(userName))
-                return new ServerResponce<bool>(false, "User not found");
-
-            plaza.CancelOrder(order.NumberUserOrderId);
-            return new ServerResponce<bool>(true);
-        }
-        catch (Exception ex)
-        {
-            return new ServerResponce<bool>(false, ex.Message);
-        }
-    }
-
-    public async Task<ServerResponce<List<SecurityApi>>> GetAllSecurities()
-    {
-        if (Securities == null || Securities.Count == 0)
-            return new ServerResponce<List<SecurityApi>>(null, "No Securities");
-
-        return new ServerResponce<List<SecurityApi>>(Securities.Values.OrderBy(s => s.ShortName).ToList());
-    }
-
-    #endregion mapMethods
-
-    public void Dipose()
-    {
-        try
-        {
-
-            //TODO: переписать этот кошмар... 
-
-            SaveDb();
-
-            if (plaza != null)
-                plaza.Dispose();
-        }
-        catch (Exception ex)
-        {
-
-        }
-    }
+    #endregion Enum
 }
+
+

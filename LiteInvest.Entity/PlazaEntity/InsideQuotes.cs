@@ -16,6 +16,7 @@ namespace LiteInvest.Entity.PlazaEntity
             BlankScaledQuotes = new ConcurrentDictionary<int, List<MarketDepthLevel>>();
             IndexPriceLevelQuotes = new ConcurrentDictionary<int, Dictionary<decimal, int>>();
             CentreQuotes = new ConcurrentDictionary<int, int>();
+            BestLevels = new ConcurrentDictionary<int, (MarketDepthLevel, MarketDepthLevel)>();
             SecurityId = "";
         }
 
@@ -31,7 +32,7 @@ namespace LiteInvest.Entity.PlazaEntity
         /// словарь индексов цен и уровней в словарях стаканов ScaledQuotes в  List MarketDepthLevel
         /// key - int масштаб scale, Value - словарь индексов, в нем key - цена, value индекс цены в List ScaledQuotes
         /// </summary>
-        public ConcurrentDictionary<int, Dictionary<decimal, int>> IndexPriceLevelQuotes { get; set; }
+        public ConcurrentDictionary<int, Dictionary<decimal, int>> IndexPriceLevelQuotes { get; set; } 
 
 
         /// <summary>
@@ -40,15 +41,17 @@ namespace LiteInvest.Entity.PlazaEntity
         public ConcurrentDictionary<int, int> CentreQuotes { get; set; }
 
         /// <summary>
+        /// Словарь  лучшими Bid Ask
+        /// key - int масштаб scale, value MarketDepthLevel:  item1 - BestBid , item2 - BestAsk
+        /// </summary>
+        public ConcurrentDictionary<int, (MarketDepthLevel BestBid, MarketDepthLevel BestAsk)> BestLevels { get; set; }
+
+
+        /// <summary>
         /// Код инструмента
         /// </summary>
         public string SecurityId { get; set; }
 
     }
 
-    public static class Extensions
-    {
-        public static IList<T> Clone<T>(this IList<T> source) where T : ICloneable
-            => source.Select(item => (T)item.Clone()).ToList();
-    }
 }

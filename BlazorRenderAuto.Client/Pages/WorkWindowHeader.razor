@@ -5,10 +5,10 @@
 @inject ApiDataService apiDataService;
 
 @if (true) { }
-<div class="instrument-header @((apiDataService.SelectedSecurityHash == Security.SpecialHash) ? "picked" : "")" @onclick="() => OnHeaderClick(Security.SpecialHash)">
+<div class="instrument-header @((apiDataService.SelectedSecurityHash == Security?.SpecialHash) ? "picked" : "")" @onclick="() => OnHeaderClick(Security?.SpecialHash ?? string.Empty)">
     <div class="instrument-header__content">
         @Security.Isin
-        <WorkWindowSettings securityApi="Security"></WorkWindowSettings>
+        <WorkWindowSettings securityApi="@Security"></WorkWindowSettings>
     </div>
     <svg class="buttonclose" @onclick="() => OnClosingMain(Security)" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">
         <line x1="0" y1="0" x2="10" y2="10" stroke="black" stroke-width="2" />

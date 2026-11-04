@@ -1,6 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using System.Runtime.Serialization;
+using System.Text;
+
 using LiteInvest.Entity.PlazaEntity;
+using LiteInvest.Entity.ReportEntity;
 
 namespace LiteInvest.Entity.ServerEntity
 {
@@ -23,10 +26,11 @@ namespace LiteInvest.Entity.ServerEntity
     /// <summary>
     /// Класс отвечающий за подсчет среднего (вход/выход)
     /// </summary>
+    [DataContract]
     public class TradeCollection
     {
-
-        public decimal Volume { get; private set; }
+        [DataMember]
+        public decimal Volume { get; set; }
 
         /// <summary>
         /// Возвращает среднее значение входа. 
@@ -44,6 +48,7 @@ namespace LiteInvest.Entity.ServerEntity
             return result;
         }
 
+        [DataMember]
         public decimal AveragePrice { get; set; }
 
         /// <summary>
@@ -53,7 +58,7 @@ namespace LiteInvest.Entity.ServerEntity
         /// </summary>
         /// <param name="MyTrades"></param>
         /// <returns></returns>
-        AggregationTrade CalculateAveragePrice(ICollection <MyTrade> MyTrades)
+        private AggregationTrade CalculateAveragePrice(ICollection <MyTrade> MyTrades)
         {
             decimal averageprice = 0;
             decimal summ = 0;
@@ -63,20 +68,19 @@ namespace LiteInvest.Entity.ServerEntity
                 summ += trade.Volume;
                 averageprice += trade.Price * trade.Volume;
             }
-           
-            return new AggregationTrade() { AllVol = summ, AveragePrice = averageprice / summ };
-            // return new AggregationTrade(summ, averageprice / summ);
+            averageprice = averageprice / summ;
+
+
+            return new AggregationTrade() { AllVol = summ, AveragePrice=averageprice };
+            
         }
 
-        public AggregationTrade SimulateTradeCalculations(MyTrade tradeSimulation)
-        {
-            var clone = Trades.Values.ToList();
-            clone.Add(tradeSimulation);
 
-            return CalculateAveragePrice(clone);
-        }
-
-        ConcurrentDictionary<string, MyTrade> Trades { get; set; } = new();
+        /// <summary>
+        /// key = trade.NumberTrade
+        /// </summary>
+        [DataMember]
+        public ConcurrentDictionary<string, MyTrade> Trades { get; set; } = new();
     }
 
 
@@ -84,6 +88,8 @@ namespace LiteInvest.Entity.ServerEntity
     {
         public bool Closed { get; set; }
         //public Pos NewPos { get; set; }
+
+        
 
         public MyTrade RestNewTrade { get; set; }
     }
@@ -94,17 +100,50 @@ namespace LiteInvest.Entity.ServerEntity
     [DataContract]
     public class Pos
     {
-		[DataMember]
-		public decimal comissionInside { get; set; } = 0.02m / 100;
+        public Pos()
+        {
+            Guid = Guid.NewGuid();
+        }
 
-        TradeCollection OpenTrades = new();
-        TradeCollection CloseTrades = new();
+        /// <summary>
+        /// The position has been cleared, the financial result, commissions and payout are recorded on the deposit.
+        /// </summary>
+        [DataMember]
+        public bool Cleared { get; set; } = false;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        [DataMember]
+        public DateTime DateCleared { get; set; } = DateTime.MinValue;
+
+
+        [DataMember]
+        public BoardEnum Board { get; set; }
+
+        [DataMember]
+        public Guid Guid { get; set; }
+
+        //[DataMember]
+        //public decimal comissionInside { get; set; } = 0.02m / 100;    
+
+        [DataMember]
+        public TradeCollection OpenTrades { get; set; } = new();
+
+        [DataMember]
+        public TradeCollection CloseTrades { get; set; } = new();
 		
         [DataMember]
-		public string secid { get; set; }
+		public string SecId { get; set; }
 
-		[DataMember]
-		public string secName { get; set; }
+        [DataMember]
+        public decimal PriceStep { get; set; }
+
+        [DataMember]
+        public decimal PriceStepCost { get; set; }
+
+        [DataMember]
+		public string SecName { get; set; }
 
         [DataMember]
         public decimal CurrentPos { get; set; } = 0;
@@ -129,14 +168,28 @@ namespace LiteInvest.Entity.ServerEntity
         [DataMember]
         public decimal AverageExit { get;  set; }
 
+
+        private bool open;
+
         [DataMember]
-        public bool Open { get;  set; }
+        public bool Open
+        {
+            get => open;  
+            set
+            {
+                if (open != value)
+                {
+                    open = value;
+                }
+            }
+        }
 
         [DataMember]
         public decimal MaxOpened { get; set; }
 
-       
-        public decimal Comission => MaxOpened * 2 * comissionInside;
+
+        [DataMember]
+        public decimal Commission { get; set; }
 
         /// <summary>
         /// сразу считает 
@@ -152,70 +205,96 @@ namespace LiteInvest.Entity.ServerEntity
 
 
         [DataMember]
-        public decimal UnRealizedPnl { get;  set; }
+        private decimal unRealizedPnl { get; set; }
+
+        public decimal UnRealizedPnl
+        {
+            get
+            { 
+                if (CurrentPos == 0)
+                            return 0;
+                return unRealizedPnl;
+            }
+
+            set => unRealizedPnl = value;
+        }
 
         [DataMember]
-        public decimal UnRealizedPnlPoints { get;  set; }
+        private decimal unRealizedPnlPoints { get; set; }
+
+        public decimal UnRealizedPnlPoints 
+        {
+            get
+            {
+                if (CurrentPos == 0)
+                    return 0;
+                return unRealizedPnlPoints;
+            }
+            set => unRealizedPnlPoints = value;
+        
+        }
 
         object tradelock = new object();
 
-        private int multDirection => Side == Side.Buy ? 1 : -1;
+        public int multDirection => Side == Side.Buy ? 1 : -1;
 
         public decimal SimulationExit { get; set; }
 
-        public void CalculateUnrealizedPnl(decimal tickprice)
-        {
-
-            //как бы если поза не открыта, мы уже ниче не делаем.
-            if (CurrentPos == 0 || !Open)
-                return;
-
-            lock(tradelock)
-            {
-                SimulationExit = tickprice;
-
-                var posopened = OpenTrades.Volume;
-                var posclosed = CloseTrades.Volume;
-
-                var rest = posopened - posclosed;
-
-                var closedtrade = CloseTrades.SimulateTradeCalculations(new MyTrade()
-                {
-                    Price = tickprice,
-                    Volume = rest
-                });
-
-                UnRealizedPnlPoints = (closedtrade.AveragePrice - OpenTrades.AveragePrice)* multDirection;
-                UnRealizedPnl = UnRealizedPnlPoints * multDirection - Comission;
-
-            }
-           
-        }
-
-        public void CalculateFinishedPnl()
-        {
-
-            lock (tradelock)
-            {
-
-                var posopened = OpenTrades.Volume;
-                RealizedPnlPoints = (CloseTrades.AveragePrice - OpenTrades.AveragePrice) * multDirection;
-                RealizedPnl = RealizedPnlPoints * multDirection * posopened - Comission;
-
-            }
-
-        }
-
+       
         private void UpdateOpen(AggregationTrade aggregationTrade)
         {
             MaxOpened = aggregationTrade.AllVol;
-            AverageEntry = aggregationTrade.AveragePrice;
+            
+            // Cделай округление цены на сервере к ближайшему шагу цену. В открытых позициях, потому что потом эта цена берётся и вставляется в линию прибыли
+            if (PriceStep == 0) // не получили с сервера шаг цены, попробуем вычислить его сами
+            {
+                int decimalCount = 0;
+                foreach (var item in OpenTrades.Trades)
+                {
+                    var t = item.Value;
+                    string p = t.Price.ToString();
+                    if (p.Split(['.', ',']).Count() == 2 )
+                    {
+                        int dc = p.Split([ '.' , ','])[1].Length;
+                        if (decimalCount < dc)
+                        {
+                            decimalCount = dc;
+                        }
+                    }
+                }
+                
+                PriceStep = 1/ (decimal)Math.Pow(10, decimalCount);
+                
+            }
+            AverageEntry = Math.Round(aggregationTrade.AveragePrice / PriceStep) * PriceStep;
+            
         }
 
         public TradeAddResult? AddTrade(MyTrade myTrade)
         {
             try
             {
+               
+                if (OpenTrades == null)
+		            OpenTrades = new();
+
+	            if (CloseTrades == null)
+		            CloseTrades = new ();
+
+                if (OpenTrades.Trades.TryGetValue(myTrade.NumberTrade, out var myTrade1) && myTrade1.NumberOrderMarket == myTrade.NumberOrderMarket)
+                {   // сделка уже обработана
+                    return null;
+                }
+
+                if (CloseTrades.Trades.TryGetValue(myTrade.NumberTrade, out var myTrade2) && myTrade2.NumberOrderMarket == myTrade.NumberOrderMarket)
+                {   // сделка уже обработана
+                    return null;
+                }
+
+                if (Board == null)
+                {
+                    Board = myTrade.Board;
+                }
 
                 //первая сделка открывает направление
                 if (CurrentPos == 0)
@@ -230,66 +309,7 @@ namespace LiteInvest.Entity.ServerEntity
 
                     return null;
                 }
-
-                //пришло обратное направление (то есть чел, перезакрывается)
-                if (CurrentPos != 0 && Side != myTrade.Side)
-                {
-                    //если перезакрытие уже больше
-                    if (myTrade.Volume >= CurrentPos)
-                    {
-                        Open = false;
-                        var rest = Math.Abs(CurrentPos) - Math.Abs(myTrade.Volume);
-
-                        CurrentPos = 0;
-                        CloseTime = myTrade.Time;
-
-                        AverageExit = CloseTrades.AddTrade(myTrade).AveragePrice;
-                        CalculateFinishedPnl();
-
-                        //поза закрыта и остатка нет
-                        if (rest == 0)
-                        {
-                            
-                            return new TradeAddResult()
-                            {
-                                RestNewTrade = null,
-                                Closed = true,
-                            };
-                        }
-                        //поза закрыта и есть остаток
-                        else
-                        {
-                            return new TradeAddResult()
-                            {
-                                RestNewTrade = new MyTrade()
-                                {
-                                    Side = myTrade.Side,
-                                    Price = myTrade.Price,
-                                    Volume = Math.Abs(rest),
-                                    NumberTrade = myTrade.NumberTrade,
-                                    Comment = myTrade.Comment,
-                                    SecurityId = myTrade.SecurityId,
-                                },
-
-                                Closed = true,
-                            };
-                        }
-
-                        return null;
-                    }
-
-
-                    if (myTrade.Volume < CurrentPos)
-                    {
-                        CurrentPos -= myTrade.Volume;
-                        CloseTrades.AddTrade(myTrade);
-                        return null;
-
-                    }
-
-                    return null;
-                }
-
+                // добавили позиции, усреднились
                 if (CurrentPos != 0 && Side == myTrade.Side)
                 {
 
@@ -300,15 +320,99 @@ namespace LiteInvest.Entity.ServerEntity
                     return null;
                 }
 
-                return null;
 
+
+                //пришло обратное направление (то есть чел, перезакрывается)
+                if (CurrentPos != 0 && Side != myTrade.Side)
+                {
+                    myTrade.MarginPoint = (myTrade.Price - AverageEntry) * multDirection / PriceStep;
+
+                    // частичное закрытие
+                    if (myTrade.Volume < CurrentPos)
+                    {
+                        CurrentPos -= myTrade.Volume;
+                        CloseTrades.AddTrade(myTrade);
+
+                        //CalculateRealizedPnl();
+                        return null;
+
+                    }
+
+                    
+                    if (myTrade.Volume == CurrentPos)   // позиция закрыта полностью
+                    {
+                        Open = false;
+                        var rest = Math.Abs(CurrentPos) - Math.Abs(myTrade.Volume);
+
+                        CurrentPos = 0;
+                        CloseTime = myTrade.Time;
+
+                        AverageExit = Math.Round(CloseTrades.AddTrade(myTrade).AveragePrice / PriceStep) * PriceStep;
+                        //CalculateRealizedPnl();
+
+                        //полное закрытие и остатка нет
+                        if (rest == 0)
+                        {
+                            return new TradeAddResult()
+                            {
+                                RestNewTrade = null,
+                                Closed = true,
+                            };
+                        }
+                    }   
+                    else if (myTrade.Volume > CurrentPos) //поза закрыта и есть остаток в сделке для перехода в новую позицию (условно перевернулись из лонг в шорт)
+                    {
+                        var rest = myTrade.Volume - CurrentPos ;
+                        Open = false;
+                        myTrade.Volume = CurrentPos;
+
+                        CurrentPos = 0;
+                        CloseTime = myTrade.Time;
+                        
+                        AverageExit = Math.Round(CloseTrades.AddTrade(myTrade).AveragePrice / PriceStep) * PriceStep;
+
+                        return new TradeAddResult()
+                        {
+                            RestNewTrade = new MyTrade()
+                            {
+                                Board = myTrade.Board,
+                                Side = myTrade.Side,
+                                Price = myTrade.Price,
+                                Volume = Math.Abs(rest),
+                                NumberTrade = myTrade.NumberTrade + ".",
+                                Comment = myTrade.Comment,
+                                SecurityId = myTrade.SecurityId,
+                                Portfolio = myTrade.Portfolio,
+                                NumberOrderMarket = myTrade.NumberOrderMarket,
+                                Time = myTrade.Time,
+                                NumberOrderUser = myTrade.NumberOrderUser
+                            },
+                            Closed = true,
+                        };
+                    }
+                    
+                    return null;
+                }
+                return null;
             }
             catch (Exception ex)
             {
                 return null;
-            }//как мы будем закрывать открывать позицию и где будет эта логика?
+            }
         }
 
-     
+        public override string ToString()
+        {
+            return new StringBuilder()
+                .Append($"guid={Guid}").Append("; ")
+                .Append($"Sec = {SecName}").Append("; ")
+                .Append($"Side={Side}").Append("; ")
+                .Append($"board={Board}").Append("; ")
+                .Append($"MaxOpened={MaxOpened}").Append("; ")
+                .Append($"RealizedPnl={RealizedPnl}").Append("; ")
+                .Append($"UnRealizedPnl={UnRealizedPnl}").Append("; ")
+                .ToString();
+        }
+
     }
 }

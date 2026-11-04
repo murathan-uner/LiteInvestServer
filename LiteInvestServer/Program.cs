@@ -71,7 +71,7 @@ var wb = new WebApplicationOptions { Args = args, ContentRootPath = AppContext.B
 var builder = WebApplication.CreateBuilder(args);
 //var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, ContentRootPath = AppContext.BaseDirectory });
 
-var services = builder.Services;
+IServiceCollection? services = builder.Services;
 var configuration = builder.Configuration;
 
 var jwtOptions = builder.Configuration.GetSection("JwtOptions").Get<JwtOptions>();
@@ -422,8 +422,8 @@ void ProcessNewMyTrade(MyTrade newMytrade)
 
 			OpenedPositions[username][newMytrade.SecurityId] = new Pos() 
             { 
-                secid= newMytrade.SecurityId,
-                secName = secname
+                SecId= newMytrade.SecurityId,
+                SecName = secname
 			};
             LogMessageAsync($"Creating new Pos for {username} ");
         }
@@ -925,7 +925,7 @@ Trading.MapGet("/GetOrders", async (HttpContext httpContext) =>
 
         //TODO: здесь нужна невроятная оптимизация 
 
-        var result = Orders[userName].Values.Where(o => o.State == Order.OrderStateType.Activ || o.State == Order.OrderStateType.Partial);
+        var result = Orders[userName].Values.Where(o => o.State == Order.OrderStateType.Active || o.State == Order.OrderStateType.Partial);
 
         if (result == null)
             return Results.Empty;
