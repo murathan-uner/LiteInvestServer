@@ -119,7 +119,7 @@ namespace AvpPlazaTester
             this.plaza = plaza;
             Securities = new BindingList<Security>();
             
-            aggregateGlass = AggregateGlass.Build(plaza, new List<int>() { 1, 5, 10, 20, 50, 100 });
+            aggregateGlass = AggregateGlass.Build(plaza, PlazaOptions.ScaleList);
             aggregateGlass.NewInsideQuotesEvent += AggregateGlass_NewInsideQuotesEvent;
 
             Plaza_SecuritiesLoadedEvent();
@@ -183,9 +183,9 @@ namespace AvpPlazaTester
                     UpdateGlass(md.Item1, md.Item2);
                     DateTime update = DateTime.Now;
                     LabelGlassTimeUpdate = $"{SelectedSecurity?.Name} :{update:HH.mm.ss:fff} + {md.Item1.Count}, {md.Item2}";
-                    LabelGlassData = $"{md.Item1[md.Item2].Price}={md.Item1[md.Item2].VolumeString}; " +
-                        $"{md.Item1[md.Item2-1].Price}={md.Item1[md.Item2-1].VolumeString}; " +
-                        $"{md.Item1[md.Item2+1].Price}={md.Item1[md.Item2+1].VolumeString}";
+                    LabelGlassData = $"{md.Item1[md.Item2].Price}={md.Item1[md.Item2].VolumeString()}; " +
+                        $"{md.Item1[md.Item2-1].Price}={md.Item1[md.Item2-1].VolumeString()}; " +
+                        $"{md.Item1[md.Item2+1].Price}={md.Item1[md.Item2+1].VolumeString()}";
 
                 }
                 catch (Exception ex)
@@ -262,7 +262,7 @@ namespace AvpPlazaTester
                 return;
             }
 
-            aggregateGlass.SubscribAllScaledGlass(selectedSecurity.Id, true);
+            aggregateGlass.SubscribAllScaledGlass(selectedSecurity.Id, false);
         }
         
 

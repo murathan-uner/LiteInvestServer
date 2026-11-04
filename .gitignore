@@ -366,3 +366,5 @@ FodyWeavers.xsd
 /LiteInvestServer/Data/orders.xml
 /LiteInvestServer/Data/trades.xml
 /AggregateGlass/AggregateGlass.csproj
+/UnitTest
+/LiteInvestServerDll/LiteInvestServerDll/Migrations

@@ -1,0 +1,86 @@
+.algo-select-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.algo-select {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: white;
+    transition: box-shadow 0.2s ease;
+}
+    .algo-select.small {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: .8rem;
+        color: var(--algo-color-light-text);
+    }
+
+    .algo-select:hover {
+        box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+    }
+
+    .algo-select .selected-text {
+        flex-grow: 1;
+    }
+
+.select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    margin-top: 4px;
+    display: none;
+    color: var(--algo-color-light-text);
+}
+    .select-dropdown.small {
+        border-radius: 4px;
+        font-size: .8rem;
+    }
+    .select-dropdown.open {
+        display: block;
+    }
+
+.select-item .check-icon {
+    visibility: hidden;
+}
+.select-item.selected .check-icon {
+    visibility: visible;
+}
+.select-item .check-icon {
+    visibility: hidden;
+}
+.select-item.selected .check-icon {
+    visibility: visible;
+}
+
+.select-item {
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+.select-dropdown.small .select-item {
+    padding: 4px 8px;
+}
+
+.select-item:hover {
+    background-color: var(--algo-color-item-hover);
+}
+.select-item .check-icon {
+    visibility: hidden;
+    color: var(--algo-color-item-selected);
+}
+.select-item.selected .check-icon {
+    visibility: visible;
+}

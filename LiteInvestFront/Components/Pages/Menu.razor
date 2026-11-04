@@ -1,240 +1,1380 @@
-﻿@using System.Collections.ObjectModel
+﻿@using System.Collections.Concurrent
+@using System.Collections.ObjectModel
 @using System.Reactive.Linq
-@using LiteInvestFront.Services
+@using LiteInvest.Entity.Helpers
+@using LiteInvest.Entity.PlazaEntity
+@using LiteInvest.Entity.Server2
 @using LiteInvest.Entity.ServerEntity
+@using LiteInvestFront
+@using LiteInvestFront.Services
 @using LiteInvestServerDll
-@using Telerik.Blazor.Components.RootComponent
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using Microsoft.AspNetCore.Http
+@using Microsoft.Extensions.Localization
+@using Microsoft.AspNetCore.WebUtilities
+@using System.Text.Json
 
-@inject UiLogicService ApiDataService
+@* @using Telerik.Blazor.Components.RootComponent *@
+
+@inject ProtectedLocalStorage LocalStorage
+@inject UiLogicService UILogicSvcInstance
 @inject ServerService _serverService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject IStringLocalizer<SharedResources> Localizer
 
-@inject IJSRuntime js
+@implements IAsyncDisposable
+@* @implements IDisposable *@
 
-@implements IDisposable
+@if (IsMasterTab())
+{
+    <TelerikWindow @bind-Visible=finrezVisible
+    ContainmentSelector="body"
+    Resizable="false"
+    Draggable="true"
+    Width="60vw"
+    MinWidth="40vw"
+    Height="30vh"
+    MinHeight="30vh"
+    MaxHeight="80vh">
+        <WindowContent>
+            <FinrezComponent />
+        </WindowContent>
+        <WindowTitle>
+            Финрез
+        </WindowTitle>
+        <WindowActions>
+            <WindowAction Name="Close" />
+        </WindowActions>
+    </TelerikWindow>
+    <TelerikWindow @bind-Visible=loginFormVisible
+    Resizable="true"
+    MinWidth="300"
+    MinHeight="200"
+    Centered="true"
+    Modal="true"
+    MaxWidth="800"
+    CloseOnOverlayClick="true"
+    MaxHeight="500">
+        <WindowContent>
 
-<TelerikWindow @bind-Visible=poswindowVisible
-               ContainmentSelector="body"
-               Resizable="true"
-               Draggable="true"
-               Width="60vw">
-    <WindowContent>
-        <Positions />
-    </WindowContent>
-    <WindowTitle>
-        Активные позиции
-    </WindowTitle>
-    <WindowActions>
-        <WindowAction Name="Close" />
-    </WindowActions>
+            <TelerikForm Model="@LoginInfo">
+                <FormItems>
+                    <FormItem Field="@nameof(UserLoginData.Login)">
 
-</TelerikWindow>
-<TelerikWindow @bind-Visible=orderswindowsVisible
-               ContainmentSelector="body"
-               Resizable="true"
-               Draggable="true"
-               Width="60vw">
-    <WindowContent>
-        <Orders />
-    </WindowContent>
-    <WindowTitle>
-        Активные ордера
-    </WindowTitle>
-    <WindowActions>
-        <WindowAction Name="Close" />
-    </WindowActions>
-</TelerikWindow>
+                    </FormItem>
+                    <FormItem Field="@nameof(UserLoginData.Password)">
 
-<TelerikWindow @bind-Visible=windowVisible
-               Resizable="true"
-               MinWidth="300"
-               MinHeight="200"
-               Centered="true"
-               Modal="true"
-               MaxWidth="800"
-               CloseOnOverlayClick="true"
-               MaxHeight="500">
-    <WindowContent>
+                    </FormItem>
+                </FormItems>
 
-        <TelerikForm Model="@loginInfo">
-            <FormItems>
-                <FormItem Field="@nameof(UserLoginData.Login)">
+                <FormButtons>
+                    <TelerikButton OnClick="OnSubmitLogin" Class="login_button">
+                        Войти
+                        <TelerikLoader Class="loader-indicator" ThemeColor="light" Visible="@loadingLogIn"></TelerikLoader>
+                    </TelerikButton>
 
-                </FormItem>
-                <FormItem Field="@nameof(UserLoginData.Password)">
+                </FormButtons>
+            </TelerikForm>
+            @if (!string.IsNullOrWhiteSpace(@textForLogin))
+            {
+                <p style="color: @colorforlogin;">@textForLogin</p>
+            }
+        </WindowContent>
+    </TelerikWindow>
 
-                </FormItem>
-            </FormItems>
+    <TelerikAppBar>
+        <AppBarSection>
+            <a class="logo" target="_blank" href="https://www.lite-invest.com/">LiteInvest</a>
+        </AppBarSection>
 
-            <FormButtons>
-                <TelerikButton OnClick="OnLoginClick" Class="login_button">
-                    Войти
-                    <TelerikLoader Class="loader-indicator" ThemeColor="light" Visible="@loadingLogIn"></TelerikLoader>
-                </TelerikButton>
+        <AppBarSection Visible="@isLoggedIn()">
+            <a class="action-item action-item-fill action-item-icon" id="btn-select-instrument" href="#" title="@Localizer["select_instrument"]">
+                <i class="bi bi-folder2-open"></i>
+            </a>
+        </AppBarSection>
 
-            </FormButtons>
-        </TelerikForm>
-        @if (!string.IsNullOrWhiteSpace(@textForLogin))
-        {
-            <p style="color: @colorforlogin;">@textForLogin</p>
+        <AppBarSection Visible="@isLoggedIn()">
+            <a class="action-item action-item-fill action-item-icon" id="btn-add-workspace" href="#" title="@Localizer["add_workspace"]">
+                <i class="bi bi-window-plus"></i>
+            </a>
+        </AppBarSection>
+
+        <AppBarSection Visible="@isLoggedIn()">
+            <TelerikMenu Data="@SettingsMenuItems"
+            ShowOn="@MenuShowEvent.Click"
+            HideOn="@MenuHideEvent.Click"
+            OnClick="@((MenuItem item) => OnClickMenuItemHandler(item))" />
+        </AppBarSection>
+
+        <AppBarSpacer />
+
+        <AppBarSection>
+            <a class="action-item action-item-fill action-item-text" target="_blank" href="https://docs-cassandra.lite-invest.com">
+                <i class="bi bi-globe" style="margin-right: 5px;"></i> @Localizer["documentation"]
+            </a>
+        </AppBarSection>
+
+        <AppBarSection>
+            @if (isLoggedIn())
+            {
+                <TelerikMenu Data="@AccountMenuItems"
+                ShowOn="@MenuShowEvent.Click"
+                HideOn="@MenuHideEvent.Click"
+                OnClick="@((MenuItem item) => OnClickMenuItemHandler(item))" />
+            }
+            else
+            {
+                <a class="action-item action-item-text" href="#" @onclick="OnMenuLoginClick">Log In</a>
+            }
+        </AppBarSection>
+    </TelerikAppBar>
+
+    @* Move JavaScript code to a separate JS file in production *@
+    <script suppress-error="BL9992">
+        function closeMenu() {
+        var pointerEvent = new PointerEvent("pointerdown");
+        document.documentElement.dispatchEvent(pointerEvent);
         }
-    </WindowContent>
-</TelerikWindow>
+    </script>
+}
+else
+{
+    <TelerikAppBar>
+        <AppBarSection Visible="@isLoggedIn()">
+            <a class="action-item action-item-fill action-item-icon" id="btn-select-instrument" href="#" title="@Localizer["select_instrument"]">
+                <i class="bi bi-folder2-open"></i>
+            </a>
+        </AppBarSection>
 
-<div class="top-menu">
-    <section class="top-menu__section">
-        <a class="brand" href="/">LiteInvest</a>
-        @*         <form class="d-flex internalSearch" role="search">
-                <DxComboBox Data="@Instruments"
-                            ValueFieldName="Isin"
-                            @bind-Value="@SecuritySelected"
-                            TextFieldName="@nameof(SecuritySelected.Isin)"
-                            SearchMode="@ListSearchMode.AutoSearch"
-                            SearchFilterCondition="@ListSearchFilterCondition.Contains"
-                            ListRenderMode="ListRenderMode.Virtual"
-                            CssClass="cw-480"
-                            InputId="cbVirtualScrolling" />
-            </form> *@
+        <AppBarSpacer />
+        <AppBarSection>
+            <span class="@(TabCaptionLabelClass ?? "")" @ondblclick="@PromptChangeTapCaption">@TabProfile?.Caption</span>
+            <TelerikTextBox Class="@(TabCaptionInputClass ?? "")" @bind-Value="@TempTabCaption" OnChange="@ConfirmChangeTabCaption" MaxLength="255" />
+        </AppBarSection>
+        <AppBarSpacer />
 
-        <form class="internalSearch" role="search">
-            <TelerikAutoComplete @ref="TelerikComboBox" Data="@Instruments"
-                                 ValueField="@nameof(SecuritySelected.Isin)"
-                                 @bind-Value="@AutoComplete"
-                                 Placeholder="Выберите Инструмент!"
-                                 Filterable="true"
-                                 OnChange="OnChangeHandler"
-                                 FilterOperator="@StringFilterOperator.Contains"
-                                 ShowClearButton="true" />
-        </form>
-        @*     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button> *@
-
-        <div id="dropdown-toggle" class="dropdown-toggle" @onclick="ToggleDropdown">
-            <span>Торговля</span>
-            <div class="dropdown-items" id="dropdown-items">
-                <span @onclick="() => {orderswindowsVisible = !orderswindowsVisible;}">Активные ордера</span>
-                <span @onclick="() => {poswindowVisible = !poswindowVisible;}">Активные позиции</span>
-            </div>
-        </div>
-    </section>
-
-    <div class="top-menu__login" @onclick="LoginCLick">
-        <span>
-            @textlogin
-        </span>
-    </div>
-    @*     <div class="collapse navbar-collapse" id="navbarSupportedContent">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    Торговля
-                </a>
-                <ul class="dropdown-menu">
-                </ul>
-            </li>
-        </ul>
-        <ul class="nav navbar-nav ml-auto">
-            <!--<li class="nav-item">
-            <a class="nav-link" href="#"><span class="fas fa-user"></span> Sign Up</a>
-            </li>-->
-            <li class="nav-item">
-                <a class="nav-link" href="#" @onclick="OnLoginClick" @ref="LogInButton"><span class="fas fa-sign-in-alt"></span>@textlogin</a>
-            </li>
-        </ul>
-    </div> *@
-</div>
-
-
+        <AppBarSection Visible="@isLoggedIn()">
+            <a class="action-item action-item-fill action-item-icon" id="btn-close-workspace" href="#" title="@Localizer["close_workspace"]">
+                <i class="bi bi-x-lg"></i>
+            </a>
+        </AppBarSection>
+    </TelerikAppBar>
+}
 
 @code
 {
+    [Parameter] public string? Token { get; set; }
+    [Parameter] public string? TabId { get; set; }
+    [Parameter] public TabProfile? TabProfile { get; set; }
+
+    // Login
+    private UserLoginData LoginInfo = new();
+    private bool loginFormVisible = false;
+    private bool loadingLogIn;
+    private string textForLogin = string.Empty;
+    private string colorforlogin = string.Empty;
+    private string? token;
+    //
 
 
+    // Order
+    private string SubscribeIDForPrivateOrder { get; set; } = string.Empty;
+    //
 
-    private bool poswindowVisible = false;
-    private bool orderswindowsVisible = false;
-    private async Task ToggleDropdown()
+
+    // Workspace Caption
+    private string? TabCaptionLabelClass;
+    private string? TabCaptionInputClass;
+    private string TempTabCaption = string.Empty;
+    //
+
+    private bool _isRealInstance = false;
+
+    private List<MenuItem> SettingsMenuItems { get; set; } = new List<MenuItem>()
     {
-        await js.InvokeVoidAsync("toggleDropdown");
+        new MenuItem()
+        {
+            Text = "Торговля",
+            Items = new List<MenuItem>()
+            {
+                new MenuItem { Text = "Активные ордера", ID = MENU_ITEM_ID.ACTIVE_ORDERS },
+                new MenuItem { Text = "Активные позиции", ID = MENU_ITEM_ID.ACTIVE_POSITIONS },
+                new MenuItem { Text = "Финрез", ID = MENU_ITEM_ID.FINREZ }
+            }
+        }
+    };
+
+    private List<MenuItem> AccountMenuItems { get; set; } = new List<MenuItem>()
+    {
+        new MenuItem()
+        {
+            Text = "",
+            Items = new List<MenuItem>()
+            {
+                new MenuItem { Text = "Profile", ID = MENU_ITEM_ID.PROFILE },
+                new MenuItem { Text = "Logout", ID = MENU_ITEM_ID.LOGOUT }
+            }
+        }
+    };
+
+    private bool finrezVisible = false;
+
+    private string lastOnChangeValue { get; set; } = string.Empty;
+
+    private void PromptChangeTapCaption()
+    {
+        if (IsMasterTab()) return;
+        TempTabCaption = TabProfile?.Caption ?? "";
+        TabCaptionLabelClass = "action-label d-none";
+        TabCaptionInputClass = "action-input";
+        StateHasChanged();
     }
 
-
-    private async void LoginCLick()
+    private void ConfirmChangeTabCaption()
     {
-        if (textlogin == "Log In")
+        if (IsMasterTab()) return;
+        TabCaptionLabelClass = "action-label";
+        TabCaptionInputClass = "action-input d-none";
+        if (!string.IsNullOrWhiteSpace(TempTabCaption) && TabProfile != null && !string.Equals(TabProfile.Caption, TempTabCaption))
         {
-            windowVisible = true;
+            TabProfile.Caption = TempTabCaption.Length > 255 ? TempTabCaption.Substring(0, 255) : TempTabCaption;
+            _serverService.SaveTab(UILogicSvcInstance.userName, TabProfile);
+
+            JSRuntime.InvokeVoidAsync("tabCaptionUpdated", TempTabCaption);
+        }
+        StateHasChanged();
+    }
+
+    private async void OnMenuLoginClick()
+    {
+        if (!isLoggedIn())
+        {
+            loginFormVisible = true;
         }
         else
         {
             MouseEventArgs args = new MouseEventArgs();
-            await OnLoginClick(args);
+            await OnSubmitLogin(args);
         }
+    }
+
+    protected void OnClickMenuItemHandler(MenuItem item)
+    {
+        var id = item.ID;
+        switch (id)
+        {
+            case MENU_ITEM_ID.NULL_ID:
+                break;
+            case MENU_ITEM_ID.ACTIVE_ORDERS:
+                if (isLoggedIn())
+                {
+                    JSRuntime.InvokeVoidAsync("openActiveOrdersDialog");
+                }
+                break;
+            case MENU_ITEM_ID.ACTIVE_POSITIONS:
+                if (isLoggedIn())
+                {
+                    JSRuntime.InvokeVoidAsync("openActivePositionsDialog");
+                }
+                break;
+            case MENU_ITEM_ID.FINREZ:
+                if (isLoggedIn())
+                {
+                    finrezVisible = true;
+                    StateHasChanged();
+                    // JSRuntime.InvokeVoidAsync("openFinrezDialog");
+                }
+                break;
+            case MENU_ITEM_ID.PROFILE:
+                break;
+            case MENU_ITEM_ID.LOGOUT:
+                OnSubmitLogout();
+                break;
+        }
+        CloseMenuIfNeccessary(id);
+    }
+
+    private void CloseMenuIfNeccessary(MENU_ITEM_ID menuID)
+    {
+        if (menuID != MENU_ITEM_ID.NULL_ID)
+        {
+            JSRuntime.InvokeVoidAsync("closeMenu");
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (IsMasterTab()) return;
+        TabCaptionLabelClass = "action-label";
+        TabCaptionInputClass = "action-input d-none";
+    }
+
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // register JS interop
+            var dotNetReference = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("setDotNetMenu", dotNetReference);
+
+            _isRealInstance = true;
+
+            string? token;
+            if (string.IsNullOrWhiteSpace(Token))
+            {
+                var tokenResult = await LocalStorage.GetAsync<string?>("token");
+                token = tokenResult.Value;
+                if (string.IsNullOrWhiteSpace(Token))
+                    Console.WriteLine($"Saved token: " + token);
+            }
+            else
+            {
+                token = Token;
+                Console.WriteLine($"Parent token: " + token);
+            }
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                var (loginInfo, user) = _serverService.Login(token);
+                if (user != null && string.IsNullOrWhiteSpace(loginInfo.errorMessage))
+                {
+                    LoginInfo.Login = user.Login;
+
+                    // Update menu text
+                    UILogicSvcInstance.userName = LoginInfo.Login;
+                    AccountMenuItems[0].Text = LoginInfo.Login;
+
+                    ProcessAfterLoggedIn(loginInfo.refreshToken);
+
+                    // Schedule auto logout if token expires
+                    // var expiration = loginInfo.expirationTime;
+                    // var remaining = expiration - DateTime.UtcNow;
+                    // if (remaining.TotalMilliseconds > 0)
+                    // {
+                    //     _ = Task.Delay(remaining).ContinueWith(async _ =>
+                    //     {
+                    //         await LocalStorage.DeleteAsync("token");
+                    //         Navigation.NavigateTo("/", true);
+                    //     });
+                    // }
+
+                    // open saved tabs
+                    if (IsMasterTab()) // master tab
+                    {
+                        Console.WriteLine("OnAfterRenderAsync(Master)");
+                        var tabs = _serverService.GetUserTabs(UILogicSvcInstance.userName);
+                        if (tabs != null && tabs.Count > 0)
+                        {
+                            Console.WriteLine($"Master Tab(Refresh) {tabs.Count} {tabs[0].Id} {tabs[0].Caption}");
+                            // await JSRuntime.InvokeVoidAsync("openWorkspaces", tabs.ToArray());
+                            await JSRuntime.InvokeVoidAsync("openWorkspaces", tabs);
+                        }
+                    }
+                    else // child tab
+                    {
+                        Console.WriteLine("OnAfterRenderAsync(Child)");
+                        if (TabProfile != null)
+                        {
+                            Console.WriteLine($"--- Save child tab: {TabProfile.Caption}, {TabProfile.Id}");
+                            _serverService.SaveTab(UILogicSvcInstance.userName, TabProfile);
+                        }
+                    }
+                }
+                else
+                {
+                    // Token is invalid or expired
+                    await LocalStorage.DeleteAsync("token");
+                    AccountMenuItems[0].Text = string.Empty;
+                }
+            }
+            else
+            {
+                // No token in storage
+                AccountMenuItems[0].Text = string.Empty;
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnSubmitLogin(MouseEventArgs obj)
+    {
+        // Console.WriteLine("OnSubmitLogin");
+        try
+        {
+            loadingLogIn = true;
+            colorforlogin = "black";
+            textForLogin = "Входим";
+
+            // TODO - test
+            // LoginInfo.Login = "samujan1@yandex.ru";
+            // LoginInfo.Password = "pass2";
+            // LoginInfo.Login = "murat";
+            // LoginInfo.Password = "murat";
+            var loginInfo = await _serverService.Login(LoginInfo.Login, LoginInfo.Password);
+
+            if (!string.IsNullOrWhiteSpace(loginInfo.errorMessage))
+            {
+                Console.WriteLine("ERROR LOGIN");
+                textForLogin = loginInfo.errorMessage;
+                colorforlogin = "red";
+                loadingLogIn = false;
+                return;
+            }
+
+            UILogicSvcInstance.userName = LoginInfo.Login;
+            AccountMenuItems[0].Text = LoginInfo.Login;
+
+            await LocalStorage.SetAsync("token", loginInfo.token);
+            // Store expirationTime if needed for local session control
+            textForLogin = "Грузим инструменты";
+            colorforlogin = "green";
+            loginFormVisible = false;
+            loadingLogIn = false;
+
+            Console.WriteLine("Loading instruments");
+            textForLogin = "Готово";
+
+            ProcessAfterLoggedIn(loginInfo.refreshToken);
+
+            // open saved tabs
+            if (IsMasterTab()) // master tab
+            {
+                var tabs = _serverService.GetUserTabs(UILogicSvcInstance.userName);
+                if (tabs != null && tabs.Count > 0)
+                {
+                    Console.WriteLine("Master Tab(Logged in) " + tabs.Count);
+                    // await JSRuntime.InvokeVoidAsync("openWorkspaces", tabs.ToArray());
+                    await JSRuntime.InvokeVoidAsync("openWorkspaces", tabs);
+                }
+            }
+
+            // TODO - test code
+            #region test code
+            // Helper.CreateTimerAndStart(() =>
+            // {
+            //     var orders = new List<Order>
+            //     {
+            //         new Order
+            //         {
+            //             ExchangeOrderId = "1951778880427693827",
+            //             NumberUserOrderId = 2059778219,
+            //             PriceOrder = (decimal)32.39000,
+            //             SecIsin = "SILV-6.25",
+            //             SecurityId = "5164827",
+            //             Side = Side.Buy,
+            //             State = Order.OrderStateType.Active,
+            //             TimeCreate = new DateTime(2025, 5, 16, 18, 0, 30),
+            //             Volume = 2,
+            //             VolumeExecuted = 0
+            //         }
+            //     };
+            //     OnMyNewOrders(orders);
+            // }, 3_000, false);
+            // Helper.CreateTimerAndStart(() =>
+            // {
+            //     var orders = new List<Order>
+            //     {
+            //         new Order
+            //         {
+            //             ExchangeOrderId = "1951778880427693828",
+            //             NumberUserOrderId = 2059778220,
+            //             PriceOrder = (decimal)32.38000,
+            //             SecIsin = "SILV-6.25",
+            //             SecurityId = "5164827",
+            //             Side = Side.Buy,
+            //             State = Order.OrderStateType.Active,
+            //             TimeCreate = new DateTime(2025, 5, 16, 18, 1, 30),
+            //             Volume = 1,
+            //             VolumeExecuted = 0
+            //         },
+            //         new Order
+            //         {
+            //             ExchangeOrderId = "1851778880427693829",
+            //             NumberUserOrderId = 2059778221,
+            //             PriceOrder = (decimal)22230,
+            //             SecIsin = "MTSI-6.25",
+            //             SecurityId = "5871134",
+            //             Side = Side.Buy,
+            //             State = Order.OrderStateType.Active,
+            //             TimeCreate = new DateTime(2025, 5, 16, 18, 1, 30),
+            //             Volume = 10,
+            //             VolumeExecuted = 0
+            //         }
+            //     };
+            //     OnMyNewOrders(orders);
+            // }, 6_000, false);
+            // Helper.CreateTimerAndStart(() =>
+            // {
+            //     var orders = new List<Order>
+            //     {
+            //         new Order
+            //         {
+            //             ExchangeOrderId = "1951778880427693830",
+            //             NumberUserOrderId = 2059778222,
+            //             PriceOrder = (decimal)32.48000,
+            //             SecIsin = "SILV-6.25",
+            //             SecurityId = "5164827",
+            //             Side = Side.Sell,
+            //             State = Order.OrderStateType.Active,
+            //             TimeCreate = new DateTime(2025, 5, 16, 18, 2, 30),
+            //             Volume = 2,
+            //             VolumeExecuted = 0
+            //         },
+            //         new Order
+            //         {
+            //             ExchangeOrderId = "1851778880427693831",
+            //             NumberUserOrderId = 2059778223,
+            //             PriceOrder = (decimal)22195,
+            //             SecIsin = "MTSI-6.25",
+            //             SecurityId = "5871134",
+            //             Side = Side.Sell,
+            //             State = Order.OrderStateType.Partial,
+            //             TimeCreate = new DateTime(2025, 5, 16, 18, 1, 30),
+            //             Volume = 2,
+            //             VolumeExecuted = 0
+            //         }
+            //     };
+            //     OnMyNewOrders(orders);
+            // }, 9_000, false);
+
+            // Helper.CreateTimerAndStart(() =>
+            // {
+            //     var orders = new List<Order>
+            //         {
+            //         new Order
+            //         {
+            //             ExchangeOrderId = "1951778880427693827",
+            //             NumberUserOrderId = 2059778219,
+            //             PriceOrder = (decimal)32.39000,
+            //             SecIsin = "SILV-6.25",
+            //             SecurityId = "5164827",
+            //             Side = Side.Buy,
+            //             State = Order.OrderStateType.Cancel,
+            //             TimeCreate = new DateTime(2025, 5, 16, 18, 0, 30),
+            //             TimeCancel = new DateTime(2025, 5, 16, 18, 0, 50),
+            //             Volume = 2,
+            //             VolumeExecuted = 0
+            //         },
+            //         new Order
+            //         {
+            //             ExchangeOrderId = "1951778880427693828",
+            //             NumberUserOrderId = 2059778220,
+            //             PriceOrder = (decimal)32.38000,
+            //             SecIsin = "SILV-6.25",
+            //             SecurityId = "5164827",
+            //             Side = Side.Buy,
+            //             State = Order.OrderStateType.Fail,
+            //             TimeCreate = new DateTime(2025, 5, 16, 18, 1, 35),
+            //             TimeCancel = new DateTime(2025, 5, 16, 18, 0, 50),
+            //             Volume = 1,
+            //             VolumeExecuted = 0
+            //         },
+            //         new Order
+            //         {
+            //             ExchangeOrderId = "1951778880427693830",
+            //             NumberUserOrderId = 2059778222,
+            //             PriceOrder = (decimal)32.48000,
+            //             SecIsin = "SILV-6.25",
+            //             SecurityId = "5164827",
+            //             Side = Side.Sell,
+            //             State = Order.OrderStateType.Done,
+            //             TimeCreate = new DateTime(2025, 5, 16, 18, 2, 40),
+            //             TimeDone = new DateTime(2025, 5, 16, 18, 2, 50),
+            //             Volume = 2,
+            //             VolumeExecuted = 2
+            //         },
+            //         new Order
+            //         {
+            //             ExchangeOrderId = "1851778880427693833",
+            //             NumberUserOrderId = 2059778224,
+            //             PriceOrder = (decimal)22190,
+            //             SecIsin = "MTSI-6.25",
+            //             SecurityId = "5871134",
+            //             Side = Side.Buy,
+            //             State = Order.OrderStateType.Partial,
+            //             TimeCreate = new DateTime(2025, 5, 16, 18, 1, 30),
+            //             Volume = 2,
+            //             VolumeExecuted = 0
+            //         },
+            //         new Order
+            //         {
+            //             ExchangeOrderId = "1851778880427693834",
+            //             NumberUserOrderId = 2059778225,
+            //             PriceOrder = (decimal)82646,
+            //             SecIsin = "Si-6.25",
+            //             SecurityId = "3810231",
+            //             Side = Side.Buy,
+            //             State = Order.OrderStateType.Active,
+            //             TimeCreate = new DateTime(2025, 5, 16, 18, 1, 30),
+            //             Volume = 3,
+            //             VolumeExecuted = 0
+            //         }
+            //         };
+            //     OnMyNewOrders(orders);
+            // }, 12_000, false);
+            #endregion
+
+            return;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            return;
+        }
+    }
+
+    private async void OnSubmitLogout()
+    {
+        // SavedOrdersLoadTimer?.Stop();
+        UILogicSvcInstance.userName = string.Empty;
+        var token = await LocalStorage.GetAsync<string>("token");
+        if (!string.IsNullOrEmpty(token.Value))
+            _serverService.Logout(token.Value);
+        await LocalStorage.DeleteAsync("token");
+        await JSRuntime.InvokeVoidAsync("logout");
+        Navigation.NavigateTo("/", true);
+    }
+
+    private void ProcessAfterLoggedIn(string refreshToken)
+    {
+
+        InvokeAsync(async () =>
+        {
+            var allSecurities = _serverService.GetAllSecurities();
+            await SetInitialiDataToJS(refreshToken, allSecurities);
+
+            LoadSavedInstruments(allSecurities);
+
+        });
+
+        // Must separate this poll
+        InvokeAsync(async () =>
+        {
+            // Load active orders and set them to JS
+            await PollForActiveOrdersOpenedPositionsAsync();
+        });
+
+        var resOrder = _serverService.SubscribeForPrivateOrders(UILogicSvcInstance.userName, OnMyNewOrders);
+        if (resOrder.Result.Success)
+        {
+            Console.WriteLine($"Subscription SUCCESS Orders");
+            SubscribeIDForPrivateOrder = resOrder.Result.Id;
+        }
+    }
+
+    private async Task SetInitialiDataToJS(string refreshToken, List<SecurityApi> allSecurities)
+    {
+        #region Instruments
+        var favoriteSecurities = _serverService.GetUserFavoriteInstruments(UILogicSvcInstance.userName);
+        var recentSecurities = _serverService.GetUserRecentInstruments(UILogicSvcInstance.userName);
+
+        // var securityList = new List<SecurityDataJS>();
+        var securityList = allSecurities.Select(security => {
+
+            long timestamp = Helper.GetSafeUnixTimestamp(security.DateUpdateFromMoex);
+            return new SecurityDataJS
+            {
+                Id = security.id,
+                Symbol = security.Isin,
+                FullName = security.FullName,
+                Type = security.Type,
+                // DateUpdateFromMoex = security.DateUpdateFromMoex.ToShortDateString()
+                UpdatedAt = timestamp
+            };
+        }).ToList();
+
+        List<string> favoriteList;
+        if (favoriteSecurities == null)
+            favoriteList = [];
+        else
+            favoriteList = favoriteSecurities.Keys.ToList(); // list of favorite security id
+
+        List<SecurityProfileRecentJS> recentList;
+        if(recentSecurities != null)
+        {
+            recentList = recentSecurities.Values.Select(security => new SecurityProfileRecentJS
+                {
+                    Id = security.Item2.Id,
+                    OrderIndex = security.Item1
+                }).ToList();
+        } else
+        {
+            recentList = [];
+        }
+        #endregion Instruments
+
+
+        #region Tab Profile
+        TabProfile? masterTabProfile = null;
+        if (IsMasterTab())
+        {
+            masterTabProfile = _serverService.GetUserMasterTab(UILogicSvcInstance.userName);
+        }
+        #endregion Tab Profile
+
+
+        #region Dialog Profile
+        var instrumentPickerProfile = _serverService.GetDialogProfile(UILogicSvcInstance.userName, DialogType.InstrumentPicker);
+        var activeOrdersDialogProfile = _serverService.GetDialogProfile(UILogicSvcInstance.userName, DialogType.ActiveOrders);
+        var activePositionsDialogProfile = _serverService.GetDialogProfile(UILogicSvcInstance.userName, DialogType.ActivePositions);
+        #endregion Dialog Profile
+
+        await JSRuntime.InvokeVoidAsync("setInitialiData", refreshToken,
+
+        // instruments
+        new {
+            Securities = securityList, 
+            FavSecurities = favoriteList,
+            RecentSecurities = recentList
+        },
+
+        // tab profile
+        new
+        {
+            MasterTabProfile = masterTabProfile
+        },
+
+        // dialogs profile
+        new
+        {
+            InstrumentPickerProfile = (InstrumentPickerProfile?)instrumentPickerProfile,
+            ActiveOrdersDialogProfile = (ActiveOrdersDialogProfile?)activeOrdersDialogProfile,
+            ActivePositionsDialogProfile = (ActivePositionsDialogProfile?)activePositionsDialogProfile
+        }
+        );
+    }
+
+    private void LoadSavedInstruments(List<SecurityApi> allSecurities)
+    {
+        if (string.IsNullOrWhiteSpace(UILogicSvcInstance.userName))
+            return;
+
+        var instruments = _serverService.GetUserInstrumentsByTab(UILogicSvcInstance.userName, TabId);
+        if (instruments != null && instruments?.Count > 0)
+        {
+            var displayOrders = _serverService.GetUsersInstrumentOrders(UILogicSvcInstance.userName, TabId);
+            if (displayOrders != null && displayOrders.Count > 0)
+            {
+                try
+                {
+                    var instrumentsOrdered = instruments
+                        // .Where(kv => orders.ContainsKey(kv.Key))
+                        // .OrderBy(kv => orders[kv.Key])
+                        .OrderBy(kv => displayOrders.TryGetValue(kv.Key, out var val) ? val : int.MaxValue)
+                        .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+                    List<SecurityApi> secs = new();
+                    foreach (var instrument in instrumentsOrdered)
+                    {
+                        var sec = allSecurities.FirstOrDefault(s => s.id == instrument.Value.Id);
+                        if (sec != null)
+                        {
+                            var newSec = (SecurityApi)sec.Clone();
+                            newSec.SpecialHash = instrument.Key;
+                            newSec.Profile = instrument.Value;
+                            secs.Add(newSec);
+                        }
+                    }
+
+                    // Notify - InstrumentsLoadAction
+                    UILogicSvcInstance.NotifyAllInstrumentOpened(secs);
+
+                }
+                catch (Exception e)
+                {
+
+                }
+            }
+            else
+            {
+                List<SecurityApi> secs = new();
+                foreach (var instrument in instruments)
+                {
+                    var sec = allSecurities.FirstOrDefault(s => s.id == instrument.Value.Id);
+                    if (sec != null)
+                    {
+                        var newSec = (SecurityApi)sec.Clone();
+                        newSec.SpecialHash = instrument.Key;
+                        newSec.Profile = instrument.Value;
+                        secs.Add(newSec);
+                    }
+                }
+
+                // Notify - InstrumentsLoadAction
+                UILogicSvcInstance.NotifyAllInstrumentOpened(secs);
+            }
+        }
+    }
+
+    private bool isLoggedIn()
+    {
+        return !string.IsNullOrWhiteSpace(UILogicSvcInstance.userName);
+    }
+
+    private void ResetLogin()
+    {
+        LoginInfo = new();
+        loginFormVisible = true;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _ctsActiveOrdersOpenedPositions?.Cancel();
+        _ctsActiveOrdersOpenedPositions?.Dispose();
+        _ctsActiveOrdersOpenedPositions = null;
+
+        _ctsNonActiveOrders?.Cancel();
+        _ctsNonActiveOrders?.Dispose();
+        _ctsNonActiveOrders = null;
+
+        _ctsClosedPositions?.Cancel();
+        _ctsClosedPositions?.Dispose();
+        _ctsClosedPositions = null;
+
+        if (!string.IsNullOrEmpty(SubscribeIDForPrivateOrder))
+        {
+            var res = await _serverService.RemoveSubscribtionForPrivateOrders(UILogicSvcInstance.userName, SubscribeIDForPrivateOrder);
+            Console.WriteLine($"ORDER PRIVATE Unsubscription RES {res.Success}");
+        }
+
+        if (!_isRealInstance) return;
+        // GC.SuppressFinalize(this);
+    }
+    // public async ValueTask DisposeAsync()
+    // {
+    //     if (!_isRealInstance) return;
+
+    //     // Clean up JS interop
+    //     try
+    //     {
+    //         // GC.SuppressFinalize(this);
+    //     }
+    //     catch (JSDisconnectedException)
+    //     {
+    //     }
+    // }
+
+    private CancellationTokenSource? _ctsActiveOrdersOpenedPositions;
+    private CancellationTokenSource? _ctsNonActiveOrders;
+    private readonly object _pollingActiveOrdersOpenedPositionsLock = new object();
+    private readonly object _pollingNonActiveLock = new object();
+
+    private async Task PollForActiveOrdersOpenedPositionsAsync()
+    {
+        // TODO - test code
+        // var positions1 = _serverService.GetClosedPositionsForUser(UILogicSvcInstance.userName);
+        // if (positions1.Count > 0)
+        // {
+        //     var openedPositionsJs = positions1.Select(pos =>
+        //     {
+        //         var bestPrice = _serverService.GetBestBidAskPrice(pos.SecId);
+        //         var bestprice = pos.Side == Side.Buy ? bestPrice.BestBid : bestPrice.BestAsk;
+        //         return new PositionDataJs
+        //             {
+        //                 SecId = pos.SecId,
+        //                 Symbol = pos.SecName,
+        //                 EnterPrice = (double)pos.AverageEntry,
+        //                 ExitPrice = (double)bestprice,
+        //                 PriceStep = (double)pos.PriceStep,
+        //                 PriceStepCost = (double)pos.PriceStepCost,
+        //                 CurPos = (int)pos.PosValue,
+        //                 ClosedVolume = pos.CloseTrades == null ? 0 : (int)pos.CloseTrades.Volume,
+        //                 Side = pos.Side == Side.Buy ? 'L' : 'S',
+        //                 Timestamp = new DateTimeOffset(pos.OpenTime).ToUnixTimeMilliseconds(),
+        //                 Open = true
+        //             };
+        //     });
+
+        //     await JSRuntime.InvokeVoidAsync("setOpenedPositions", openedPositionsJs);
+        // }
+
+        // Thread-safe cancellation token handling
+        lock (_pollingActiveOrdersOpenedPositionsLock)
+        {
+            _ctsActiveOrdersOpenedPositions?.Cancel();
+            _ctsActiveOrdersOpenedPositions?.Dispose();
+            _ctsActiveOrdersOpenedPositions = new CancellationTokenSource();
+        }
+
+        var token = _ctsActiveOrdersOpenedPositions.Token;
+        const int delayMs = 10_000; // 10 seconds
+
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                var response = _serverService.GetActiveOrdersForUser(UILogicSvcInstance.userName);
+
+                if (response.Message != ServerService.SERVER_WARNING_LOADING_ORDERS && response.Data != null)
+                {
+                    var activeOrdersJs = response.Data.Select(order => {
+
+                        long timestamp = Helper.GetSafeUnixTimestamp(order.TimeCreate);
+                        return new OrderDataJs
+                        {
+                            Id = order.NumberUserOrderId,
+                            ExchangeOrderId = order.ExchangeOrderId,
+                            SecId = order.SecurityId,
+                            Symbol = order.SecIsin,
+                            Price = (double)order.PriceOrder,
+                            Volume = (int)order.Volume,
+                            VolumeExecuted = (int)order.VolumeExecuted,
+                            Timestamp = timestamp,
+                            Side = order.Side == Side.Buy ? 'L' : 'S',
+                            State = (int)order.State
+                        };
+                    }).ToList();
+
+                    await JSRuntime.InvokeVoidAsync("setActiveOrders", activeOrdersJs);
+
+                    var positions = _serverService.GetOpenPositionsForUser(UILogicSvcInstance.userName);
+                    if (positions.Count > 0)
+                    {
+                        var openedPositionsJs = positions.Select(pos =>
+                        {
+                            var bestPrice = _serverService.GetBestBidAskPrice(pos.SecId);
+                            var bestprice = pos.Side == Side.Buy ? bestPrice.BestBid : bestPrice.BestAsk;
+
+                            long timestamp = Helper.GetSafeUnixTimestamp(pos.OpenTime);
+                            return new PositionDataJs
+                                {
+                                    SecId = pos.SecId,
+                                    Symbol = pos.SecName,
+                                    EnterPrice = (double)pos.AverageEntry,
+                                    ExitPrice = (double)bestprice,
+                                    PriceStep = (double)pos.PriceStep,
+                                    PriceStepCost = (double)pos.PriceStepCost,
+                                    CurPos = (int)pos.PosValue,
+                                    ClosedVolume = pos.CloseTrades == null ? 0 : (int)pos.CloseTrades.Volume,
+                                    Side = pos.Side == Side.Buy ? 'L' : 'S',
+                                    Timestamp = timestamp,
+                                    Open = true
+                                };
+                        }).ToList();
+
+                        await JSRuntime.InvokeVoidAsync("setOpenedPositions", openedPositionsJs);
+                    }
+                    break; // Exit after successful fetch
+                }
+
+                await Task.Delay(delayMs, token);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            Console.WriteLine("Polling for active orders canceled.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in active orders polling: {ex.Message}");
+        }
+        finally
+        {
+            lock (_pollingActiveOrdersOpenedPositionsLock)
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    _ctsActiveOrdersOpenedPositions?.Cancel();
+                }
+                _ctsActiveOrdersOpenedPositions?.Dispose();
+                _ctsActiveOrdersOpenedPositions = null;
+            }
+        }
+    }
+
+    private async Task PollForNonActiveOrdersAsync(int type)
+    {
+        // Thread-safe cancellation token handling
+        lock (_pollingNonActiveLock)
+        {
+            // Cancel previous polling (if any)
+            _ctsNonActiveOrders?.Cancel();
+            _ctsNonActiveOrders?.Dispose();
+            _ctsNonActiveOrders = new CancellationTokenSource();
+        }
+
+        var token = _ctsNonActiveOrders.Token;
+        const int delayMs = 10_000; // 10 seconds
+
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                ServerResponce<List<Order>?>? response = type == 0
+                    ? _serverService.GetCanceledOrdersForUser(UILogicSvcInstance.userName)
+                    : _serverService.GetExecutedOrdersForUser(UILogicSvcInstance.userName);
+
+                if (response?.Data != null && response.Message != ServerService.SERVER_WARNING_LOADING_ORDERS)
+                {
+                    var ordersJs = response.Data.Select(order =>
+                    {
+                        long timestamp = type == 0 ? Helper.GetSafeUnixTimestamp(order.TimeCancel) : Helper.GetSafeUnixTimestamp(order.TimeDone);
+                        return new OrderDataJs
+                        {
+                            Id = order.NumberUserOrderId,
+                            ExchangeOrderId = order.ExchangeOrderId,
+                            SecId = order.SecurityId,
+                            Symbol = order.SecIsin,
+                            Price = (double)order.PriceOrder,
+                            Volume = (int)order.Volume,
+                            VolumeExecuted = (int)order.VolumeExecuted,
+                            Timestamp = timestamp,
+                            Side = order.Side == Side.Buy ? 'L' : 'S',
+                            State = (int)order.State
+                        };
+                    }).ToList();
+
+                    await (type == 0
+                        ? JSRuntime.InvokeVoidAsync("setCanceledOrders", ordersJs)
+                        : JSRuntime.InvokeVoidAsync("setExecutedOrders", ordersJs));
+
+                    break; // Exit after successful fetch
+                }
+
+                await Task.Delay(delayMs, token);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            Console.WriteLine("Polling for non-active orders canceled.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in non-active orders polling: {ex.Message}");
+        }
+        finally
+        {
+            lock (_pollingNonActiveLock)
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    _ctsNonActiveOrders?.Cancel();
+                }
+                _ctsNonActiveOrders?.Dispose();
+                _ctsNonActiveOrders = null;
+            }
+        }
+    }
+
+    private CancellationTokenSource? _ctsClosedPositions;
+    private readonly object _pollingClosedLock = new object();
+
+    private async Task PollForClosedPositionsAsync()
+    {
+        // Thread-safe cancellation token handling
+        lock (_pollingClosedLock)
+        {
+            _ctsClosedPositions?.Cancel();
+            _ctsClosedPositions?.Dispose();
+            _ctsClosedPositions = new CancellationTokenSource();
+        }
+
+        var token = _ctsClosedPositions.Token;
+
+        try
+        {
+            var positions = _serverService.GetClosedPositionsForUser(UILogicSvcInstance.userName);
+
+            if (positions.Count > 0)
+            {
+                var closedPositionsJs = positions.Select(pos =>
+                {
+                    long timestamp = Helper.GetSafeUnixTimestamp(pos.OpenTime);
+                    return new PositionDataJs
+                    {
+                        SecId = pos.SecId,
+                        Symbol = pos.SecName,
+                        EnterPrice = (double)pos.AverageEntry,
+                        ExitPrice = (double)pos.AverageExit,
+                        PriceStep = (double)pos.PriceStep,
+                        PriceStepCost = (double)pos.PriceStepCost,
+                        CurPos = (int)pos.PosValue,
+                        ClosedVolume = pos.CloseTrades == null ? 0 : (int)pos.CloseTrades.Volume,
+                        Side = pos.Side == Side.Buy ? 'L' : 'S',
+                        Timestamp = timestamp,
+                        Open = false
+                    };
+                }).ToList();
+
+                await JSRuntime.InvokeVoidAsync("setClosedPositions", closedPositionsJs);
+            }
+
+        }
+        catch (TaskCanceledException)
+        {
+            Console.WriteLine("Polling for closed positions canceled.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in closed positions polling: {ex.Message}");
+        }
+        finally
+        {
+            lock (_pollingClosedLock)
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    _ctsClosedPositions?.Cancel();
+                }
+                _ctsClosedPositions?.Dispose();
+                _ctsClosedPositions = null;
+            }
+        }
+    }
+
+    private void OnMyNewOrders(List<Order> myorders)
+    {
+        if (myorders.Count == 0) return;
+
+        InvokeAsync(async () =>
+        {
+            var ordersJs = myorders.Select(order =>
+            {
+                var restvolume = order.Volume - order.VolumeExecuted;
+                Console.WriteLine($"New Order {order.SecurityId} side = {order.Side} price {order.PriceOrder} state {order.State} rv = {restvolume}");
+
+                long timestamp;
+                try
+                {
+                    timestamp = order.State switch
+                    {
+                        Order.OrderStateType.Active or Order.OrderStateType.Partial => Helper.GetSafeUnixTimestamp(order.TimeCreate),
+                        Order.OrderStateType.Cancel or Order.OrderStateType.Fail => Helper.GetSafeUnixTimestamp(order.TimeCancel),
+                        Order.OrderStateType.Done => Helper.GetSafeUnixTimestamp(order.TimeDone),
+                        _ => Helper.GetSafeUnixTimestamp(order.TimeCreate)
+                    };
+                }
+                catch (Exception e)
+                {
+                    timestamp = 0;
+                }
+
+                return new OrderDataJs
+                    {
+                        Id = order.NumberUserOrderId,
+                        ExchangeOrderId = order.ExchangeOrderId,
+                        SecId = order.SecurityId,
+                        Symbol = order.SecIsin,
+                        Price = (double)order.PriceOrder,
+                        Volume = (int)order.Volume,
+                        VolumeExecuted = (int)order.VolumeExecuted,
+                        Timestamp = timestamp,
+                        Side = order.Side == Side.Buy ? 'L' : 'S',
+                        State = (int)order.State
+                    };
+            }).ToList();
+
+            Console.WriteLine($"OnMyNewOrders {ordersJs.Count} {ordersJs[0].Price}");
+            await JSRuntime.InvokeVoidAsync("setNewOrders", ordersJs);
+
+            var positions = _serverService.GetOpenPositionsForUser(UILogicSvcInstance.userName);
+            var positionsJs = positions.Select(pos =>
+            {
+                long timestamp = Helper.GetSafeUnixTimestamp(pos.OpenTime);
+                return new PositionDataJs
+                {
+                    SecId = pos.SecId,
+                    Symbol = pos.SecName,
+                    EnterPrice = (double)pos.AverageEntry,
+                    ExitPrice = (double)pos.AverageExit,
+                    PriceStep = (double)pos.PriceStep,
+                    PriceStepCost = (double)pos.PriceStepCost,
+                    CurPos = (int)pos.PosValue,
+                    ClosedVolume = pos.CloseTrades == null ? 0 : (int)pos.CloseTrades.Volume,
+                    Side = pos.Side == Side.Buy ? 'L' : 'S',
+                    Timestamp = timestamp,
+                    Open = true
+                };
+            }).ToList();
+
+            Console.WriteLine($"OnMyNewPositions {positionsJs.Count}");
+            await JSRuntime.InvokeVoidAsync("setOpenedPositions", positionsJs);
+            //
+            // TODO - for better performance(since closed positions will grow huge), SubscribeForPrivatePosition should be implemented in ProcessNewMyTrade
+            // 
+        });
+    }
+
+    [JSInvokable]
+    public void SaveTabProfile(TabProfile tabProfile)
+    {
+        if (IsMasterTab()) // master tab
+        {
+            Console.WriteLine("SaveTabProfile(master)");
+            _serverService.SaveMasterTab(UILogicSvcInstance.userName, tabProfile);
+        }
+        else
+        {
+            Console.WriteLine("SaveTabProfile(child) " + TabId);
+            _serverService.SaveTab(UILogicSvcInstance.userName, tabProfile);
+        }
+    }
+
+    [JSInvokable]
+    public void RemoveTabProfile()
+    {
+        // remove child tab profile
+        if (!IsMasterTab() && TabId != null)
+        {
+            Console.WriteLine("RemoveTabProfile");
+            _serverService.DeleteTab(UILogicSvcInstance.userName, TabId);
+            _serverService.DeleteUserInstrumentOrdersAsync(UILogicSvcInstance.userName, TabId);
+            _serverService.DeleteUserInstrumentsAsync(UILogicSvcInstance.userName, TabId);
+        }
+    }
+
+    [JSInvokable]
+    public void RemoveTabProfiles(List<string> tabIds)
+    {
+        // remove child tab profiles from master tab
+        if (IsMasterTab() && tabIds != null)
+        {
+            Console.WriteLine("RemoveTabProfiles");
+            foreach (var id in tabIds)
+            {
+                _serverService.DeleteTab(UILogicSvcInstance.userName, id);
+                _serverService.DeleteUserInstrumentOrdersAsync(UILogicSvcInstance.userName, id);
+                _serverService.DeleteUserInstrumentsAsync(UILogicSvcInstance.userName, id);
+            }
+        }
+    }
+
+    // Invoked on ActiveOrdersDialog tab selection change event | open the dialog
+    [JSInvokable]
+    public void RequestCanceledOrders()
+    {
+        InvokeAsync(async () =>
+        {
+            // Load canceled orders and set them to JS
+            await PollForNonActiveOrdersAsync(0);
+        });
+    }
+
+    // Invoked on ActiveOrdersDialog tab selection change event | open the dialog
+    [JSInvokable]
+    public void RequestExecutedOrders()
+    {
+        InvokeAsync(async () =>
+        {
+            // Load executed orders and set them to JS
+            await PollForNonActiveOrdersAsync(1);
+        });
+    }
+
+    // Invoked on ActivePositionsDialog tab selection change event | open the dialog
+    [JSInvokable]
+    public void RequestClosedPositions()
+    {
+        InvokeAsync(async () =>
+        {
+            // Load closed positions and set them to JS
+            await PollForClosedPositionsAsync();
+        });
+    }
+
+    [JSInvokable]
+    public void SaveDialogProfile(string dialogType, object profileData)
+    {
+        DialogType type = dialogType switch
+        {
+            "instrumentPicker" => DialogType.InstrumentPicker,
+            "activeOrders" => DialogType.ActiveOrders,
+            "activePositions" => DialogType.ActivePositions,
+            _ => throw new ArgumentException("Unknown dialog type")
+        };
+
+        try {
+            var profileJson = JsonSerializer.Serialize(profileData);
+            DialogProfile? profile = type switch
+            {
+                DialogType.InstrumentPicker => JsonSerializer.Deserialize<InstrumentPickerProfile>(profileJson),
+                DialogType.ActiveOrders => JsonSerializer.Deserialize<ActiveOrdersDialogProfile>(profileJson),
+                DialogType.ActivePositions => JsonSerializer.Deserialize<ActivePositionsDialogProfile>(profileJson),
+                _ => null
+            };
+
+            if (profile != null)
+                _serverService.SaveDialogProfile(UILogicSvcInstance.userName, type, profile);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Parsing dialog profile failure " + e.Message);
+        }
+    }
+
+    private bool IsMasterTab()
+    {
+        return string.IsNullOrEmpty(TabId);
     }
 
     public class UserLoginData
     {
-        public string Login { get; set; }
-        public string Password { get; set; }
+        public string Login { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
     };
 
-    //private UserLoginData loginInfo = new UserLoginData("samujan1@yandex.ru", "pass2");
-    private UserLoginData loginInfo = new UserLoginData();
-
-    private string lastOnChangeValue { get; set; }
-
-    private async Task OnChangeHandler(object theUserInput)
+    public class MenuItem
     {
-        string currValue = theUserInput as string;
-
-        //if (currValue != lastOnChangeValue)
-        {
-            // lastOnChangeValue = currValue;
-
-            if (Instruments.FirstOrDefault(i => i.Isin == AutoComplete) != null)
-            {
-                SecuritySelected = Instruments.FirstOrDefault(i => i.Isin == AutoComplete);
-                AutoComplete = "";
-            }
-        }
+        public string Text { get; set; } = string.Empty;
+        public MENU_ITEM_ID ID { get; set; } = MENU_ITEM_ID.NULL_ID;
+        public IEnumerable<MenuItem> Items { get; set; }
     }
 
-    bool windowVisible = false;
-
-    [Parameter] public Action LoginClicked { get; set; }
-    [Parameter] public Action<SecurityApi> NewSecSelected { get; set; }
-    [Parameter] public ObservableCollection<SecurityApi> SecurityOpened { get; set; }
-
-    IEnumerable<SecurityApi> Instruments { get; set; }
-    string textlogin = "Log In";
-
-    private string AutoComplete { get; set; }
-
-    private SecurityApi _securityApiSelected;
-
-    public SecurityApi SecuritySelected
+    public class SecurityDataJS
     {
-        get => _securityApiSelected;
-        set
-        {
-            i++;
-            _securityApiSelected = value;
-            if (i != 1)
-            {
-                SecurityApiChanged(value);
-            }
-        }
+        public string Id { get; set; } = string.Empty;
+        public string SpecialHash { get; set; } = string.Empty;
+        public string Symbol { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public long UpdatedAt { get; set; }
     }
-    public ElementReference LogInButton { get; set; }
 
-    int i = 0;
-    private bool loadingLogIn { get; set; }
-    public string textForLogin { get; set; }
-    public string colorforlogin { get; set; }
+    public class SecurityProfileRecentJS
+    {
+        public string Id { get; set; } = string.Empty;
+        public int OrderIndex { get; set; } = -1;
+    }
 
-    public TelerikAutoComplete<SecurityApi> TelerikComboBox { get; set; }
+    public class OrderDataJs
+    {
+        public int Id { get; set; } // NumberUserOrderId
+        public string ExchangeOrderId { get; set; } = string.Empty;
+        public string SecId { get; set; } = string.Empty;
+        public string Symbol { get; set; } = string.Empty;
+        public double Price { get; set; }
+        public int Volume { get; set; }
+        public int VolumeExecuted { get; set; }
+        public long Timestamp { get; set; }
+        public char Side { get; set; }
+        public int State { get; set; }
+    }
 
-    //Entity.LoginInfo? res;
+    public class PositionDataJs
+    {
+        public string SecId { get; set; } = string.Empty;
+        public string Symbol { get; set; } = string.Empty;
+        public double EnterPrice { get; set; }
+        public double ExitPrice { get; set; }
+        public double PriceStep { get; set; }
+        public double PriceStepCost { get; set; }
+        public int CurPos { get; set; }
+        public int ClosedVolume { get; set; }
+        public char Side  { get; set; }
+        public long Timestamp { get; set; }
+        public bool Open { get; set; }
+    }
+
+    public enum MENU_ITEM_ID
+    {
+        NULL_ID = 0,
+        ACTIVE_ORDERS,
+        ACTIVE_POSITIONS,
+        FINREZ,
+        PROFILE,
+        LOGOUT
+    }
 
     List<string> coins = new List<string>()
     {
@@ -243,135 +1383,4 @@
         { "TRXUSDT" },
         { "ARCUSDT" }
     };
-
-
-    List<string> FortsCoins = new List<string>()
-    {
-        { "Si-3.25" },
-        { "AFLT-3.25" },
-        { "LKOH-3.25" },
-        { "VTBR-3.25" }
-    };
-
-    Dictionary<string, int> FortsCoins2 = new()
-    {
-        // { "Si-3.25", 1 },
-        // { "AFLT-3.25",1 },
-        // { "LKOH-3.25",5},
-        // { "VTBR-3.25",1},
-        // {"SBRF-3.25",1}
-    };
-
-    private async Task<Task> OnLoginClick(MouseEventArgs obj)
-    {
-
-        try
-        {
-            loadingLogIn = true;
-            colorforlogin = "black";
-            textForLogin = "Входим";
-
-            ApiDataService.userName = loginInfo.Login;
-
-            var res = await _serverService.Login(loginInfo.Login, loginInfo.Password);
-            //var res = await _serverService.Login("samujan1@yandex.ru", "pass2");
-
-
-            //TODO по хорошему на сервере надо убрать ответ NULL
-            if (res.errorMessage != "" && res.errorMessage != null)
-            {
-                textForLogin = res.errorMessage;
-                Console.WriteLine("ERROR LOGIN");
-
-                colorforlogin = "red";
-                loadingLogIn = false;
-                windowVisible = true;
-
-                return Task.CompletedTask;
-            }
-            //фатальная ошибка, то есть толи сервер мертв
-            if (res == null || res.token == "")
-            {
-                textForLogin = "Ошибка входа";
-                Console.WriteLine("ERROR LOGIN");
-
-                colorforlogin = "red";
-                loadingLogIn = false;
-                windowVisible = true;
-
-                return Task.CompletedTask;
-            }
-
-            colorforlogin = "green";
-            textForLogin = "Успешно";
-
-            textForLogin = "Грузим инструменты";
-            Console.WriteLine("Loading instruments");
-
-
-            var resInstruments = await _serverService.GetAllSecurities();
-
-            if (resInstruments.Data != null)
-                Instruments = resInstruments.Data;
-
-
-            SecuritySelected = Instruments.FirstOrDefault();
-
-            textForLogin = $"Получено {Instruments.Count()}";
-            Console.WriteLine($"Loaded instruments {Instruments.Count()}");
-
-            textForLogin = "Готово";
-
-            if (res.Name != null)
-                textlogin = res.Name;
-            else
-            {
-                textlogin = "ON";
-            }
-
-            loadingLogIn = false;
-            windowVisible = false;
-
-            LoginClicked?.Invoke();
-
-            if (_serverService.crypto)
-            {
-                foreach (var coin in coins)
-                {
-                    var sec = Instruments.FirstOrDefault(s => s.Isin == coin);
-                    ApiDataService.OpenInstrument(sec);
-                }
-            }
-            else
-            {
-                foreach (var coin in FortsCoins2)
-                {
-                    var sec = Instruments.FirstOrDefault(s => s.Isin == coin.Key);
-                    sec.Scale = coin.Value;
-
-                    ApiDataService.OpenInstrument(sec);
-                }
-            }
-
-            return Task.CompletedTask;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.Message);
-            return Task.CompletedTask;
-        }
-    }
-
-    private Task SecurityApiChanged(SecurityApi sec)
-    {
-
-        ApiDataService.OpenInstrument(sec);
-        return Task.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-
-        GC.SuppressFinalize(this);
-    }
 }

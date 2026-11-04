@@ -336,7 +336,7 @@ namespace PlazaEngine.Depth
                     for (int i = 0; i < _allIsin.Count; i++)
                     {
                         uint isin = _allIsin[i];
-                        if (orderBooks.TryGetValue(isin, out var orderBook))
+                        if (orderBooks.TryGetValue(isin, out OrderBook? orderBook))
                         {
                             if (orderBook.IsNewRevision || newSubscription)
                             {
@@ -563,11 +563,11 @@ namespace PlazaEngine.Depth
 	class Orders
 	{
 		Direction direction;
-		Dictionary<Int64, OrderAggr> aggregateOrders;
+		ConcurrentDictionary<Int64, OrderAggr> aggregateOrders;
 	
 		public Orders(Direction dir)
 		{
-			aggregateOrders = new Dictionary<Int64, OrderAggr>();
+			aggregateOrders = new ConcurrentDictionary<Int64, OrderAggr>();
 			direction = dir;
 		}
 	
@@ -577,20 +577,20 @@ namespace PlazaEngine.Depth
 			if (order.ReplAct != 0)
 			{
 				CGate.LogDebug(String.Format("Delete record {0}.", order.Price));
-				aggregateOrders.Remove(order.ReplId);
+				aggregateOrders.Remove(order.ReplId, out _);
 			}
 			try
 			{
 				if (aggregateOrders.TryGetValue(order.ReplId, out var existingOrder))
 				{
 					if (order.Amount == 0)
-						aggregateOrders.Remove(order.ReplId);
+						aggregateOrders.Remove(order.ReplId, out _);
 					else
 						aggregateOrders[order.ReplId] = order;
 				}
 				else
 				{
-                    aggregateOrders.Add(order.ReplId, order);
+                    aggregateOrders.TryAdd(order.ReplId, order);
                 }
 			}
 			catch(Exception ex)
@@ -619,7 +619,7 @@ namespace PlazaEngine.Depth
 			}
 			foreach (Int64 key in keysToRemove)
 			{
-				aggregateOrders.Remove(key);
+				aggregateOrders.Remove(key, out _);
 			}
 		}
 
@@ -646,7 +646,7 @@ namespace PlazaEngine.Depth
             {
 				if (item.Value.Price > 0)
 				{
-					sortedAggr.Add(Convert.ToDecimal(item.Value.Price), item.Value.Amount);
+					sortedAggr.TryAdd(Convert.ToDecimal(item.Value.Price), item.Value.Amount);
 				}
             }
 			return sortedAggr;

@@ -4,385 +4,250 @@
 @using LiteInvest.Entity.PlazaEntity
 @using LiteInvest.Entity.ServerEntity
 @using LiteInvestServerDll
+@using System.Collections.Concurrent
 
-@* @inject ApiDataService ApiDataService *@
-
-@inject UiLogicService _uilogicservice
+@inject UiLogicService UILogicSvcInstance
 @inject ServerService _serverService
 
-
 @implements IDisposable
+@inject JsInteropService JSInteropService
 @inject IJSRuntime JSRuntime
 
-<style>
-    .clustersColumn {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    }
-
-</style>
-
-<div class="clustersColumn">
-    <TelerikGrid @ref="ClustersGrid3"
-    EnableLoaderContainer="true"
-    RowHeight="15"
-    Height="calc(100vh - 100px)"
-    Data="@ClusterDatas"
-
-    TItem="@ClusterLevel"
-    ScrollMode="@GridScrollMode.Virtual"
-    PageSize="@pagesize">
-
-        <GridColumns>
-            <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
-                <FooterTemplate>
-                    @if (times?.Count == 3)
-                    {
-                        @times[2];
-                    }
-                </FooterTemplate>
-            </GridColumn>
-        </GridColumns>
-
-        <RowTemplate Context="ClusterDatas">
-            <td class="@GetClassForClusters(ClusterDatas)">
-                @if (ClusterDatas.Volume != 0)
-                {
-                    @ClusterDatas.Volume.KiloFormat()
-                }
-            </td>
-        </RowTemplate>
-
-    </TelerikGrid>
-
-    <TelerikGrid @ref="ClustersGrid2"
-    EnableLoaderContainer="true"
-    RowHeight="15"
-    Height="calc(100vh - 100px)"
-    Data="@ClusterDatas"
-    TItem="@ClusterLevel"
-    ScrollMode="@GridScrollMode.Virtual"
-    PageSize="@pagesize">
-
-        <GridColumns>
-            <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
-                <FooterTemplate>
-                    @if (times?.Count == 3)
-                    {
-                        @times[1]
-                        ;
-                    }
-                </FooterTemplate>
-            </GridColumn>
-        </GridColumns>
-
-        <RowTemplate Context="ClusterDatas">
-            <td class="@GetClassForClusters(ClusterDatas)">
-                @if (ClusterDatas.Volume != 0)
-                {
-                    @ClusterDatas.Volume.KiloFormat()
-                }
-            </td>
-        </RowTemplate>
-
-    </TelerikGrid>
-
-    <TelerikGrid @ref="ClustersGrid1"
-    EnableLoaderContainer="true"
-    RowHeight="15"
-    Height="calc(100vh - 100px)"
-    Data="@ClusterDatas"
-    TItem="@ClusterLevel"
-    ScrollMode="@GridScrollMode.Virtual"
-    PageSize="@pagesize">
-
-        <GridColumns>
-            <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header">
-                <FooterTemplate>
-                    @if (times?.Count == 3)
-                    {
-                        @times[0]
-                        ;
-                    }
-                </FooterTemplate>
-            </GridColumn>
-        </GridColumns>
-
-        <RowTemplate Context="ClusterDatas">
-            <td class="@GetClassForClusters(ClusterDatas)">
-                @if (ClusterDatas.Volume != 0)
-                {
-                    @ClusterDatas.Volume.KiloFormat()
-                }
-            </td>
-        </RowTemplate>
-
-    </TelerikGrid>
-
-</div>
-
-@* <TelerikGrid @ref="ClustersGrid"
-EnableLoaderContainer="true"
-RowHeight="15"
-Height="100vh"
-Data="@ClusterDatas"
-TItem="@ClusterLevel"
-ScrollMode="@GridScrollMode.Virtual"
-PageSize="@pagesize">
-
-    <GridColumns>
-        <GridColumn Width="1fr" Field="@nameof(ClusterLevel.Volume)" HeaderClass="grid-header" />
-    </GridColumns>
-
-    <RowTemplate Context="ClusterDatas">
-        <td class="@GetClassForClusters(ClusterDatas)">
-            @if (ClusterDatas.Volume != 0)
-            {
-                @ClusterDatas.Volume.KiloFormat()
-            }
-        </td>
-    </RowTemplate>
-
-</TelerikGrid> *@
+<div class="cluster-container algo-container table-container"></div>
 
 @code {
 
-
-
-
-
-
-
+    [Parameter] public string? TabId { get; set; }
+    [Parameter] public SecurityApi? securityMain { get; set; }
+    
+    private int _scaleIndex = 0; // index  for ScaleList start on 0
     [Parameter]
-    public int pagesize { get; set; }
-
-    [Parameter]
-    public SecurityApi secutityMain { get; set; }
-
-
-    //TODO: надо как то вынести нормально
-    [Parameter] public int Scale { get; set; } = 1;
-
-
-    public TelerikGrid<ClusterLevel> ClustersGrid { get; set; }
-
-    public TelerikGrid<ClusterLevel> ClustersGrid3 { get; set; }
-    public TelerikGrid<ClusterLevel> ClustersGrid2 { get; set; }
-    public TelerikGrid<ClusterLevel> ClustersGrid1 { get; set; }
-
-    List<ClusterLevel> ClusterDatas { get; set; } = new List<ClusterLevel>();
-
-    List<ClusterLevel> ClusterDatas3 { get; set; } = new List<ClusterLevel>();
-    List<ClusterLevel> ClusterDatas2 { get; set; } = new List<ClusterLevel>();
-    List<ClusterLevel> ClusterDatas1 { get; set; } = new List<ClusterLevel>();
-
-    int lasttradetickTime { get; set; } = -1;
-
-    Dictionary<decimal, int> IndexesQuotes = new Dictionary<decimal, int>();
-
-    List<string> times = new List<string>();
-
-    private void GetTimeFooter()
+    public int ScaleIndex
     {
-        DateTime currentTime = DateTime.Now;
+        get => _scaleIndex;
+        set
+        {
+            if (_scaleIndex != value)
+            {
+                _scaleIndex = value;
 
-        times.Add(currentTime.ToString("HH:mm"));
-        times.Add(currentTime.AddMinutes(-5).ToString("HH:mm"));
-        times.Add(currentTime.AddMinutes(-5).ToString("HH:mm"));
+                if (!firstDataArrived || ScaleList.Count <= _scaleIndex)
+                    return;
+
+                PrepareUpdateData();
+
+                var _dataSentFlag = dataSentFlag;
+
+                needUpdateAll = true;
+                UpdateTable(true);
+
+                if (!_dataSentFlag)
+                {
+                    if (needUpdateFooter[0] || needUpdateFooter[1] || needUpdateFooter[2])
+                        UpdateFooter();
+                }
+            }
+        }
     }
+    [Parameter] public List<int> ScaleList { get; set; } = new();
+
+    private List<MarketDepthLevel> Ticks1 { get; set; } = new();
+    private List<MarketDepthLevel> Ticks2 { get; set; } = new();
+    private List<MarketDepthLevel> Ticks3 { get; set; } = new();
+    private List<MarketDepthLevel> LastTicks { get; set; } = new();
+
+    private ConcurrentDictionary<DateTime, List<MarketDepthLevel>> Cluster = new();
+    private ConcurrentDictionary<int, ConcurrentDictionary<DateTime, List<MarketDepthLevel>>> ScaledCluster = new();
+
+    private List<string> TimesFooter = new List<string>() { string.Empty, string.Empty, string.Empty };
+    private string LastClusterTime { get; set; } = string.Empty;
+    private string IdSubscription = string.Empty;
+
+    private bool dataSentFlag = false;
+    private bool disposed = false;
 
     protected override void OnInitialized()
     {
-        GetTimeFooter();
-        //ScrollClusters
-
-
-        //TODO: развернуть.
-        // ApiDataService.BuildNewTable += BuildNewTable;
-        // ClusterDatas = BuildEmptyClusterLevels(initialquotes);
-
+        InitializeFooter();
         base.OnInitialized();
     }
-
-    bool rendered = false;
-
-
-
-    string idsubscription;
 
     protected override async void OnAfterRender(bool firstRender)
     {
         if (firstRender)
         {
-            rendered = true;
-            await JSRuntime.InvokeVoidAsync("getScrollEventForAllTables", secutityMain.SpecialHash);
-
-
-            var res = _serverService.SubscribeForTicks(secutityMain.id, (t) => { ProcessClusterTick(t); }).Result;
-
-            if (res.Success)
-                idsubscription = res.Id;
-
-            // UiLogicService.NewTicks += ProcessClusterTick;
-            _uilogicservice.BuildNewTable += BuildEmptyClusterLevels;
-            _uilogicservice.ScrollClusters += ScrollClusters;
+            // JSInteropService.OnInitializedQuote += OnInitializedQuoteCallback;
+            JSInteropService.OnInitializedWindows += OnInitializedWindowsCallback;
+            JSInteropService.OnAcceptedClusterData += OnAcceptedClusterDataCallback;
         }
 
         base.OnAfterRender(firstRender);
     }
 
+    bool firstDataArrived = false;
+    bool[] needUpdateFooter = new bool[3];
+    bool needUpdatePrevious = false;
+    bool needUpdateLast = false;
+    bool needUpdateAll = false;
 
-
-    private void ScrollClusters(SecurityApi sec, int bestbidindex)
+    private void PrepareUpdateData()
     {
+        int myScale = ScaleList[ScaleIndex];
+        Cluster = ScaledCluster[myScale];
 
-        if (sec.SpecialHash != secutityMain.SpecialHash)
-            return;
+        var timeCluster = Cluster.Keys.OrderByDescending(t => t).ToList();
+        int timeCount = timeCluster.Count;
 
-
-        Console.WriteLine($"Scrolling {bestbidindex} Clusters {secutityMain.SpecialHash} ");
-        busy = true;
-        UpdateClastersGrid();
-
-        //не скроллит сразу почему то. а почему я не знаю
-        Helper.CreateTimerAndStart(() =>
+        for (int i = 0; i < Math.Min(3, timeCount); i++)
         {
-            WorkWindow.ScrollTo(bestbidindex, ClustersGrid);
-            UpdateClastersGrid();
-            busy = false;
+            string footer = timeCluster[i].ToString("HH:mm");
+            needUpdateFooter[i] = !TimesFooter[i].Equals(footer);
+            TimesFooter[i] = footer;
 
-        }, 500, false);
-
-
-    }
-
-    private void BuildEmptyClusterLevels(SecurityApi sec, ICollection<MarketDepthLevel> _initialOrderBook, Dictionary<decimal, int> initDictionary)
-    {
-
-        if (sec.SpecialHash != secutityMain.SpecialHash)
-            return;
-
-        ClusterDatas.Clear();
-
-        foreach (var level in _initialOrderBook)
-        {
-            ClusterDatas.Add(new ClusterLevel() { Price = level.Price });
-        }
-
-        IndexesQuotes = initDictionary;
-
-        UpdateClastersGrid();
-
-        Console.WriteLine($"Build New Clusters {secutityMain.SpecialHash}");
-    }
-
-    bool busy = false;
-
-    private void ProcessClusterTick(/* string sec,  */List<Trade> ticks)
-    {
-
-        // if (sec != secutityMain.id)
-        //     return;
-
-        var copyclusters = ClusterDatas.ToList();
-
-        foreach (var tick in ticks)
-        {
-            var agregatingTime = tick.Time.Minute - tick.Time.Minute % 5;
-
-            //Console.WriteLine($"real time {DateTime.Now} agreagatedtime = {agregatingTime}");
-
-            if (agregatingTime != lasttradetickTime)
-            {
-                Console.WriteLine($"Time For clusters Updated lastmintime={agregatingTime} timeNow = {lasttradetickTime}");
-
-                foreach (var cluster in copyclusters)
+            if (i == 0) {
+                Ticks1 = Cluster[timeCluster[i]];
+                if (LastTicks != Ticks1)
                 {
-                    cluster.AskVolume = 0;
-                    cluster.BidVolume = 0;
+                    needUpdateLast = true;
+                    LastTicks = Ticks1;
                 }
-
-                Console.WriteLine($"Cluster Table BUILDING ");
-
-                lasttradetickTime = agregatingTime;
             }
-
-            decimal tickAgregatedLevel = tick.Price - tick.Price % (secutityMain.PriceStep * Scale);
-
-            if (IndexesQuotes != null && IndexesQuotes.ContainsKey(tickAgregatedLevel) && copyclusters.Count != 0)
-            {
-                var index = IndexesQuotes[tickAgregatedLevel];
-
-                var lastclusterItem = (ClusterLevel)copyclusters[index].Clone();
-
-                if (tick.Side == Side.Sell)
-                    lastclusterItem.AskVolume += tick.Volume;
-                if (tick.Side == Side.Buy)
-                    lastclusterItem.BidVolume += tick.Volume;
-
-                copyclusters[index] = lastclusterItem;
-
-                // Console.WriteLine($"Updated {secutityMain.Isin} level {tickAgregatedLevel} ");
-            }
+            else if (i == 1) Ticks2 = Cluster[timeCluster[i]];
+            else if (i == 2) Ticks3 = Cluster[timeCluster[i]];
         }
 
-        ClusterDatas = copyclusters;
+        needUpdatePrevious = !LastClusterTime.Equals(TimesFooter[0]);
+        LastClusterTime = TimesFooter[0];
+    }
 
-        if (busy)
+    private void OnNewScaledCluster(InsideClusters insideClusters)
+    {
+        if (securityMain?.id != insideClusters.SecurityId)
             return;
 
+        //Console.WriteLine($"{securityMain.Isin} CLusters UPDATE ");
 
-        busy = true;
-        UpdateClastersGrid();
-        busy = false;
-    }
+        ScaledCluster = insideClusters.ScaledCluster;
 
-    private string GetClassForClusters(ClusterLevel _clusterLevel)
-    {
-        if (_clusterLevel.Volume == 0 || _clusterLevel.Volume == null)
+        PrepareUpdateData();
+
+        var _dataSentFlag = dataSentFlag;
+
+        if (!firstDataArrived)
         {
-            return "transparent-item";
+            firstDataArrived = true;
+            UpdateTable(true);
+        }
+        else
+        {
+            UpdateTable();
         }
 
-        return _clusterLevel.BidVolume < _clusterLevel.AskVolume ? "highlighted-item" : "highlighted-item2";
-    }
-
-    public void Dispose()
-    {
-        _serverService.RemoveSubscribeForTicks(secutityMain.id, idsubscription);
-
-        // UiLogicService.NewTicks -= ProcessClusterTick;
-        _uilogicservice.ScrollClusters -= ScrollClusters;
-    }
-
-    protected override bool ShouldRender()
-    {
-        Console.WriteLine($"Clusters Should Render {secutityMain.Isin} {DateTime.Now}");
-
-        return base.ShouldRender();
-    }
-
-    private void UpdateClastersGrid()
-    {
-        InvokeAsync(() =>
+        if (!_dataSentFlag)
         {
-            try
-            {
-                ClustersGrid3.Data = ClusterDatas;
-                ClustersGrid3?.Rebind();
+            if (needUpdateFooter[0] || needUpdateFooter[1] || needUpdateFooter[2])
+                UpdateFooter();
+        }
 
-                ClustersGrid2.Data = ClusterDatas;
-                ClustersGrid2?.Rebind();
+        // Console.WriteLine($"{securityMain.Isin} Max = {Ticks1[0].Price} ScaleIndex={Scale} ScaleValue={myScale} CLUSTERS UPDATE -> {DateTime.Now.ToString("mm:ss.fff")}  {times[0]} | {times[1]}| {times[2]} ");
+    }
 
-                ClustersGrid1.Data = ClusterDatas;
-                ClustersGrid1?.Rebind();
-            }
-            catch (Exception ex)
+    private void UpdateTable(bool? firstTime = null)
+    {
+        if (dataSentFlag) return;
+        dataSentFlag = true;
+        needUpdateAll = false;
+
+        if (needUpdateAll || (needUpdateLast && needUpdatePrevious)) {
+            InvokeAsync(async () =>
             {
-                Console.WriteLine(ex.Message);
-            }
-        }).GetAwaiter().GetResult();
+                if (disposed) return;
+                var newData = new List<object> { Ticks1, Ticks2, Ticks3 };
+                await JSRuntime.InvokeVoidAsync("updateClusterTableDataAll", securityMain?.SpecialHash, newData);
+            });
+        }
+        else if (needUpdateLast)
+        {
+            InvokeAsync(async () =>
+            {
+                if (disposed) return;
+                await JSRuntime.InvokeVoidAsync("updateClusterTableDataLast", securityMain?.SpecialHash, Ticks1);
+            });
+        }
+        else if (needUpdatePrevious)
+        {
+            InvokeAsync(async () =>
+            {
+                if (disposed) return;
+                var newData = new List<object> { Ticks2, Ticks3 };
+                await JSRuntime.InvokeVoidAsync("updateClusterTableDataPrevious", securityMain?.SpecialHash, newData);
+            });
+        }
+    }
+
+    private void UpdateFooter()
+    {
+        InvokeAsync(async () =>
+        {
+            if (disposed) return;
+            var newFooterTexts = new List<object> { TimesFooter[0], TimesFooter[1], TimesFooter[2] };
+            await JSRuntime.InvokeVoidAsync("updateClusterFooterText", securityMain?.SpecialHash, newFooterTexts);
+        });
+    }
+
+    private void InitializeFooter()
+    {
+        DateTime currentTime = DateTime.Now;
+
+        // times.Add(currentTime.ToString("HH:mm"));
+        // times.Add(currentTime.AddMinutes(-5).ToString("HH:mm"));
+        // times.Add(currentTime.AddMinutes(-5).ToString("HH:mm"));
+
+        TimesFooter.Add("");
+        TimesFooter.Add("");
+        TimesFooter.Add("");
+    }
+
+    public async void Dispose()
+    {
+        disposed = true;
+        // JSInteropService.OnInitializedQuote -= OnInitializedQuoteCallback;
+        JSInteropService.OnInitializedWindows -= OnInitializedWindowsCallback;
+        JSInteropService.OnAcceptedClusterData -= OnAcceptedClusterDataCallback;
+
+        if (securityMain != null && !string.IsNullOrEmpty(IdSubscription))
+        {
+            await _serverService.RemoveSubscribeForTicks(securityMain.id, IdSubscription);
+        }
+        // _uilogicservice.ScrollClusters -= ScrollClusters;
     }
 
 
+    /* Begin Callbacks */
+
+    private void OnInitializedWindowsCallback(string windowId)
+    {
+        if (windowId != securityMain?.SpecialHash) return;
+
+        InvokeAsync(async () =>
+        {
+            if (securityMain != null && !disposed)
+            {
+                var res = await _serverService.SubscribeForAggregateCluster(securityMain.id, OnNewScaledCluster);
+                if (res.Success)
+                {
+                    IdSubscription = res.Id;
+                }
+            }
+        });
+    }
+
+    private void OnAcceptedClusterDataCallback(string windowId)
+    {
+        if (windowId != securityMain?.SpecialHash) return;
+
+        dataSentFlag = false;
+    }
+
+    /* End Callbacks */
 }

@@ -1,0 +1,120 @@
+﻿@using LiteInvest.Entity.Helpers
+@using System.Timers
+@using LiteInvestFront.Services
+@using LiteInvest.Entity.ServerEntity
+@using LiteInvestServerDll
+@using Microsoft.AspNetCore.Components.Forms
+@using Telerik.Blazor.Components
+@using Telerik.DataSource
+
+<div class="volume-input">
+    <label>@Label</label>
+    <section class="value-input">
+        <TelerikNumericTextBox Class="value-input" Arrows="false" Min=1 Value="@Value" Width="50px" onchange="@((object v) => Update((int)v))" ValueChanged="@((int v) => Update(v))" />
+        <button type="button" onclick="@DecreaseValue">-</button>
+        <div class="separator"></div>
+        <button type="button" onclick="@IncreaseValue">+</button>
+    </section>
+
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Рабочий объем:";
+    [Parameter] public int Value { get; set; }
+    [Parameter] public object? ExtraData { get; set; }
+    [Parameter] public EventCallback<(int, object?)> ValueChangedEvent { get; set; }
+
+    private void IncreaseValue()
+    {
+        Value++;
+        StateHasChanged();
+        ValueChangedEvent.InvokeAsync((Value, ExtraData));
+    }
+
+    private void DecreaseValue()
+    {
+        if (Value > 1)
+        {
+            Value--;
+            StateHasChanged();
+            ValueChangedEvent.InvokeAsync((Value, ExtraData));
+        }
+    }
+
+    private void Update(int newValue)
+    {
+        if (newValue < 1)
+        {
+            Value = 1;
+            StateHasChanged();
+            ValueChangedEvent.InvokeAsync((Value, ExtraData));
+        }
+        else
+        {
+            if (Value != newValue)
+            {
+                Value = newValue;
+                ValueChangedEvent.InvokeAsync((Value, ExtraData));
+            }
+        }
+    }
+}
+
+<style>
+    .volume-input {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 4px;
+        margin-bottom: 8px;
+    }
+
+    .separator {
+        display: inline;
+        width: 2px;
+        height: 100%;
+        background-color: #ccc;
+    }
+
+    .number-input {
+        background-color: #ebebeb;
+    }
+
+    .value-input {
+        border: 0px solid #ccc;
+        border-radius: 2px;
+        background-color: #ebebeb;
+        flex-shrink: 0;
+        font-size:small
+    }
+
+    .volume-input label {
+        white-space: nowrap;
+    }
+
+    .volume-input button {
+        width: 23px;
+        height: 23px;
+        background-color: #ebebeb;
+        border: 0px;
+        cursor: pointer;
+        outline: none;
+        transition: background-color 0.2s ease-in-out;
+    }
+
+        .volume-input button:hover {
+            background-color: #e2e2e2;
+        }
+
+        .volume-input button:active {
+            background-color: #ccc;
+        }
+
+    .number-input {
+        width: 60px;
+        text-align: start;
+        border: 0px;
+        outline: none;
+        padding: 4px;
+    }
+</style>

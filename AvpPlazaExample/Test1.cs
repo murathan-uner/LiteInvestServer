@@ -8,7 +8,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
-using RouterLogger = LiteInvest.Entity.PlazaEntity.RouterLogger;
+using ServerLogger = LiteInvest.Entity.PlazaEntity.ServerLogger;
 
 namespace AvpPlazaTester
 {
@@ -85,11 +85,11 @@ namespace AvpPlazaTester
             int orderNeedCanceled = 0;
             foreach (var o in orders)
             {
-                if (o.State == Order.OrderStateType.Activ)
+                if (o.State == Order.OrderStateType.Active)
                 {
                     orderNeedCanceled++;
                     plaza.CancelOrder(o.NumberUserOrderId);
-                    RouterLogger.Log(o.ToString(), "Test_Scenario");
+                    ServerLogger.Log(o.ToString(), "Test_Scenario");
                 }
             }
             Thread.Sleep(1000);
@@ -99,13 +99,13 @@ namespace AvpPlazaTester
                 Thread.Sleep(2000);
             }
             var orders2 = plaza.Orders.Values.ToList();
-            int orders2ActiveCount = orders2.Count((o) => o.State == Order.OrderStateType.Activ);
+            int orders2ActiveCount = orders2.Count((o) => o.State == Order.OrderStateType.Active);
             trySecond = 0;
             while (orders2ActiveCount  > 0 && trySecond < 10)
             {
                 Thread.Sleep(1000);
                 orders2 = plaza.Orders.Values.ToList();
-                orders2ActiveCount = orders2.Count((o) => o.State == Order.OrderStateType.Activ);
+                orders2ActiveCount = orders2.Count((o) => o.State == Order.OrderStateType.Active);
             }
 
             if (orderNeedCanceled == orderCancel && orders2ActiveCount == 0)
@@ -142,7 +142,7 @@ namespace AvpPlazaTester
                 {
                     decimal price = side == Side.Buy ? sec.BestBid - sec.PriceStep * priceDistance : sec.BestAsk + sec.PriceStep * priceDistance;
                     Order o = new Order(sec.Id, side, 1, price, portfolio, $"{sec.ShortName}-Client{i}");
-                    RouterLogger.Log(o.ToString(), "Test_Scenario");
+                    ServerLogger.Log(o.ToString(), "Test_Scenario");
                     plaza.ExecuteOrderAsync(o);
                 }
             }
@@ -199,7 +199,7 @@ namespace AvpPlazaTester
                 {
                     case Order.OrderStateType.None:
                         break;
-                    case Order.OrderStateType.Activ:
+                    case Order.OrderStateType.Active:
                         orderActiv++;
                         break;
                     case Order.OrderStateType.Pending:

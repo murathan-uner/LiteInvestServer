@@ -1,0 +1,60 @@
+.algo-list {
+    border: 1px solid var(--algo-color-border-light);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+}
+    .algo-list.small {
+        border-radius: 4px;
+        font-size: 0.7em;
+        color: var(--algo-color-light-text);
+    }
+
+.list-header {
+    background: #f8f9fa;
+    padding: 8px 12px;
+    font-weight: bold;
+    cursor: pointer;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    transition: background 0.2s;
+}
+    .list-header:hover {
+        background: #eef4ff;
+    }
+.small .list-header {
+    padding: 4px 8px;
+    font-weight: normal;
+}
+
+.list-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.list-item {
+    display: flex;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+    .list-item:hover {
+        background: var(--algo-color-item-hover);
+    }
+    .list-item.selected {
+        background: var(--algo-color-item-selected);
+    }
+.small .list-item {
+    padding: 4px 8px;
+}
+
+.list-col1 {
+    flex: 1;
+    text-align: right;
+    padding-right: 12px;
+}
+.list-col2 {
+    flex: 1;
+    text-align: right;
+    padding-right: 6px;
+}

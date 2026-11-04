@@ -19,6 +19,8 @@ using System.Text;
 using System.Runtime.Serialization;
 using System.Timers;
 using LiteInvest.Entity.PlazaEntity;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using LiteInvest.Entity.Helpers;
 
 //using SKM.V3;
 //using SKM.V3.Models;
@@ -42,7 +44,7 @@ namespace PlazaEngine.Engine
 				else
 				{
 					s = value.asString();
-					Debug.WriteLine(t.Name);
+					//Debug.WriteLine(t.Name);
 				}
 			}
 			catch
@@ -103,14 +105,14 @@ namespace PlazaEngine.Engine
         /// <summary>
         /// Событие выполненного ордера
         /// </summary>
-        public event Action<Order> NewOrderFilled;
+        //public event Action<Order> NewOrderFilled;
         
         /// <summary>
         /// Order и сообщение от биржи
         /// </summary>
-        public event Action<Order, string?> NewCanceledOrder;
+        //public event Action<Order, string?> NewCanceledOrder; 
 
-        public event Action<Order> NewActiveOrder;
+        //public event Action<Order> NewActiveOrder;
 
 
         /// <summary>
@@ -159,14 +161,9 @@ namespace PlazaEngine.Engine
         private DepthPlaza depthPlaza;
 
 
-
         public TicksPlaza ticksplaza { get; set; }
 
-        /// <summary>
-        /// maximum number of transactions per second for login/максимальное количество транзакций в секунду для логина
-        /// taken into account when parsing the queue for placing/cancellation orders/учитывается при разборе очереди на выставление/снятие заявок
-        /// if you set the wrong, your deposit will disappear / если выставить не то, Ваш депозит уйдёт в зрительный зал
-        /// </summary>
+        public FeePlaza feePlaza { get; set; }
 
 
         /// <summary>
@@ -210,12 +207,15 @@ namespace PlazaEngine.Engine
             depthEmulator = new DepthEmulator();
             depthEmulator.MarketDepthChanged += (md) => { MarketDepthChangeEvent?.Invoke(md); };
             depthEmulator.NewTickCollectionEvent += (t) => NewTickCollectionEvent?.Invoke(t);
+            depthEmulator.MarketDepthLoadedEvent += () => { MarketDepthLoadedEvent?.Invoke(); };
 
             depthPlaza = new DepthPlaza(this, depthEventMillisecond);
 
             ticksplaza = new TicksPlaza(this, TickEventPeriodMilliSecond);
             ticksplaza.NewTickCollectionEvent += (t) => NewTickCollectionEvent?.Invoke(t);
             ticksplaza.AllTicksLoadedEvent += () => TicksLoadedEvent?.Invoke();
+
+            feePlaza = new FeePlaza(this);
 
 
             _statusNeeded = ServerConnectStatus.Disconnect;
@@ -262,7 +262,7 @@ namespace PlazaEngine.Engine
                 SecuritiesQuotes[marketDepth.SecurityId].UpdateBidsAsks(marketDepth);
         }*/
 
-        public ObservableCollection<Order> ActiveOrders = new ObservableCollection<Order>();
+        //public ObservableCollection<Order> ActiveOrders = new ObservableCollection<Order>();
 
         /// <summary>
         /// Словарь для обновления котировок
@@ -277,9 +277,10 @@ namespace PlazaEngine.Engine
         /// <summary>
         /// немного награмождено
         /// можно сделать быстрее
+        /// Не рабочий мето
         /// </summary>
         /// <param name="order"></param>
-        private async void PlazaClient_NewMyOrderEvent(Order order)
+        /*private async void PlazaClient_NewMyOrderEvent(Order order)
         {
             lock (orderlock)
             {
@@ -304,7 +305,7 @@ namespace PlazaEngine.Engine
 
                 }
             }
-        }
+        }*/
 
         /// <summary>
         /// Моя дополнительная реализация
@@ -701,6 +702,7 @@ namespace PlazaEngine.Engine
         /// </summary>
         public void Stop()
         {
+            CGate.Close();
             Thread worker = new Thread(Dispose);
             worker.CurrentCulture = new CultureInfo("ru-RU");
             worker.IsBackground = true;
@@ -716,6 +718,7 @@ namespace PlazaEngine.Engine
         [HandleProcessCorruptedStateExceptions]
         public void Dispose()
         {
+            
             _statusNeeded = ServerConnectStatus.Disconnect;
             Thread.Sleep(1000);
 
@@ -998,7 +1001,7 @@ namespace PlazaEngine.Engine
 
                 while (Thread.CurrentThread.Name != "deleteThread")
                 {
-                    
+
                     //lock (_plazaThreadLocker)
                     {
                         _lastMoveTime = GetTimeMoscowNow();
@@ -1013,12 +1016,12 @@ namespace PlazaEngine.Engine
                                 StartRouterPlaza();
                                 Thread.Sleep(1000);
                                 ConnectionObjectPlaza.Open("");
-                                RouterLogger.Log("Запрос подключения отправлен!","Connect");
+                                RouterLoggerEngine.Log("Запрос подключения отправлен!", "Connect");
                                 continue;
                             }
                             catch (Exception error)
                             {
-                                RouterLogger.Log($"Не удалось подключиться! {error.Message}", "Connect");
+                                RouterLoggerEngine.Log($"Не удалось подключиться! {error.Message}", "Connect");
                                 CloseRouterPlaza(false);
                                 // could not connect/не получилось подключиться
                                 SendLogMessage(error);
@@ -1028,13 +1031,13 @@ namespace PlazaEngine.Engine
                                 {
                                     Thread.Sleep(10000);
                                     //in ten seconds we try again/через десять секунд пытаемся ещё раз
-                                    ConnectionObjectPlaza.Open("");
+                                    ConnectionObjectPlaza?.Open("");
                                 }
                                 catch (Exception error2)
                                 {
-                                    RouterLogger.Log($"Повторно Не удалось подключиться! {error2.Message}", "Connect");
+                                    RouterLoggerEngine.Log($"Повторно Не удалось подключиться! {error2.Message}", "Connect");
                                     CloseRouterPlaza(true);
-                                    ReconnectPlaza(); 
+                                    ReconnectPlaza();
                                     return;
                                 }
                                 continue;
@@ -1084,7 +1087,9 @@ namespace PlazaEngine.Engine
                         CheckListnerPosition(); //listening to positions on portfolios/прослушка позиции по портфелям
 
                         ticksplaza.CheckListnerTrades(); //listening to deals and applications/прослушка сделки и завки
-                        
+
+                        feePlaza.CheckListnerFee();    // прослушка потока комиссий
+
                         CheckListnerMyTrades(); //listening to order log and my trades/прослушка ордер лог и мои сделки
 
                         CheckListnerMarketDepth(); // depth/стакан
@@ -1102,7 +1107,8 @@ namespace PlazaEngine.Engine
                         ConnectionObjectPlaza.Process(1);
                     }
 
-                   // Thread.Sleep(60000);
+                    // Thread.Sleep(60000);
+
                 }
             }
             catch (Exception error)
@@ -1112,6 +1118,7 @@ namespace PlazaEngine.Engine
                 // thereafter, the stream watching the main stream starts the reconnection procedure/после этого поток следящий за основным потоком начинает процедуру переподключения
                 _lastMoveTime = GetTimeMoscowNow().AddMinutes(-4);
             }
+
         }
 
         /// <summary>
@@ -1145,9 +1152,14 @@ namespace PlazaEngine.Engine
                 procPlaza.UseShellExecute = true;
                 var directoryName = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
                 procPlaza.WorkingDirectory = $"{directoryName}\\RouterPlaza";
+                if (Environment.UserName == "avp")
+                {
+                    procPlaza.WindowStyle = ProcessWindowStyle.Hidden;
+                }
+                
 
-
-
+                //procPlaza.FileName = "start_router64RealDebug.cmd";
+                
 #if DEBUG
                 if (IsTestRegim)
                 {
@@ -1277,12 +1289,12 @@ namespace PlazaEngine.Engine
                     case MessageType.MsgStreamData:
                         {
                             StreamDataMessage replmsg = (StreamDataMessage)msg;
-                            RouterLogger.Log(replmsg.ToString(), "ClassSec");
+                        //    RouterLogger.Log(replmsg.ToString(), "ClassSec");
                             if (replmsg.MsgName == "fut_sess_contents")
                             {
                                 try
                                 {
-                                    var security = new Security(
+                                    Security? security = new Security(
                                         replmsg["short_isin"].asUnicodeString(),
                                         replmsg["name"].asUnicodeString(),
                                         SecurityType.Futures,
@@ -1297,6 +1309,7 @@ namespace PlazaEngine.Engine
                                         // From Spectra 6.5 "last_cl_quote" was deleted
                                         PriceLimitLow = Convert.ToDecimal(replmsg["settlement_price"].asDecimal()) - Convert.ToDecimal(replmsg["limit_down"].asDecimal()),
                                         PriceLimitHigh = Convert.ToDecimal(replmsg["settlement_price"].asDecimal()) + Convert.ToDecimal(replmsg["limit_up"].asDecimal()),
+                                        Expiration = replmsg["last_trade_date"].asDateTime()
                                     };
 
                                     Debug.WriteLine($"Добавлен ключ {security.Name}");
@@ -1530,7 +1543,10 @@ namespace PlazaEngine.Engine
                                     positionOnBoard.ValueBegin = replmsg["xopen_qty"].asInt();
                                     positionOnBoard.XPosValueCurrent = replmsg["xpos"].asInt();
                                     positionOnBoard.ValueBlocked = positionOnBoard.XPosValueCurrent;
-
+                                    if (Securities.TryGetValue(positionOnBoard.SecurityId, out var sec))
+                                    {
+                                        positionOnBoard.SecurityShortName = sec.ShortName;
+                                    }
                                     Positions[positionOnBoard.SecurityId] = positionOnBoard;
 
                                     if (UpdatePosition != null)
@@ -1665,7 +1681,7 @@ namespace PlazaEngine.Engine
 		/// called when a new tick comes from the system
         /// вызывается когда из системы приходит новый тик
         /// </summary>
-        public event Action<Trade> NewTickEvent;
+        //public event Action<Trade> NewTickEvent;      // не используемый EVENT - удалить
 
         /// <summary>
 		/// called when a new tick comes from the system
@@ -1919,18 +1935,24 @@ namespace PlazaEngine.Engine
         {
             try
             {
+                Debug.WriteLine($"{DateTime.Now.ToLongTimeString()} START ClientMessage_OrderAndMyDeal msg.Type == {msg.Type}");
                 switch (msg.Type)
                 {
                     case MessageType.MsgStreamData:
                         {
                             StreamDataMessage replmsg = (StreamDataMessage)msg;
+                            Debug.WriteLine($"{DateTime.Now.ToLongTimeString()} MessageType.MsgStreamData ClientMessage_OrderAndMyDeal replmsg.MsgName == {replmsg.MsgName}");
                             if (replmsg.MsgName == "user_deal")
                             {
                                 try
                                 {
-                                    RouterLogger.Log($"{replmsg}", "user_deal");
-                                    
+                                    RouterLoggerEngine.Log($"{DateTime.Now:O} {replmsg}", "user_deal");
+
+                                    Debug.WriteLine($"replmsg.MsgName ={replmsg.MsgName}");
+
                                     MyTrade trade = new MyTrade();
+
+
 
                                     trade.Price = Convert.ToDecimal(replmsg["price"].asDecimal());
                                     trade.NumberTrade = replmsg["id_deal"].asUnicodeString();
@@ -1945,6 +1967,10 @@ namespace PlazaEngine.Engine
                                     trade.NumberOrderMarket = "";
                                     trade.Portfolio = "";
 
+                                    trade.Board = LiteInvest.Entity.ServerEntity.BoardEnum.FortsMoex;
+
+                                    trade.FeeBoard = 0;
+
                                     if (!string.IsNullOrWhiteSpace(portfolioBuy))
                                     {
                                         trade.NumberOrderUser = replmsg["ext_id_buy"].asInt();
@@ -1953,6 +1979,13 @@ namespace PlazaEngine.Engine
 
                                         trade.Comment = replmsg["comment_buy"].asUnicodeString();
                                         trade.Portfolio = replmsg["code_buy"].asUnicodeString();
+                                        string xstatus_buy_s = replmsg["xstatus_buy"].asString();
+                                        ulong xstatus_buy = ulong.Parse(xstatus_buy_s);
+                                        if ((xstatus_buy & 0X20000000000) != 0)        //  ActiveSide 0x20000000000 Активная  сторона  в  сделке.  Заявка,  приведшая к сделке при добавлении в стакан.
+                                        {
+                                            trade.FeeBoard = Convert.ToDecimal(replmsg["fee_buy"].asDecimal());     // комиссия биржи только с активной заявки FORTS
+                                        }
+                                        
                                     }
                                     else if (!string.IsNullOrWhiteSpace(portfolioSell))
                                     {
@@ -1963,24 +1996,40 @@ namespace PlazaEngine.Engine
 
                                         trade.Comment = replmsg["comment_sell"].asUnicodeString();
                                         trade.Portfolio = replmsg["code_sell"].asUnicodeString();
+                                        var xstatus_sell_s = replmsg["xstatus_sell"].asString();
+                                        ulong xstatus_sell = ulong.Parse(xstatus_sell_s);
+                                        if ( (xstatus_sell & 0X20000000000) != 0)        //  ActiveSide 0x20000000000 Активная  сторона  в  сделке.  Заявка,  приведшая к сделке при добавлении в стакан.
+                                        {
+                                            trade.FeeBoard = Convert.ToDecimal(replmsg["fee_sell"].asDecimal());    // комиссия биржи только с активной заявки FORTS
+                                        }
+                                        
                                     }
 
+                                    RouterLoggerEngine.Log($"{DateTime.Now:O} My Trade {trade.ToString()}", "user_deal");
 
-                                    if (NewMyTradeEvent != null && trade.Time > StartOfConnector)
+
+//                                    if (trade.Time > StartOfConnector)     // надо обрабатывать все сделки, в том числе пришедшие за время, когда сервер был выключен,
+                                                                          // потому что выставленные в рынок лимитные заявки могли за это время исполниться, и эти сделки тоже надо обработать
+                                                                         // в бэке ведем учет обработанных сделок и повторно одну и туже не обрабатываем
                                     {
-                                        NewMyTradeEvent(trade);
+//                                      Task.Run(()=> NewMyTradeEvent?.Invoke(trade));  // не держим работу коннектора, отправляем обработку в другой поток в задаче
+                                    }
+ //                                   else
+                                    {
+                                        NewMyTradeEvent?.Invoke(trade); // обработку сделок делаем последовательно в пределах одного потока
                                     }
                                 }
-                                catch (Exception error)
+                                catch (Exception ex)
                                 {
-                                    SendLogMessage(error);
+                                    SendLogMessage(ex);
                                 }
                             }
                             else if (replmsg.MsgName == "orders_log")
                             {
                                 try
                                 {
-                                    RouterLogger.Log($"{replmsg}", "orders_log");
+                                    Debug.WriteLine($"{DateTime.Now.ToLongTimeString()} START ClientMessage_OrderAndMyDeal MsgName == orders_log");
+                                    RouterLoggerEngine.Log($"START ClientMessage_OrderAndMyDeal {replmsg}", "orders_log");
 
                                     int numberUser = replmsg["ext_id"].asInt();
 
@@ -1993,6 +2042,8 @@ namespace PlazaEngine.Engine
                                     var oldState = order.State;
                                     order.SetNumberMarket(replmsg["public_order_id"].asUnicodeString());
                                     order.NumberUserOrderId = replmsg["ext_id"].asInt();
+                                    
+                                    order.Sess_id = replmsg["sess_id"].asInt();
 
                                     order.VolumeExecuted = order.Volume - replmsg["public_amount_rest"].asInt(); // это у нас оставшееся в заявке
 									order.SecurityId = replmsg["isin_id"].asInt().ToString();
@@ -2012,14 +2063,14 @@ namespace PlazaEngine.Engine
 
                                     int action = replmsg["private_action"].asInt();
 
-                                    if (action == 0)
+                                    if (action == 0 && order.State != Order.OrderStateType.Done)
                                     {
                                         order.State = Order.OrderStateType.Cancel;
                                         order.TimeCancel = order.TimeCallBack;
                                     }
-                                    else if (action == 1)
+                                    else if (action == 1 && order.State != Order.OrderStateType.Done && order.State != Order.OrderStateType.Cancel)
                                     {
-                                        order.State = Order.OrderStateType.Activ;
+                                        order.State = Order.OrderStateType.Active;
                                     }
                                     else if (action == 2 && replmsg["public_amount_rest"].asInt() == 0)
                                     {
@@ -2049,8 +2100,8 @@ namespace PlazaEngine.Engine
 
                                     Orders[order.NumberUserOrderId] = order;
 
-                                    //сразу первыми шлем событие если ордер обновился
-                                    if (order.State == Order.OrderStateType.Done && order.TimeCallBack > StartOfConnector && NewOrderFilled != null)
+                                    //сразу первыми шлем событие если ордер обновился лишние эвенты
+                                    /*if (order.State == Order.OrderStateType.Done && order.TimeCallBack > StartOfConnector && NewOrderFilled != null)
                                         NewOrderFilled(order);
 
                                     if (order.State == Order.OrderStateType.Cancel && order.TimeCallBack > StartOfConnector  && NewCanceledOrder != null)
@@ -2058,28 +2109,61 @@ namespace PlazaEngine.Engine
 
                                     if (order.State == Order.OrderStateType.Activ && order.TimeCallBack > StartOfConnector && NewActiveOrder != null)
                                         NewActiveOrder(order);
-                                    
+                                    */
 
-                                    Debug.WriteLine("ордер " + order.State + "/" + order.SecurityId);
+                                    Debug.WriteLine($"{DateTime.Now.ToLongTimeString()}; ClientMessage_OrderAndMyDeal ордер {order.State} # {order.ToString()}");
                                     //это и есть событие обновления статуса ордера
 
                                     if (order.TimeCallBack > StartOfConnector)
                                     {
-                                        if (oldState != order.State)
+                                        //if (oldState != order.State)
                                         {
-                                            OrderChangedEvent?.Invoke(order, "The order has changed state.");
+                                            Debug.WriteLine($"{DateTime.Now.ToLongTimeString()}; ClientMessage_OrderAndMyDeal Event ордер {order.State} # {order.NumberUserOrderId}");
+                                            try
+                                            {
+                                               Task.Run(()=> OrderChangedEvent?.Invoke(order, "Состояние ордера изменено"));
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                SendLogMessage(ex);
+                                            }
                                         }
                                     }
 
-                                    RouterLogger.Log($"{order}", "orders_log");
+                                    RouterLoggerEngine.Log($"STOP ClientMessage_OrderAndMyDeal {order}", "orders_log");
+                                    Debug.WriteLine($"{DateTime.Now.ToLongTimeString()}($\"STOP ClientMessage_OrderAndMyDeal {order}; ClientMessage_OrderAndMyDeal ордер {order.State} # {order.ToString()}");
                                 }
-                                catch (Exception error)
+                                catch (Exception ex)
                                 {
-                                    SendLogMessage(error);
+                                    SendLogMessage(ex);
                                 }
                             }
+                            else if (replmsg.MsgName == "sys_events")
+                            {
+                                try
+                                {
+                                    RouterLoggerEngine.Log($"ClientMessage_OrderAndMyDeal {replmsg}", "Sys_EventsOrderAndMyDeal");
 
-                            break;
+                                    int event_type = replmsg["event_type"].asInt();
+                                    
+                                    if (event_type == 1)
+                                        //event_type = 1 message = "session_data_ready" Закончена загрузка данных из клиринговой системы в торговую перед началом новой торговой сессии
+                                    {
+                                        SetNewSessionData(replmsg["sess_id"].asInt());
+                                    }
+                                    else if (event_type == 5)
+                                       //event_type = 5 message = "clearing_started" Начало основного (вечернего) клиринга сессии
+                                    {
+                                        ResetOldSessionData(replmsg["sess_id"].asInt());
+                                    }
+
+                                }
+                                catch (Exception ex)
+                                {
+                                    SendLogMessage(ex);
+                                }
+                            }
+                                break;
                         }
                     case MessageType.MsgP2ReplOnline:
                         {
@@ -2126,7 +2210,74 @@ namespace PlazaEngine.Engine
         }
 
         /// <summary>
-		/// called when a new trade comes from the system
+        /// Сброс ордеров прошедшей сессии
+        /// </summary>
+        /// <param name="sess_id"></param>
+        private void ResetOldSessionData(int sess_id)
+        {
+            try
+            {
+                foreach (var orderPair in Orders)
+                {
+                    var order = orderPair.Value;
+                    if (order.Sess_id <= sess_id && (order.State == Order.OrderStateType.Active 
+                            || order.State == Order.OrderStateType.Partial  
+                            || order.State == Order.OrderStateType.Pending))
+                    {
+                        order.State = Order.OrderStateType.Cancel;
+                        try
+                        {
+                            Task.Run(() => OrderChangedEvent?.Invoke(order, "Состояние ордера изменено"));
+                        }
+                        catch (Exception ex)
+                        {
+                            SendLogMessage(ex);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SendLogMessage(ex);
+            }
+        }
+
+        /// <summary>
+        /// Обработать начало новой сессии
+        /// </summary>
+        /// <param name="sess_id">Номер сессии</param>
+        /// <exception cref="NotImplementedException"></exception>
+        private void SetNewSessionData(int sess_id)
+        {
+            try
+            {
+                foreach (var orderPair in Orders)
+                {
+                    var order = orderPair.Value;
+                    if (order.Sess_id < sess_id && (order.State == Order.OrderStateType.Active
+                            || order.State == Order.OrderStateType.Partial
+                            || order.State == Order.OrderStateType.Pending))
+                    {
+                        order.State = Order.OrderStateType.Cancel;
+                        try
+                        {
+                            Task.Run(() => OrderChangedEvent?.Invoke(order, "Состояние ордера изменено"));
+                        }
+                        catch (Exception ex)
+                        {
+                            SendLogMessage(ex);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SendLogMessage(ex);
+            }
+        }
+
+        /// <summary>
+        /// called when a new trade comes from the system
         /// вызывается когда из системы приходит новая моя сделка
         /// </summary>
         public event Action<MyTrade> NewMyTradeEvent;
@@ -2290,7 +2441,8 @@ namespace PlazaEngine.Engine
                             try
                             {
                                 DataMessage msgData = (DataMessage)msg;
-                                RouterLogger.Log($"{msgData.MsgId}; {msgData.ToString()}", "OrderSenderMirror");
+                                RouterLoggerEngine.Log($"ClientMessage_OrderSenderMirror  {msgData.MsgId}; {msgData.ToString()}", "OrderSenderMirror");
+                                Debug.WriteLine($"ClientMessage_OrderSenderMirror  {msgData.MsgId}; {msgData.ToString()}");
                                 if (msgData.MsgId == 99)
                                 {
                                     SendLogMessage("Слишком много заявок отправлено. Флуд" + msgData);
@@ -2301,9 +2453,10 @@ namespace PlazaEngine.Engine
                                         if (order.State == Order.OrderStateType.Pending)
                                         {
                                             order.State = Order.OrderStateType.Fail;
-                                            NewCanceledOrder?.Invoke(order, msgCode);
+                                            //NewCanceledOrder?.Invoke(order, msgCode);
                                         }
                                     }
+                                    OrderChangedEvent?.Invoke(order, $"{msgCode}:{order?.State}");
 
                                     return 0;
                                 }
@@ -2339,18 +2492,18 @@ namespace PlazaEngine.Engine
                                     {
                                         if (order.State == Order.OrderStateType.Pending)
                                         {
-                                            order.State = Order.OrderStateType.Activ;
+                                            order.State = Order.OrderStateType.Active;
                                         }
-                                        NewActiveOrder?.Invoke(order);
+                                        //NewActiveOrder?.Invoke(order);
                                     }
                                     else
                                     {
                                         
                                         order.State = Order.OrderStateType.Fail;
-                                        NewCanceledOrder?.Invoke(order, msgCode);
+                                        //NewCanceledOrder?.Invoke(order, msgCode);
                                     }
 
-                                    OrderChangedEvent?.Invoke(order, msgCode);
+                                    OrderChangedEvent?.Invoke(order, $"{msgCode}:{order?.State}");
                                 }
                                 else if (msgData.MsgId == 186)
                                 {
@@ -2358,7 +2511,7 @@ namespace PlazaEngine.Engine
                                     Orders.TryGetValue(numberUser, out var order);
 
                                     int code = msgData["code"].asInt();
-                                    string message = msgData["message"].asUnicodeString();
+                                    string msgCode = msgData["message"].asUnicodeString();
                                     int num_orders = msgData["num_orders"].asInt();
                                     var oldState = order?.State;
                                     if (code == 0)
@@ -2370,7 +2523,7 @@ namespace PlazaEngine.Engine
                                     }
                                     if (oldState != order?.State)
                                     {
-                                        OrderChangedEvent?.Invoke(order, $"{message} Обработано: {num_orders}");
+                                        OrderChangedEvent?.Invoke(order, $"{msgCode}:{order?.State}");
                                     }
                                 }
 
@@ -2425,10 +2578,15 @@ namespace PlazaEngine.Engine
         /// <param name="order"></param>
         public async Task<string> ExecuteOrderAsync(Order order)
         {
-            RouterLogger.Log($"ExecuteOrder {order} start" , "ExecuteOrder");
+            RouterLoggerEngine.Log($"ExecuteOrder {order} start" , "ExecuteOrder");
             if (order.TypeOrder == Order.OrderType.Market)
             {
                 order.PriceOrder = order.Side == Side.Buy ? Securities[order.SecurityId].PriceLimitHigh : Securities[order.SecurityId].PriceLimitLow;
+            }
+
+            if (Securities?.ContainsKey(order.SecurityId)??false)
+            {
+                order.SecIsin = Securities[order.SecurityId].Name;
             }
 
             Orders[order.NumberUserOrderId] = order;
@@ -2437,15 +2595,34 @@ namespace PlazaEngine.Engine
             {
 
                 order.ExchangeOrderId = DateTime.Now.GetHashCode().ToString();
-                order.State = Order.OrderStateType.Activ;
+                order.State = Order.OrderStateType.Active;
+                OrderChangedEvent?.Invoke(order, "Заявка отправлена.");
+                              
 
-                OrderChangedEvent?.Invoke(order, "The order has been sent.");
-
-                var timer = new System.Timers.Timer(30000) { AutoReset = false };
+                var timer = new System.Timers.Timer(10000) { AutoReset = false };
                 timer.Elapsed += (s, e) =>
                 {
                     order.State = Order.OrderStateType.Done;
-                    OrderChangedEvent?.Invoke(order, "The order has been executed.");
+                    OrderChangedEvent?.Invoke(order, "Заявка исполнена.");
+
+                    MyTrade trade = new();
+                    trade.Board = LiteInvest.Entity.ServerEntity.BoardEnum.FortsMoex;
+                    trade.NumberOrderMarket = order.NumberUserOrderId.ToString();
+                    trade.Comment = order.Comment;
+                    trade.Commission = 0;
+                    trade.FeeBoard = 1.5m;
+                    trade.Side = order.Side;
+                    trade.NumberOrderUser = order.NumberUserOrderId;
+                    trade.NumberTrade = (order.NumberUserOrderId + 1).ToString();
+                    trade.Portfolio = order.PortfolioNumber;
+                    trade.Price = order.PriceOrder;
+                    trade.SecurityId = order.SecurityId;
+                    trade.Time = Helper.DateTimeMSK;
+                    trade.Volume = order.Volume;
+                    
+
+                    NewMyTradeEvent?.Invoke(trade); // обработку сделок делаем последовательно в пределах одного потока
+
                 };
                 timer.Start();
 
@@ -2480,6 +2657,7 @@ namespace PlazaEngine.Engine
             order.TimeCreate = GetTimeMoscowNow();
 
            
+          
 
             await Task.Factory.StartNew(() =>
             {
@@ -2496,20 +2674,20 @@ namespace PlazaEngine.Engine
                         order.State = Order.OrderStateType.Fail;
                     }
 
-                    NewActiveOrder?.Invoke(order);
+                    //NewActiveOrder?.Invoke(order);
                     sendMessage.Dispose();
 
-                    RouterLogger.Log($"Order {order} has been  sent.", "ExecuteOrder");
-                    OrderChangedEvent?.Invoke(order, "The order has been sent.");
+                    RouterLoggerEngine.Log($"Order {order} has been  sent.", "ExecuteOrder");
+                    //OrderChangedEvent?.Invoke(order, "The order has been sent.");
 
                    
                 }
                 catch (Exception ex)
                 {
                     order.State = Order.OrderStateType.Fail;
-                    NewActiveOrder?.Invoke(order);
+                    //NewActiveOrder?.Invoke(order);
                     
-                    OrderChangedEvent?.Invoke(order, "Error sending order.");
+                    OrderChangedEvent?.Invoke(order, "Ошибка отправки заявки");
 
                     SendLogMessage(ex);
                 }
@@ -2518,7 +2696,7 @@ namespace PlazaEngine.Engine
             
             
 
-            RouterLogger.Log($"Request for placing order #{order.NumberUserOrderId} sent.", "ExecuteOrder");
+            RouterLoggerEngine.Log($"Request for placing order #{order.NumberUserOrderId} sent.", "ExecuteOrder");
             return $"Request for placing order #{order.NumberUserOrderId} sent.";
         }
 
@@ -2572,20 +2750,20 @@ namespace PlazaEngine.Engine
         /// <param name="numberUser"></param>
         public async Task<bool> CancelOrder(int numberUser)
         {
-            RouterLogger.Log($"Start Cancel Order {numberUser}", "CancelOrder");
+            RouterLoggerEngine.Log($"Start Cancel Order {numberUser}", "CancelOrder");
 
             if (numberUser <= 0)
             {
-                RouterLogger.Log($"Error: The order number {numberUser} is incorrect.", "CancelOrder");
+                RouterLoggerEngine.Log($"Error: The order number {numberUser} is incorrect.", "CancelOrder");
                 return false;// $"Error: The order number {numberUser} is incorrect.";
             }
 
             if (!Orders.TryGetValue(numberUser, out Order order) )
             {
-                RouterLogger.Log($"Error: The order number {numberUser} not found.", "CancelOrder");
+                RouterLoggerEngine.Log($"Error: The order number {numberUser} not found.", "CancelOrder");
                 return false;
             }
-            RouterLogger.Log($"Canceling Order {order?.ToString()??"NULL"}", "CancelOrder");
+            RouterLoggerEngine.Log($"Canceling Order {order?.ToString()??"NULL"}", "CancelOrder");
 
             if(Emulation)
             {
@@ -2593,7 +2771,7 @@ namespace PlazaEngine.Engine
                 timer.Elapsed += (s, e) =>
                 {
                     order.State = Order.OrderStateType.Cancel;
-                    OrderChangedEvent?.Invoke(order, "The order has been cancelled.");
+                    OrderChangedEvent?.Invoke(order, "Заявка отменена.");
                 };
                 timer.Start();
 
@@ -2614,7 +2792,7 @@ namespace PlazaEngine.Engine
                     }
                     if ((code?.Length ?? 0) < 7)
                     {
-                        RouterLogger.Log($"Error cancel Order #{numberUser}. Portfolio not found.", "CancelOrder");
+                        RouterLoggerEngine.Log($"Error cancel Order #{numberUser}. Portfolio not found.", "CancelOrder");
                     }
                     
                     string brockerCode = code[0].ToString() + code[1].ToString() + code[2].ToString() +
@@ -2642,11 +2820,11 @@ namespace PlazaEngine.Engine
                 }
                 catch (Exception ex)
                 {
-                    RouterLogger.Log($"Cancel Order {order} error {ex.Message}", "CancelOrder");
+                    RouterLoggerEngine.Log($"Cancel Order {order} error {ex.Message}", "CancelOrder");
                     SendLogMessage(ex);
                 }
             });
-            RouterLogger.Log($"Request to cancel order {numberUser} sent.", "CancelOrder");
+            RouterLoggerEngine.Log($"Request to cancel order {numberUser} sent.", "CancelOrder");
             return true;// $"Request to cancel order {numberUser} sent.";
             
         }
@@ -2943,7 +3121,7 @@ namespace PlazaEngine.Engine
         public void SendLogMessage(string message)
         {
             LogMessageEvent?.Invoke(message);
-            RouterLogger.Log(message, "Exeption");
+            RouterLoggerEngine.Log(message, "Exeption");
             
         }
 

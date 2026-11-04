@@ -4,6 +4,8 @@ using System.Xml;
 
 namespace LiteInvest.Entity.Helpers
 {
+
+
 	public static class UriExtensions
 	{
 		/// <summary>
@@ -26,19 +28,23 @@ namespace LiteInvest.Entity.Helpers
 
 	public class Helper
     {
+        private static object saveXmlLocker = new();
         public static void SaveXml<T>(T serializableObject, string name)
         {
-
-            var settings = new XmlWriterSettings()
+            lock (saveXmlLocker)
             {
-                Indent = true,
-                IndentChars = "\t",
-            };
+                var settings = new XmlWriterSettings()
+                {
+                    Indent = true,
+                    IndentChars = "\t",
 
-            var writer = XmlWriter.Create(name, settings);
-            new DataContractSerializer(typeof(T)).WriteObject(writer, serializableObject);
-            writer.Close();
-
+                };
+                using (var writer = XmlWriter.Create(name, settings))
+                {
+                    new DataContractSerializer(typeof(T)).WriteObject(writer, serializableObject);
+                    writer.Close();
+                }
+            }
         }
 
         /// <summary>
@@ -52,7 +58,7 @@ namespace LiteInvest.Entity.Helpers
         {
             try
             {
-                var fileStream = new FileStream(name, FileMode.Open);
+                var fileStream = new FileStream(name, FileMode.Open,FileAccess.Read);
                 var reader = XmlDictionaryReader.CreateTextReader(fileStream, new XmlDictionaryReaderQuotas());
                 var serializer = new DataContractSerializer(typeof(T));
                 T serializableObject = (T)serializer.ReadObject(reader, true);
@@ -80,6 +86,20 @@ namespace LiteInvest.Entity.Helpers
             return timer;
         }
 
+        public static System.Timers.Timer CreateTimerAndStartAsync(Func<Task> method, int ms, bool repeat = true)
+        {
+            var timer = new System.Timers.Timer(ms) { AutoReset = repeat };
+            timer.Elapsed += async (s, e) =>
+            {
+                if (method != null)
+                {
+                    await method();
+                }
+            };
+            timer.Start();
+            return timer;
+        }
+
         public static bool isSimulation()
         {
             
@@ -90,7 +110,48 @@ namespace LiteInvest.Entity.Helpers
             //return true;
         }
 
-	
+        public static DateTime DateTimeMSK
+        {
+            get => DateTime.UtcNow.AddHours(3);
+        }
 
-	}
+        public static long GetSafeUnixTimestamp(DateTime datetime)
+        {
+            // Check for minimum DateTime value (0001-01-01)
+            if (datetime == DateTime.MinValue || datetime.Year < 1970) // Unix epoch starts 1970
+            {
+                return 0;
+            }
+
+            try
+            {
+                return new DateTimeOffset(datetime).ToUnixTimeMilliseconds();
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // Handle dates that are too early or too late for Unix timestamp
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                // Log other unexpected errors
+                Console.WriteLine($"Error converting DateTime to Unix timestamp: {ex.Message}");
+                return 0;
+            }
+        }
+    }
+
+
+    public static class Extensions
+    {
+        public static IList<T> Clone<T>(this IList<T> source) where T : ICloneable
+             => source.Select(item => (T)item.Clone()).ToList();
+
+        public static IList<T> Clone<T>(this ICollection<T> source) where T : ICloneable
+            => source.Select(item => (T)item.Clone()).ToList();
+
+        public static IList<T> Clone<T>(this IEnumerable<T> source) where T : ICloneable
+          => source.Select(item => (T)item.Clone()).ToList();
+    }
+
 }

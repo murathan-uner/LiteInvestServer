@@ -8,6 +8,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using LiteInvest.Entity.PlazaEntity;
+using System.Security.AccessControl;
+using System.Diagnostics;
 
 namespace PlazaEngine.Engine
 {
@@ -32,7 +34,10 @@ namespace PlazaEngine.Engine
         /// </summary>
         internal event Action<Dictionary<string, List<Trade>>>? NewTickCollectionEvent;
 
-        internal event Action<Trade>? NewTickEvent;
+        /// <summary>
+        /// Подписка на каждый тик - НЕ ИСПОЛЬЗОВАТЬ
+        /// </summary>
+        //internal event Action<Trade>? NewTickEvent;
 
         /// <summary>
         /// Все тики загружены, подписка вышла в режим онлайн
@@ -117,7 +122,7 @@ namespace PlazaEngine.Engine
         private ConcurrentDictionary<string, ConcurrentQueue<Trade>> Ticks = new ConcurrentDictionary<string, ConcurrentQueue<Trade>>();
 
         /// <summary>
-        /// Это мой экспериментальный вариант для выдергивания всех тиков... 
+        /// Это мой экспериментальный вариант для выдергивания всех тиков.
         /// </summary>
         public ConcurrentDictionary<string, Trade> AllTicks = new();
 
@@ -142,38 +147,29 @@ namespace PlazaEngine.Engine
                                         return 0;
                                     }
                                     var isin_id = replmsg["isin_id"].asInt().ToString();
-
-                                    Trade trade = new Trade(plazaConnector.Securities);
-
-                                    trade.TransactionID = replmsg["id_deal"].asLong().ToString();
-                                    trade.SecurityId = replmsg["isin_id"].asInt().ToString();
-                                    if (plazaConnector.Securities.TryGetValue(replmsg["isin_id"].asInt().ToString(), out Security? _secname))
-                                        trade.SecurityName = _secname.Name;
-                                    trade.Time = replmsg["moment"].asDateTime();
-                                    trade.IsOnline = _dealsOnLine;
-                                    trade.Side = replmsg["public_order_id_buy"].asLong() > replmsg["public_order_id_sell"].asLong() ? Side.Buy : Side.Sell;
-                                    trade.Volume = replmsg["xamount"].asInt();
-                                    trade.Price = Convert.ToDecimal(replmsg["price"].asDecimal());
-
-                                    AllTicks[trade.SecurityId] = trade;
-                                    
-                                    if (plazaConnector.RegisteredTicks.Contains(isin_id))
+                                    if (plazaConnector.Securities.TryGetValue(isin_id, out Security? _secname))     // тики только от изветных трейдов
                                     {
 
-                                        
-                                        /*
-                                        Trade trade = new Trade(replmsg, _dealsOnLine, plazaConnector.Securities);*/
+                                        Trade trade = new Trade();
+                                        trade.TransactionID = replmsg["id_deal"].asLong().ToString();
+                                        trade.SecurityId = isin_id;
+                                        trade.SecurityName = _secname.Name;
+                                        trade.Time = replmsg["moment"].asDateTime();
+                                        trade.IsOnline = _dealsOnLine;
+                                        trade.Side = replmsg["public_order_id_buy"].asLong() > replmsg["public_order_id_sell"].asLong() ? Side.Buy : Side.Sell;
+                                        trade.Volume = replmsg["xamount"].asInt();
+                                        trade.Price = Convert.ToDecimal(replmsg["price"].asDecimal());
 
+                                        AllTicks[trade.SecurityId] = trade;       
+                                        
                                         if (!Ticks.ContainsKey(trade.SecurityId))
                                         {
                                             Ticks[trade.SecurityId] = new();
                                         }
 
-                                        Ticks[trade.SecurityId].Enqueue(trade);
-                                        
-                                        NewTickEvent?.Invoke(trade);
+                                        //RouterLogger.Log(trade.ToString(), "AllTicks");
+                                        Ticks[trade.SecurityId].Enqueue(trade);     // Тики для дальнейшей обработки складываем в очередь, чтоб разобрать в другом потоке
 
-                                        //RouterLogger.Log(trade.ToString(), "Ticks");
                                     }
                                 }
                                 catch (Exception error)
@@ -187,7 +183,7 @@ namespace PlazaEngine.Engine
 
                     case MessageType.MsgP2ReplOnline:
                         {
-                            RouterLogger.Log("Тики полностью загрузились", "Ticks");
+                            RouterLoggerEngine.Log("Тики полностью загрузились", "Ticks");
                             _dealsOnLine = true;
                             AllTicksLoadedEvent?.Invoke();
                             
@@ -218,7 +214,8 @@ namespace PlazaEngine.Engine
         {
             while (!token.IsCancellationRequested)
             {
-                Thread.Sleep(periodMilliSecond);
+                //Thread.Sleep(periodMilliSecond);
+                Thread.Sleep(1);
                 try
                 {
                     var ticksCollectionForOut = new Dictionary<string, List<Trade>>();
@@ -230,12 +227,16 @@ namespace PlazaEngine.Engine
                     }
                     for (int i = 0; i < (keys?.Count??0); i++)
                     {
-                        ticksCollectionForOut[keys[i]] = new List<Trade>();
-                        var q = Ticks[keys[i]];
-                        while (q.TryDequeue(out Trade t))
+                        ConcurrentQueue<Trade> trades = Ticks[keys[i]];
+                        if (!trades.IsEmpty)
                         {
-                            ticksCollectionForOut[keys[i]].Add(t);
-                            needEvent = true;
+                            ticksCollectionForOut[keys[i]] = new List<Trade>();
+
+                            while (trades.TryDequeue(out Trade t))
+                            {
+                                ticksCollectionForOut[keys[i]].Add(t);
+                                needEvent = true;
+                            }
                         }
                     }
                     if (needEvent)
@@ -285,7 +286,7 @@ namespace PlazaEngine.Engine
                             _listenerTrade.Open("mode=online");
                         else
                             _listenerTrade.Open("mode=snapshot+online");
-                        RouterLogger.Log("Загрузка тиков пошла", "Connect");
+                        RouterLoggerEngine.Log("Загрузка тиков пошла", "Connect");
                     }
                     else
                     {

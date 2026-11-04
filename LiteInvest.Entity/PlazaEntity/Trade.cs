@@ -1,6 +1,5 @@
 ﻿using System.Collections.Concurrent;
 using System.Text;
-using System.Text.Json.Serialization;
 
 namespace LiteInvest.Entity.PlazaEntity;
 
@@ -20,12 +19,12 @@ public class Trade
     /// <param name="securities">Словарь инструментов Id->Name </param>
     public Trade( ConcurrentDictionary<string, Security> securities)
     {
-        Trade.securities = securities;
+      //  Trade.securities = securities;
     }
 
-    private static ConcurrentDictionary<string, Security>? securities;
+    //private static ConcurrentDictionary<string, Security>? securities;
 
-    [JsonPropertyName("sn")]
+    //[JsonPropertyName("sn")]
     /// <summary>
     /// Имя инструмента
     /// </summary>
@@ -53,18 +52,18 @@ public class Trade
     }
     private string? securityName;
 
-    [JsonPropertyName("tid")]
+   // [JsonPropertyName("tid")]
     /// Номер сделки
     /// </summary>
     public string TransactionID { get; set; }
 
-    [JsonPropertyName("s")]
+    //[JsonPropertyName("s")]
     /// <summary>
     /// Биржевой цифровой код инструмента
     /// </summary>
     public string SecurityId { get; set; }
 
-    [JsonPropertyName("t")]
+    //[JsonPropertyName("t")]
     /// <summary>
     /// Время сделки в часовом поясе MSK (utc+2)
     /// </summary>
@@ -77,70 +76,35 @@ public class Trade
     public bool IsOnline { get => isOnline; set { isOnline = value; } }
     bool isOnline;
 
-    [JsonPropertyName("d")]
+    //[JsonPropertyName("d")]
     /// <summary>
     /// Направление сделки
     /// </summary>
     public Side Side { get => side; set { side = value; } }
     Side side;
 
-    [JsonPropertyName("v")]
+
     /// <summary>
     /// Объем по сделке
     /// </summary>
     public decimal Volume { get => volume; set { volume = value; } }
     decimal volume;
 
-    [JsonPropertyName("p")]
+
     /// <summary>
     /// Цена сделки
     /// </summary>
     public decimal Price { get => price; set { price = value; } }
     decimal price;
 
+    public int IndexForChart { get; set; }
 
-	public string Color
-	{
-		get
-		{
-			if (Side == Side.Sell)
-				//return "#fca49c";
-
-				return "red";
-
-			//return "#6CCCAC";
-			return "green";
-		}
-	}
-
-	public int IndexForChart { get; set; }
-
-	private decimal? _size;
-	public decimal Size
-	{
-		get
-		{
-
-			if (_size != null)
-				return (decimal)_size;
-
-			var vol = (int)Volume;
-			var res = vol.ToString().Length;
-			return res;
-		}
-		set
-		{
-			_size = value;
-		}
-	}
-
-
-	/// <summary>
-	/// to take a line to save
-	/// взять строку для сохранения
-	/// </summary>
-	/// <returns>line with the state of the object/строка с состоянием объекта</returns>
-	public override string ToString()
+    /// <summary>
+    /// to take a line to save
+    /// взять строку для сохранения
+    /// </summary>
+    /// <returns>line with the state of the object/строка с состоянием объекта</returns>
+    public override string ToString()
     {
        return new StringBuilder()
             .Append(SecurityName!=null ? SecurityName : "").Append("; ")
@@ -151,6 +115,7 @@ public class Trade
             .Append(Side == Side.Buy ? "Buy" : "Sell").Append("; ")
             .Append(TransactionID).Append("; ")
             .Append(isOnline.ToString()).Append("; ")
+            .Append("IndexForChart=").Append(IndexForChart).Append("; ")
             .ToString();
     }
 }

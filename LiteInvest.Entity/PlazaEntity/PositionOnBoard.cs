@@ -33,6 +33,13 @@ namespace LiteInvest.Entity.PlazaEntity
         public string SecurityId { get; set; }
 
         /// <summary>
+        /// tool for which the position is open
+        /// инструмент по которому открыта позиция
+        /// </summary>
+        public string SecurityShortName { get; set; }
+
+
+        /// <summary>
         /// portfolio on which the position is open
         /// портфель по которому открыта позиция
         /// </summary>

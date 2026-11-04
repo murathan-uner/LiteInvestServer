@@ -9,7 +9,7 @@ namespace PlazaEngine.Engine
 	/// <summary>
 	/// Логth для Роутера Plaza
 	/// </summary>
-	public static class RouterLogger
+	public static class RouterLoggerEngine
 	{
 		private struct QueueMessage
 		{

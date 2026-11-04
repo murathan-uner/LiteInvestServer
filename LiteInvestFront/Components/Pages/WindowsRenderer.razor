@@ -1,92 +1,101 @@
 ﻿@using System.Collections.ObjectModel
+@using LiteInvest.Entity.PlazaEntity
+@using LiteInvestFront.Components.Common
 @using LiteInvestFront.Services
 @using LiteInvest.Entity.ServerEntity
-@inject UiLogicService _apidataService
+@using LiteInvestServerDll
+@inject UiLogicService UILogicSvcInstance
+@inject JsInteropService JSInteropService
+@inject ServerService _serverService
+@inject NavigationManager Navigation
 
-@inject IJSRuntime js;
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 @rendermode InteractiveServer
 
-<TelerikTileLayout Columns="OpenedInstruments.Count"
-                   ColumnWidth="auto"
-                   RowHeight="100vh"
-                   Reorderable="true"
-                   ColumnSpacing="0px"
-                   RowSpacing="0px"
-                   Resizable="false"
-                   OnReorder="@OnReorder">
+<style>
+    .cardnew {
+    height: 800px;
+    }
+    /* Общие стили для WorkWindow */
+    .workwindow-container {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    min-height: 250px;
+    }
 
+    /* Заголовок WorkWindow */
+    .workwindow-container h3 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #333;
+    font-weight: bold;
+    }
 
+    .chart {
+    height: 90vh;
+    }
+</style>
 
-    <TileLayoutItems>
-        @foreach (var security in OpenedInstruments)
-        {
-            <TileLayoutItem @key="security.SpecialHash">
-                <HeaderTemplate>
-                    <WorkWindowHeader Security="security" OnHeaderClick="(e) => focusWindowByHeaderClick(e)" OnClosingMain="(e) => {OnClosingMain(e);}"></WorkWindowHeader>
-                </HeaderTemplate>
-                <Content>
-                    <div class="tile-content">
-                        <WorkWindow OnMouseEnter="(e) => focusWindowByHeaderClick(e)" secHash="@security.SpecialHash" secutityMain="@security" WindowsOpened="@OpenedInstruments.Count" />
-                    </div>
-                </Content>
-            </TileLayoutItem>
-        }
-    </TileLayoutItems>
-</TelerikTileLayout>
+<TelerikStackLayout>
+    <WorkWindowSettings TabId="@TabId" @ref="@SettingsComponent"></WorkWindowSettings>
+    @if (OpenedInstruments != null)
+    {
+        <div class="board" id="board">
+            @foreach (var security in OpenedInstruments)
+            {
+                <div @key="@security.SpecialHash" class="windows">
+                    <WorkWindow TabId="@TabId" securityMain="@security" ScaleList="@ScaleList" WindowsOpened="@OpenedInstruments.Count" />
+                </div>
+            }
+        </div>
+    }
+</TelerikStackLayout>
 
 @code {
 
-    public string selectedSecurityHash = "";
+    [Parameter] public string? TabId { get; set; }
 
-    private void focusWindowByHeaderClick(string id)
-    {
-        if (_apidataService.SelectedSecurityHash != id)
-        {
-            _apidataService.SelectedSecurityHash = id;
-            _apidataService.SelectedSecurityHashChanged?.Invoke();
-        }
-        js.InvokeVoidAsync("focusElementById", id);
-    }
+    private List<int> ScaleList;
+    private WorkWindowSettings SettingsComponent;
 
-    private bool shouldNOTrenderafterclick = false;
+    int TotalRows = LiteInvest.Entity.PlazaEntity.PlazaOptions.SizeBlankMarketLevelsCountPriceStep * 2;
 
-    public string lasthashForRender { get; set; } = "";
+    // private bool shouldNOTrenderafterclick = false;
+    private bool _shouldReinitializeWindows = false;
+    private string closedSecId = string.Empty;
 
-    ObservableCollection<SecurityApi> OpenedInstruments { get; set; } = new();
+    private ObservableCollection<SecurityApi>? OpenedInstruments { get; set; }
 
     protected override void OnInitialized()
     {
-
         Console.WriteLine($" {DateTime.Now} On Initialized -> WindowsRenderer");
 
         base.OnInitialized();
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    protected async override Task OnAfterRenderAsync(bool firstRender)
     {
-
         if (firstRender)
         {
-            _apidataService.LastwindowOpened += () =>
-            {
-                lasthashForRender = "";
-            };
+            var dotNetReference = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("setDotNetWindows", dotNetReference);
 
-            _apidataService.NewSecOpened += (sec) =>
-            {
-                lasthashForRender = sec.SpecialHash;
+            ScaleList = _serverService.ScaleList;
 
-                OpenedInstruments.Add(sec);
-                _apidataService.openedInstruments++;
-                InvokeAsync(StateHasChanged);
-            };
+            if (OpenedInstruments == null)
+                OpenedInstruments = new();
 
-
+            UILogicSvcInstance.InstrumentsLoadAction += OnInstrumentsLoaded;
         }
 
-        return base.OnAfterRenderAsync(firstRender);
+        if (_shouldReinitializeWindows)
+        {
+            _shouldReinitializeWindows = false;
+            await JSRuntime.InvokeVoidAsync("closedWindow", closedSecId);
+        }
     }
 
     protected override void OnParametersSet()
@@ -96,59 +105,467 @@
         base.OnParametersSet();
     }
 
-    private void OpenInstrument(SecurityApi sec)
-    {
-        OpenedInstruments.Add(sec);
-        Console.WriteLine($"'{sec.Isin} hash = {sec.SpecialHash}' registered.");
-
-        //не требуется, так как мы напрямую работем с коллекцией.
-        //InvokeAsync(StateHasChanged);
-    }
-
-    protected override bool ShouldRender()
-    {
-        if (shouldNOTrenderafterclick)
-        {
-            Console.WriteLine("Pass Render Windows");
-            shouldNOTrenderafterclick = false;
-            return false;
-        }
-
-        return base.ShouldRender();
-    }
-
-    public Task OnClosingMain(SecurityApi sec)
-    {
-        try
-        {
-            //await _apidataservice.CloseInstrument(sec);
-            // var index = OpenedInstruments.FindIndex(s => s.SpecialHash == sec.SpecialHash);
-            // OpenedInstruments.RemoveAt(index);
-            OpenedInstruments.Remove(sec);
-            _apidataService.openedInstruments--;
-            return Task.CompletedTask;
-
-        }
-        catch (Exception ex)
-        {
-            return Task.CompletedTask;
-        }
-
-        // Remove tile with the given ID
-        //RegisteredInstruments.Remove(instrument);
-    }
-
-    void OnReorder(TileLayoutReorderEventArgs args)
-    {
-        string log = $"<div><strong>Reorder event fired for item with id: {args.Id}</strong>.</div>";
-
-    }
-
     public void Dispose()
     {
+        UILogicSvcInstance.InstrumentsLoadAction -= OnInstrumentsLoaded;
+
         GC.SuppressFinalize(this);
     }
 
+    private SecurityApi? GetSecurityByWindowId(string windowId)
+    {
+        try
+        {
+            if (OpenedInstruments != null)
+            {
+                var security = OpenedInstruments.Where(x => x.SpecialHash == windowId).FirstOrDefault();
+                return security;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        return null;
+    }
+
+    /* Begin Callbacks */
+
+    private void OnInstrumentsLoaded(List<SecurityApi> secs)
+    {
+        UILogicSvcInstance.openedInstruments = 0;
+
+        var initialData = secs.Where(sec => sec.Profile != null).Select(sec =>
+        {
+            var data = new WindowInitialData
+                {
+                    SecId = sec.id,
+                    WindowId = sec.SpecialHash,
+                    AutomicCentering = sec.Profile.AutomaticScrollFlag,
+                    PriceStep = (double)sec.PriceStep,
+                    OrderVolumes = sec.Profile.LikeTradesVolume,
+                    SelectedOrderVolumeIndex = sec.Profile.LikeTradesVolumeIndex,
+                    ScaleIndex = sec.Profile.Scale
+                };
+
+            OpenedInstruments?.Add(sec);
+
+            return data;
+        }).ToList();
+
+        UILogicSvcInstance.openedInstruments = initialData.Count();
+
+        InvokeAsync(async () =>
+        {
+            await JSRuntime.InvokeVoidAsync("loadWindows", initialData, TotalRows, ScaleList);
+            StateHasChanged();
+        });
+    }
+
+    private void SendOrder(string secId, double price, int volume, Side side)
+    {
+        try
+        {
+            var order = new ClientOrder()
+                {
+                    SecID = secId,
+                    Side = side,
+                    Volume = volume,
+                    Price = (decimal)price,
+                    Market = false,
+                };
+
+            Console.WriteLine($"Sending order price = {order.Price} side = {order.Side}");
+
+            InvokeAsync(async () =>
+            {
+                await _serverService.SendOrder(order, UILogicSvcInstance.userName, false);
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    [JSInvokable("OnOpenWindow")]
+    public void OnOpenWindowJs(string category /* all | favorite | recent */, string newSecId)
+    {
+        var newSec = _serverService.GetSecurity(newSecId);
+        if (newSec == null)
+            return;
+
+        ///////////////////////////////////////
+        // Add new security
+        SecurityProfile newProfile;
+        if ("all".Equals(category))
+        {
+            // Generate new profile
+            newProfile = _serverService.GenerateDefaultInstrument(newSec.id);
+        }
+        else if ("favorite".Equals(category))
+        {
+            // Load favorite profile
+            var favProfile = _serverService.GetUserFavoriteInstrument(UILogicSvcInstance.userName, newSec.id);
+            if (favProfile == null)
+                return;
+            newProfile = favProfile;
+        }
+        else if ("recent".Equals(category))
+        {
+            // Load recent profile
+            var recentProfile = _serverService.GetUserRecentInstrument(UILogicSvcInstance.userName, newSec.id);
+            if (recentProfile == null)
+                return;
+            newProfile = recentProfile;
+        }
+        else
+        {
+            return;
+        }
+
+        newSec.Profile = newProfile;
+        newSec = UILogicSvcInstance.GenerateClonedSecurity(newSec);
+
+        // Save the new profile for the current instrument
+        _serverService.SaveUserInstrument(UILogicSvcInstance.userName, TabId, newSec.SpecialHash, newProfile);
+
+        // Set the new instrument order to the last
+        _serverService.SaveUserInstrumentOrder(UILogicSvcInstance.userName, TabId, newSec.SpecialHash);
+        ///////////////////////////////////////
+
+        OpenedInstruments?.Add(newSec);
+        UILogicSvcInstance.openedInstruments++;
+
+        string windowId = newSec.SpecialHash;
+
+        var initialData = new WindowInitialData
+            {
+                SecId = newSec.id,
+                WindowId = newSec.SpecialHash,
+                AutomicCentering = newProfile.AutomaticScrollFlag,
+                PriceStep = (double)newSec.PriceStep,
+                OrderVolumes = newProfile.LikeTradesVolume,
+                SelectedOrderVolumeIndex = newProfile.LikeTradesVolumeIndex,
+                ScaleIndex = newProfile.Scale
+            };
+
+        InvokeAsync(async () =>
+        {
+            await JSRuntime.InvokeVoidAsync("openWindow", initialData, TotalRows, ScaleList);
+            StateHasChanged();
+        });
+    }
+
+    [JSInvokable("OnClosingWindow")]
+    public void OnClosingWindowJs(string windowId)
+    {
+        var security = GetSecurityByWindowId(windowId);
+        if (security == null)
+            return;
+
+        // Get current instrument before deleting it
+        var currProfile = security.Profile;
+        if (currProfile == null)
+            return;
+
+        var clonedProfile = currProfile.Clone();
+
+        // DO NOT FLIP THIS ORDER
+        _serverService.DeleteUserInstrumentAsync(UILogicSvcInstance.userName, TabId, security.SpecialHash);
+        _serverService.DeleteUserInstrumentOrderAsync(UILogicSvcInstance.userName, TabId, security.SpecialHash);
+
+        OpenedInstruments?.Remove(security);
+        UILogicSvcInstance.openedInstruments--;
+
+        ///////////////////////////////////////
+        // Add/Update favorite/recent profile
+
+        // Check if the current instrument exists in the favorite list
+        var favProfile = _serverService.GetUserFavoriteInstrument(UILogicSvcInstance.userName, security.id);
+        if (favProfile != null)
+        {
+            // Update the favorite profile with the current profile
+            _serverService.SaveUserFavoriteInstrument(UILogicSvcInstance.userName, security.id, clonedProfile);
+        }
+
+        // Add to the recent list
+        _serverService.SaveUserRecentInstrument(UILogicSvcInstance.userName, security.id, clonedProfile);
+        ///////////////////////////////////////
+
+        _shouldReinitializeWindows = true;
+        closedSecId = security.id;
+        StateHasChanged();
+    }
+
+    [JSInvokable("OnReplaceWindow")]
+    public void OnReplaceWindowJs(string category /* all | favorite | recent */, string oldSecId, string oldWindowId, string newSecId)
+    {
+        var oldSec = GetSecurityByWindowId(oldWindowId);
+        var newSec = _serverService.GetSecurity(newSecId);
+        if (oldSec == null || newSec == null)
+            return;
+
+        // Get old instrument before deleting it
+        var oldProfile = oldSec.Profile;
+        if (oldProfile == null)
+            return;
+
+        var clonedOldProfile = oldProfile.Clone();
+
+        // Remove old security
+
+        // DO NOT FLIP THIS ORDER
+        _serverService.DeleteUserInstrumentAsync(UILogicSvcInstance.userName, TabId, oldSec.SpecialHash);
+        //
+
+        ///////////////////////////////////////
+        // Add/Update favorite/recent profile for the old
+
+        // Check if the old instrument exists in the favorite list
+        var favOldProfile = _serverService.GetUserFavoriteInstrument(UILogicSvcInstance.userName, oldSec.id);
+        if (favOldProfile != null)
+        {
+            // Update the favorite profile with the old profile
+            _serverService.SaveUserFavoriteInstrument(UILogicSvcInstance.userName, oldSec.id, clonedOldProfile);
+        }
+
+        // Add to the recent list
+        _serverService.SaveUserRecentInstrument(UILogicSvcInstance.userName, oldSec.id, clonedOldProfile);
+        ///////////////////////////////////////
+
+
+        ///////////////////////////////////////
+        // Add new security
+        SecurityProfile newProfile;
+        if ("all".Equals(category))
+        {
+            // Generate new profile
+            newProfile = _serverService.GenerateDefaultInstrument(newSec.id);
+        }
+        else if ("favorite".Equals(category))
+        {
+            // Load favorite profile
+            var favProfile = _serverService.GetUserFavoriteInstrument(UILogicSvcInstance.userName, newSec.id);
+            if (favProfile == null)
+                return;
+            newProfile = favProfile;
+        }
+        else if ("recent".Equals(category))
+        {
+            // Load recent profile
+            var recentProfile = _serverService.GetUserRecentInstrument(UILogicSvcInstance.userName, newSec.id);
+            if (recentProfile == null)
+                return;
+            newProfile = recentProfile;
+        }
+        else
+        {
+            return;
+        }
+
+        newSec.Profile = newProfile;
+        newSec = UILogicSvcInstance.GenerateClonedSecurity(newSec);
+        int index = OpenedInstruments?
+            .ToList()
+            .FindIndex(sec => sec.SpecialHash == oldSec.SpecialHash) ?? -1;
+        if (index >= 0 && OpenedInstruments != null)
+        {
+            OpenedInstruments[index] = newSec;
+        }
+
+        // Save the new profile for the current instrument
+        _serverService.SaveUserInstrument(UILogicSvcInstance.userName, TabId, newSec.SpecialHash, newProfile);
+        _serverService.ReplaceUserInstrumentOrder(UILogicSvcInstance.userName, TabId, oldSec.SpecialHash, newSec.SpecialHash);
+        ///////////////////////////////////////
+
+        var initialData = new WindowInitialData
+            {
+                SecId = newSec.id,
+                WindowId = newSec.SpecialHash,
+                AutomicCentering = newProfile.AutomaticScrollFlag,
+                PriceStep = (double)newSec.PriceStep,
+                OrderVolumes = newProfile.LikeTradesVolume,
+                SelectedOrderVolumeIndex = newProfile.LikeTradesVolumeIndex,
+                ScaleIndex = newProfile.Scale
+            };
+
+        var totalRows = LiteInvest.Entity.PlazaEntity.PlazaOptions.SizeBlankMarketLevelsCountPriceStep * 2;
+
+        InvokeAsync(async () =>
+        {
+            await JSRuntime.InvokeVoidAsync("replaceWindow", initialData, totalRows, oldSec.SpecialHash);
+            StateHasChanged();
+        });
+    }
+
+    [JSInvokable("OnFavoriteInstrumentChanged")]
+    public void OnFavoriteInstrumentChangedJs(string secId, bool favOn)
+    {
+        if (favOn)
+        {
+            // Save favorite
+            var profile = _serverService.GetUserInstrumentBySecId(UILogicSvcInstance.userName, TabId, secId);
+            if (profile != null)
+            {
+                _serverService.SaveUserFavoriteInstrument(UILogicSvcInstance.userName, secId, profile);
+            }
+            else
+            {
+                // simply add
+                _serverService.SaveUserFavoriteInstrument(UILogicSvcInstance.userName, secId, null);
+            }
+        }
+        else
+        {
+            // Remove favorite
+            _serverService.DeleteUserFavoriteInstrument(UILogicSvcInstance.userName, secId);
+        }
+    }
+
+    [JSInvokable("OnOpenSetting")]
+    public void OnOpenSettingJs(string windowId)
+    {
+        var security = GetSecurityByWindowId(windowId);
+        if (security != null)
+        {
+            SettingsComponent.UpdateVisibility(security);
+        }
+    }
+
+    [JSInvokable("OnWindowFocused")]
+    public void OnWindowFocusedJs(string windowId)
+    {
+        if (UILogicSvcInstance.SelectedSecurityHash != windowId)
+        {
+            UILogicSvcInstance.SelectedSecurityHash = windowId;
+        }
+    }
+
+    [JSInvokable("OnWindowsOrderChanged")]
+    public void OnWindowsOrderChangedJs(int oldIndex, int newIndex)
+    {
+        // shift instruments
+        if (OpenedInstruments != null)
+        {
+            var secs = OpenedInstruments.ToList();
+            var old = secs[oldIndex];
+
+            if (oldIndex < newIndex)
+            {
+                for (var i = oldIndex; i < newIndex; i++)
+                {
+                    secs[i] = secs[i + 1];
+                }
+
+            }
+            else if (oldIndex > newIndex)
+            {
+                for (var i = oldIndex - 1; i >= newIndex; i--)
+                {
+                    secs[i + 1] = secs[i];
+                }
+            }
+            else
+            {
+                return;
+            }
+
+            secs[newIndex] = old;
+            _serverService.SaveUserInstrumentsOrder(UILogicSvcInstance.userName, TabId, secs);
+        }
+    }
+
+    [JSInvokable("OnCancelOrder")]
+    public void OnCancelOrderJs(int orderId)
+    {
+        _serverService.CancelOrder(UILogicSvcInstance.userName, orderId);
+    }
+
+    [JSInvokable("OnSendOrderLong")]
+    public void OnSendOrderLongJs(string secId, double price, int volume)
+    {
+        SendOrder(secId, price, volume , Side.Buy);
+    }
+
+    [JSInvokable("OnSendOrderShort")]
+    public void OnSendOrderShortJs(string secId, double price, int volume)
+    {
+        SendOrder(secId, price, volume, Side.Sell);
+    }
+
+    [JSInvokable("OnClosePosition")]
+    public void OnClosePositionJs(string secId)
+    {
+        InvokeAsync(async () =>
+        {
+            Console.WriteLine($"OnClosePositionJs {secId}");
+            await _serverService.ClosePositionBySecurity(UILogicSvcInstance.userName, secId);
+            Console.WriteLine($"OnClosePositionJs-- {secId}");
+        });
+    }
+
+    [JSInvokable("OnUpdatedOrderVolume")]
+    public void OnUpdatedOrderVolumeJs(string windowId, int index, int newVolume)
+    {
+        // save user profile
+        // (order volume value change)
+        var profile = _serverService.GetUserInstrument(UILogicSvcInstance.userName, TabId, windowId);
+        if (profile != null)
+        {
+            profile.SetLikeTradeVolume(index, newVolume);
+            _serverService.SaveUserInstrument(UILogicSvcInstance.userName, TabId, windowId, profile);
+        }
+
+        // This will be removed when moving WorkWindowSettings component to JS // Temporary use for this version
+        UILogicSvcInstance.NotifyOrderVolumeUpdated(windowId, index, newVolume);
+    }
+
+    [JSInvokable("OnChangeOrderVolumeSelection")]
+    public void OnChangeOrderVolumeSelectionJs(string windowId, int index, int volume)
+    {
+        // save user profile
+        // (order volume selection change)
+        var profile = _serverService.GetUserInstrument(UILogicSvcInstance.userName, TabId, windowId);
+        if (profile != null)
+        {
+            profile.LikeTradesVolumeIndex = index;
+            _serverService.SaveUserInstrument(UILogicSvcInstance.userName, TabId, windowId, profile);
+        }
+    }
+
+    [JSInvokable("OnScaleChanged")]
+    public void OnScaleChangedJs(string windowId, int scaleIndex)
+    {
+        // save user profile
+        // (scale change)
+        var profile = _serverService.GetUserInstrument(UILogicSvcInstance.userName, TabId, windowId);
+        if (profile != null)
+        {
+            profile.Scale = scaleIndex;
+            _serverService.SaveUserInstrument(UILogicSvcInstance.userName, TabId, windowId, profile);
+        }
+
+        UILogicSvcInstance.NotifyScaleChanged(windowId, scaleIndex);
+    }
+
+    // [JSInvokable]
+    // public void OnWindowsSizeChangeEvent(string windowId1, string windowId2, bool isStartDragging)
+    // {
+    //     _UiLogicService.OnWindowsSizeChangeEventHandler?.Invoke(windowId1, windowId2, isStartDragging);
+    // }
+
+    /* End Callbacks */
+
+    public class WindowInitialData
+    {
+        public string SecId { get; set; } = string.Empty;
+        public string WindowId { get; set; } = string.Empty;
+        public bool AutomicCentering { get; set; }
+        public double PriceStep { get; set; } // SecurityApi.PriceStep
+        public double BestPrice { get; set; } // Side.Buy: BestBid.Price | Side.Sell: BestAsk.Price
+        public List<int> OrderVolumes { get; set; }
+        public int SelectedOrderVolumeIndex { get; set; }
+        public int ScaleIndex { get; set; } = 0;
+    }
 }
-
-

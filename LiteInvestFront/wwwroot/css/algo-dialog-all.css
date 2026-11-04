@@ -1,0 +1,94 @@
+﻿/* 
+    ***********************
+    Begin Instrument Picker
+    ***********************
+*/
+.instrument-dialog {
+    width: 700px;
+}
+.instrument-picker-search-wrapper {
+    padding: 4px;
+    background-color: #e0e0e0;
+}
+
+@media (max-width: 600px) {
+}
+/* End Instrument Picker */
+
+
+/* 
+    ***********************
+    Begin Workspace Picker
+    ***********************
+*/
+.workspace-dialog {
+    width: 400px;
+}
+.workspace-dialog .algo-dialog-content {
+    padding: 6px;
+}
+.workspace-picker-profiles-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.workspace-picker-btn {
+    color: orangered;
+}
+
+@media (max-width: 600px) {
+}
+/* End Workspace Picker */
+
+
+/* 
+    *********************************
+      Begin Active Orders/Positions
+    *********************************
+*/
+.active-orders-dialog,
+.active-positions-dialog {
+    width: 800px;
+}
+
+.instrument-picker-table-wrapper,
+.active-orders-dialog-table-wrapper,
+.active-positions-dialog-table-wrapper {
+}
+
+.instrument-picker-tabs,
+.active-orders-dialog-tabs,
+.active-positions-dialog-tabs {
+    display: flex;
+    background-color: #e0e0e0;
+    /*    gap: 8px;
+    margin-bottom: 8px;*/
+}
+
+.active-orders-dialog .algo-dialog-table td,
+.active-positions-dialog .algo-dialog-table td {
+    border-bottom: 1px solid white;
+}
+
+@media (max-width: 600px) {
+}
+/* End Active Orders/Positions */
+
+/* 
+    ***********************
+         Begin Finrez
+    ***********************
+*/
+.finrez-dialog {
+    width: 800px;
+}
+
+.finrez-dialog-table-wrapper {
+    height: 400px;
+}
+
+@media (max-width: 600px) {
+}
+/* End Finrez */

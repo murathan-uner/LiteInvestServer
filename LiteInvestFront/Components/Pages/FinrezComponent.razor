@@ -1,0 +1,194 @@
+﻿@using LiteInvest.Entity.Helpers
+@using LiteInvest.Entity.ServerEntity
+@using LiteInvestFront.Services
+@using LiteInvest.Entity.PlazaEntity
+@using LiteInvestServerDll
+@using System.Collections.Concurrent
+@using LiteInvestFront.Shared
+
+@inject UiLogicService uiLogicService
+@inject ServerService _serverService;
+
+<div>
+    <TelerikGrid @ref="@GridRef"
+    Data="@FinrezData"
+    PageSize="@Pagesize"
+    OnRowClick="@OnRowClicked"
+    RowHeight="25"
+    Resizable="true"
+    Width="99%"
+    ScrollMode="@GridScrollMode.Scrollable"
+    Height="99%">
+
+        <RowTemplate Context="Values">
+            <td>
+                @Values.Board
+            </td>
+            <td class="@GetClassForFinrez(@Values.SummaFinRes) rightOrientation">
+                <div>@Values.SummaFinRes.ToString(formatdecimal)</div>
+            </td>
+            <td class="rightOrientation">
+                @if (isPoolClicked)
+                {
+                    <FinrezComponentInput />
+                }
+                else
+                {
+                    <div class="string-value">@Values.Pool</div>
+                }
+            </td>
+            <td class="rightOrientation">
+                <div style="margin-bottom:4px">@Values.Margin.ToString(formatdecimal)</div>
+                <div>@Values.Commission.ToString(formatdecimal)</div>
+            </td>
+            <td class="rightOrientation">
+                <div>-@Values.DrawDown.ToString(formatdecimal)</div>
+            </td>
+            <td class="rightOrientation">
+                <div style="margin-bottom:4px">@Values.AccountCapex</div>
+                <div>@Values.DepositMoney.ToString(formatdecimal)</div>
+            </td>
+        </RowTemplate>
+
+        <GridColumns>
+            <GridColumn MinResizableWidth="30" Width="1fr" Field="@nameof(FinanceResult.Board )">
+                <HeaderTemplate>
+                    <div class="string-value">Площадка</div>
+                </HeaderTemplate>
+            </GridColumn>
+            <GridColumn MinResizableWidth="30" Width="1fr" Field="@nameof(FinanceResult.SummaFinRes)">
+                <HeaderTemplate>
+                    <div class="rightOrientation string-value">Финрез</div>
+                </HeaderTemplate>
+            </GridColumn>
+            <GridColumn MinResizableWidth="30" Width="1fr" Field="@nameof(FinanceResult.Pool)">
+                <HeaderTemplate>
+                    <TelerikButton Class="poolButton" OnClick="OnPoolButtonClick">Пул</TelerikButton>
+                </HeaderTemplate>
+            </GridColumn>
+            <GridColumn MinResizableWidth="30" Width="1fr" Field="@nameof(FinanceResult.Margin)">
+                <HeaderTemplate>
+                    <div class="rightOrientation string-value" style="margin-bottom:4px">Маржа</div>
+                    <div class="rightOrientation string-value">Комиссия</div>
+                </HeaderTemplate>
+            </GridColumn>
+            <GridColumn MinResizableWidth="30" Width="1fr" Field="@nameof(FinanceResult.DrawDown)">
+                <HeaderTemplate>
+                    <div class="rightOrientation string-value">Просадка</div>
+                </HeaderTemplate>
+            </GridColumn>
+            <GridColumn MinResizableWidth="30" Width="1fr" Field="@nameof(FinanceResult.AccountCapex)">
+                <HeaderTemplate>
+                    <div class="rightOrientation" style="margin-bottom:4px">Счет</div>
+                    <div class="rightOrientation">Депо</div>
+                </HeaderTemplate>
+            </GridColumn>
+        </GridColumns>
+
+
+    </TelerikGrid>
+</div>
+
+<style>
+    .k-column-title {
+    width: 100%;
+    }
+
+    .poolButton {
+    width: 100%;
+    }
+
+    .string-value{
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    }
+
+    .negative {
+    background-color: #ffbdbd;
+    }
+
+    .positive {
+    background-color: #a7ddcb;
+    }
+
+    .rightOrientation {
+    text-align: right !important;
+    }
+
+    .k-table-th {
+    align-content: center;
+    }
+
+    .k-table-alt-row {
+    background-color: transparent !important;
+    }
+
+    .k-master-row {
+    background-color: transparent !important;
+    }
+
+    .k-table-alt-row:hover {
+    background-color: transparent !important;
+    }
+
+    .k-master-row:hover {
+    background-color: transparent !important;
+    }
+</style>
+
+@code {
+
+    string subscribeID = "";
+    List<FinanceResult> FinrezData;
+    string formatdecimal = "### ### ##0.##";
+
+    protected override void OnInitialized()
+    {
+        var res = _serverService.SubscribeForFinanceResult(uiLogicService.userName, FinanceResultEvent);
+        if (res.Result.Success)
+        {
+            subscribeID = res.Result.Id;
+        }
+        LoadData();
+    }
+
+    private void FinanceResultEvent(List<FinanceResult> finRes)
+    {
+        FinrezData = finRes;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void LoadData()
+    {
+        FinrezData = _serverService.GetFinanceResult(uiLogicService.userName);
+        InvokeAsync(StateHasChanged);
+    }
+
+
+    private TelerikGrid<FinanceResult> GridRef;
+
+    private void OnRowClicked()
+    {
+
+    }
+
+    private bool isPoolClicked = false;
+
+    private void OnPoolButtonClick()
+    {
+        isPoolClicked = !isPoolClicked;
+    }
+
+    private string GetClassForFinrez(decimal finrez)
+    {
+        return (finrez < 0 ? "negative" : "positive");
+    }
+
+    public void Dispose()
+    {
+        _=_serverService.RemoveSubscribtionForFinanceResult(uiLogicService.userName, subscribeID);
+    }
+
+    private int Pagesize { get; set; } = 10;
+}

@@ -9,7 +9,7 @@ namespace LiteInvest.Entity.PlazaEntity
     /// <summary>
     /// Логth для Роутера Plaza
     /// </summary>
-    public static class RouterLogger
+    public static class ServerLogger
     {
         private struct QueueMessage
         {
@@ -24,7 +24,8 @@ namespace LiteInvest.Entity.PlazaEntity
         private static void LogSaver()
         {
             Dictionary<string, StreamWriter> LogFiles = new Dictionary<string, StreamWriter>();
-            string path = $"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}\\RouterPlaza\\log\\";
+            string path = $"C:\\ServerData\\Log\\";
+            Directory.CreateDirectory(path);
 
             DateTime timeSave = DateTime.Now;
             DateTime timeDelete = DateTime.Now;

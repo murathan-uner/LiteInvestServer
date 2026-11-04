@@ -1,4 +1,7 @@
-﻿using LiteInvest.Entity.PlazaEntity;
+﻿using Aggregate;
+
+using LiteInvest.Entity.Helpers;
+using LiteInvest.Entity.PlazaEntity;
 using PlazaEngine.Engine;
 
 using System.Collections.Concurrent;
@@ -8,6 +11,20 @@ using static System.Formats.Asn1.AsnWriter;
 
 namespace ConnectorService
 {
+    //ToDo 
+    /*Artem . 
+            По самому кстати скроллу. Такая была была у телерика. Что если допустим он загрузил таблицу, а потом резко сделать скролл, 
+            то таблица становится белой. Поэтому скролл условно выполянется по таймеру через 300 мс
+
+        Artem . 
+            а ещё понял у тебя симуляиця посылает стаканы с разным макс мин каждый раз)
+
+        Artem . 
+            щас для работы фронта это всё в принципе фигня, но на всякий перепроверь у себя*/
+
+
+
+
     /// <summary>
     /// Класс создания агрегированных стаканов - Singleton(одиночка). Для создания вызвать статический метод Build и передать коннектор 
     /// </summary>
@@ -21,7 +38,11 @@ namespace ConnectorService
         /// <summary>
         ///Количество уровней в стакане в обе стороны
         /// </summary>
-        private int allBlankLevelGlassCount = 3000;
+        private int allBlankLevelGlassCount
+        {
+            get => PlazaOptions.SizeBlankMarketLevelsCountPriceStep;
+        }
+
 
         /// <summary>
         /// key = secID
@@ -31,6 +52,11 @@ namespace ConnectorService
         private PlazaConnector connector;
 
         private static AggregateGlass Instance;
+
+        public static AggregateGlass? TryGetInstanceOrNull
+        {
+            get => Instance;
+        }
 
         private static object buildLocker = new object();
 
@@ -65,7 +91,10 @@ namespace ConnectorService
         {
             this.connector = (PlazaConnector)connector;
             this.connector.MarketDepthChangeEvent += Connector_MarketDepthChangeEvent;
-            
+            this.connector.MarketDepthLoadedEvent += Connector_MarketDepthLoadedEvent;
+
+            Connector_MarketDepthLoaded = false;
+
             Thread threadMarketDepthAggregate = new Thread(ThreadMarketDepthAggregate);
             threadMarketDepthAggregate.IsBackground = true;
             threadMarketDepthAggregate.Name = "ThreadMarketDepthAggregate";
@@ -73,7 +102,22 @@ namespace ConnectorService
 
         }
 
+        /// <summary>
+        /// Controll full load all Glass
+        /// </summary>
+        private bool Connector_MarketDepthLoaded;
 
+        private void Connector_MarketDepthLoadedEvent()
+        {
+            Connector_MarketDepthLoaded = true;
+        }
+
+        private DateTime timeLastGlass = DateTime.UtcNow.AddHours(3);
+
+        public DateTime TimeLastGlass
+        {
+            get => timeLastGlass;
+        }
 
         private ConcurrentDictionary<string, ConcurrentQueue<MarketDepth>> dictionaryQueueMarketDepth = new ConcurrentDictionary<string, ConcurrentQueue<MarketDepth>>();
 
@@ -93,6 +137,10 @@ namespace ConnectorService
             }
             dictionaryQueueMarketDepth[md.SecurityId].Enqueue(md);
 
+            if (md.Time > timeLastGlass)
+            {
+                timeLastGlass = md.Time;
+            }
             return;
         }
 
@@ -122,20 +170,36 @@ namespace ConnectorService
                         {
                             if (!AllInsideQuotes.ContainsKey(md.SecurityId))        // проверка, создан ли чистые бланк стаканов для всех масштабов в 6000 строк
                             {
-                                CreateBlankInsideQuotes(md);                        // создаем бланк стаканов по инструменту
+                                decimal centrePrice = 0;
+                                if (md.Bids.Count > 0)
+                                {
+                                    centrePrice = md.Bids[0].Price;
+                                }
+                                else if (md.Asks.Count > 0)
+                                {
+                                    centrePrice = md.Asks.Last().Price;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                                CreateBlankInsideQuotes(md.SecurityId, centrePrice);                        // создаем бланк стаканов по инструменту
                             }
 
                             var security = connector.GetSecurityByIsin(md.SecurityId);
-                            decimal priceStep = security.PriceStep;
+                            decimal priceStep = security?.PriceStep??1;
 
                             ParallelOptions opt = new ParallelOptions() { MaxDegreeOfParallelism = ScaleList.Count };
                             Parallel.For(0, AllSubscribedScaledGlass[md.SecurityId].Count, opt, (i) =>  // распараллелим сбор по всем заказанным масштабам
                             {
                                 int scale = AllSubscribedScaledGlass[md.SecurityId][i];
-                                BuildAggregateGlass(md, priceStep, scale);
+                                BuildAggregateGlass(md.GetCopy(), priceStep, scale);
                             });
 
-                            NewInsideQuotesEvent?.Invoke(AllInsideQuotes[md.SecurityId]);
+                            if (Connector_MarketDepthLoaded)
+                            {
+                                NewInsideQuotesEvent?.Invoke(AllInsideQuotes[md.SecurityId]);
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -157,73 +221,117 @@ namespace ConnectorService
         {
             decimal currentPrice = 0;
             decimal currentVolume = 0;
+            decimal scalePrice = 0;
 
             CheckNeedExpansionBlankGlass(md);
             AllInsideQuotes[md.SecurityId].ScaledQuotes[scale] = (List<MarketDepthLevel>)AllInsideQuotes[md.SecurityId].BlankScaledQuotes[scale].Clone();
-            
-            
-            for (int y = 0; y < md.Asks.Count; y++)              // продажи
+
+            try
             {
-                decimal scalePrice = md.Asks[y].Price - md.Asks[y].Price % (scale * priceStep);
-                if (y == 0)
+                for (int y = 0; y < md.Asks.Count; y++)              // продажи
                 {
-                    currentPrice = scalePrice;
+                    try
+                    {
+                        scalePrice = md.Asks[y].Price - md.Asks[y].Price % (scale * priceStep);
+                        if (y == 0)
+                        {
+                            currentPrice = scalePrice;
+                            
+
+                        }
+                        if (currentPrice == scalePrice)
+                        {
+                            currentVolume += md.Asks[y].Ask;
+                        }
+
+                        if (currentPrice >= AllInsideQuotes[md.SecurityId].ScaledQuotes[scale][0].Price
+                            || currentPrice <= AllInsideQuotes[md.SecurityId].ScaledQuotes[scale][^1].Price)
+                        {
+                            continue;
+                        }
+
+                        if (currentPrice != scalePrice )
+                        {
+                            int indexPrice = AllInsideQuotes[md.SecurityId].IndexPriceLevelQuotes[scale][currentPrice];
+                            MarketDepthLevel? s = AllInsideQuotes[md.SecurityId].ScaledQuotes[scale][indexPrice];
+                            s.Type = Side.Sell;
+                            s.Ask = currentVolume;
+                            currentPrice = scalePrice;
+                            currentVolume = md.Asks[y].Ask;
+                        }
+                        if (y == md.Asks.Count - 1)                         // в том числе конец цикла
+                        {
+                            AllInsideQuotes[md.SecurityId].BestLevels[scale].BestAsk.Price = currentPrice;
+                            if (AllInsideQuotes[md.SecurityId].IndexPriceLevelQuotes[scale].TryGetValue(currentPrice, out var indexPrice))
+                            {
+                                var s = AllInsideQuotes[md.SecurityId].ScaledQuotes[scale][indexPrice];
+                                s.Type = Side.Sell;
+                                s.Ask = currentVolume;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
                 }
-                if (currentPrice == scalePrice)
+
+                currentPrice = 0;
+                currentVolume = 0;
+
+                for (int y = 0; y < md.Bids.Count; y++)                 // покупки
                 {
-                    currentVolume += md.Asks[y].Ask;
-                }
-                if (currentPrice != scalePrice)
-                {
-                    int indexPrice = AllInsideQuotes[md.SecurityId].IndexPriceLevelQuotes[scale][currentPrice];
-                    var s = AllInsideQuotes[md.SecurityId].ScaledQuotes[scale][indexPrice];
-                    s.Type = Side.Sell;
-                    s.Ask = currentVolume;
-                    currentPrice = scalePrice;
-                    currentVolume = md.Asks[y].Ask;
-                }
-                if (y == md.Asks.Count - 1)                         // в том числе конец цикла
-                {
-                    int indexPrice = AllInsideQuotes[md.SecurityId].IndexPriceLevelQuotes[scale][currentPrice];
-                    var s = AllInsideQuotes[md.SecurityId].ScaledQuotes[scale][indexPrice];
-                    s.Type = Side.Sell;
-                    s.Ask = currentVolume;
+                    try
+                    {
+                        scalePrice = md.Bids[y].Price - md.Bids[y].Price % (scale * priceStep);
+
+                        if (y == 0)
+                        {
+                            currentPrice = scalePrice;
+                            AllInsideQuotes[md.SecurityId].BestLevels[scale].BestBid.Price = currentPrice;
+
+                            if (AllInsideQuotes[md.SecurityId].IndexPriceLevelQuotes[scale].TryGetValue(currentPrice, out var indexCentrePrice))
+                            {
+                                AllInsideQuotes[md.SecurityId].CentreQuotes[scale] = indexCentrePrice;
+                            }
+                        }
+                        if (currentPrice == scalePrice)
+                        {
+                            currentVolume += md.Bids[y].Bid;
+                        }
+                        if (currentPrice >= AllInsideQuotes[md.SecurityId].ScaledQuotes[scale][0].Price
+                            || currentPrice <= AllInsideQuotes[md.SecurityId].ScaledQuotes[scale][^1].Price)
+                        {
+                            continue;
+                        }
+                        if (currentPrice != scalePrice)
+                        {
+                            int indexPrice = AllInsideQuotes[md.SecurityId].IndexPriceLevelQuotes[scale][currentPrice];
+                            var s = AllInsideQuotes[md.SecurityId].ScaledQuotes[scale][indexPrice];
+                            s.Type = Side.Buy;
+                            s.Bid = currentVolume;
+                            currentPrice = scalePrice;
+                            currentVolume = md.Bids[y].Bid;
+                        }
+                        if (y == md.Bids.Count - 1)                         // в том числе конец цикла
+                        {
+                            if (AllInsideQuotes[md.SecurityId].IndexPriceLevelQuotes[scale].TryGetValue(currentPrice, out var indexPrice))
+                            {
+                                var s = AllInsideQuotes[md.SecurityId].ScaledQuotes[scale][indexPrice];
+                                s.Type = Side.Buy;
+                                s.Bid = currentVolume;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
                 }
             }
-
-            currentPrice = 0;
-            currentVolume = 0;
-            
-            for (int y = 0; y < md.Bids.Count; y++)                 // покупки
+            catch (Exception ex)
             {
-                decimal scalePrice = md.Bids[y].Price - md.Bids[y].Price % (scale * priceStep);
-
-                if (y == 0)
-                {
-                    currentPrice = scalePrice;
-                    int indexCentrePrice = AllInsideQuotes[md.SecurityId].IndexPriceLevelQuotes[scale][currentPrice];
-                    AllInsideQuotes[md.SecurityId].CentreQuotes[scale] = indexCentrePrice;
-                }
-                if (currentPrice == scalePrice)
-                {
-                    currentVolume += md.Bids[y].Bid;
-                }
-                if (currentPrice != scalePrice)
-                {
-                    int indexPrice = AllInsideQuotes[md.SecurityId].IndexPriceLevelQuotes[scale][currentPrice];
-                    var s = AllInsideQuotes[md.SecurityId].ScaledQuotes[scale][indexPrice];
-                    s.Type = Side.Buy;
-                    s.Bid = currentVolume;
-                    currentPrice = scalePrice;
-                    currentVolume = md.Bids[y].Bid;
-                }
-                if (y == md.Bids.Count - 1)                         // в том числе конец цикла
-                {
-                    int indexPrice = AllInsideQuotes[md.SecurityId].IndexPriceLevelQuotes[scale][currentPrice];
-                    var s = AllInsideQuotes[md.SecurityId].ScaledQuotes[scale][indexPrice];
-                    s.Type = Side.Buy;
-                    s.Bid = currentVolume;
-                }
+                Debug.WriteLine(ex.ToString());
             }
         }
 
@@ -252,13 +360,41 @@ namespace ConnectorService
                 return; // пустой стакан
             }
             var s = AllInsideQuotes[md.SecurityId].IndexPriceLevelQuotes[1]; // берем полный не масштабированный индекс
-            if (s.Count > 1 && (!s.ContainsKey(maxPrice) || s[maxPrice] > s.Count * 0.8 
-                || !s.ContainsKey(minPrice) || s[minPrice] < s.Count * 0.2) )
+            if (s.Count > 1 
+                && (!s.ContainsKey(maxPrice) || s[maxPrice] > s.Count * 0.8
+                    ||  !s.ContainsKey(minPrice) || s[minPrice] < s.Count * 0.2)
+                   
+               )
             {
-                CreateBlankInsideQuotes(md);
+
+                CreateBlankInsideQuotes(md.SecurityId, (maxPrice + minPrice)/2);
+
+                try
+                {
+                    ChangeMinMaxSizeGlassEvent?.Invoke(md.SecurityId);
+                    try
+                    {
+                        Console.WriteLine($"ExpansionSizeMinMaxGlassEvent {md.SecurityId} " +
+                            $"min...max = {AllInsideQuotes[md.SecurityId].ScaledQuotes[ScaleList[0]].First().Price} ... {AllInsideQuotes[md.SecurityId].ScaledQuotes[ScaleList[0]].Last().Price}");
+                    }
+                    catch 
+                    {
+                        // игнор
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"ExpansionSizeMinMaxGlassEvent error {ex.Message} {ex.StackTrace}");
+                }
             }
         }
 
+
+        /// <summary>
+        /// Event notification about change of boundaries of the table of glass
+        /// SecurityId
+        /// </summary>
+        public event Action<string> ChangeMinMaxSizeGlassEvent;
 
         /// <summary>
         /// Подписаться на все пренастроенные агрегированные стаканы предустановленных масштабов scaleList
@@ -285,26 +421,34 @@ namespace ConnectorService
         /// Создаем пустые бланки стаканов всех масштабов большой глубины, а так же индексированные словари по ним
         /// </summary>
         /// <param name="md">стакан из Плазы</param>
-        private void CreateBlankInsideQuotes(MarketDepth md)
+        private void CreateBlankInsideQuotes(string securityId, decimal priceCentre)
         {
             InsideQuotes insideQuotes = new InsideQuotes();
-            insideQuotes.SecurityId = md.SecurityId;
+            insideQuotes.SecurityId = securityId;
 
-            var security = connector.GetSecurityByIsin(md.SecurityId);
-            
+            var security = connector.GetSecurityByIsin(securityId);
+            if (security == null)
+            {
+                return;
+            }
+            var _allBlankLevelGlassCount = allBlankLevelGlassCount;
+
+
+
             for (int i = 0; i < ScaleList.Count; i++)   // под все масштабы сразу делаем стаканы
             {
                 insideQuotes.ScaledQuotes[ScaleList[i]] = new List<MarketDepthLevel>();
                 insideQuotes.IndexPriceLevelQuotes[ScaleList[i]] = new Dictionary<decimal, int>();
-                
+                insideQuotes.BestLevels[ScaleList[i]] = (new MarketDepthLevel(), new MarketDepthLevel());
+
                 var sc = insideQuotes.ScaledQuotes[ScaleList[i]];
                 var indexSc = insideQuotes.IndexPriceLevelQuotes[ScaleList[i]];
 
-                decimal currentPriceLevel = md.Bids[0].Price + allBlankLevelGlassCount * ScaleList[i] * security.PriceStep;
+                decimal currentPriceLevel = priceCentre + _allBlankLevelGlassCount * ScaleList[i] * security.PriceStep;
                 currentPriceLevel = currentPriceLevel - currentPriceLevel % (ScaleList[i] * security.PriceStep);
-                insideQuotes.CentreQuotes[ScaleList[i]] = allBlankLevelGlassCount / 2;
+                insideQuotes.CentreQuotes[ScaleList[i]] = _allBlankLevelGlassCount / 2;
 
-                for (int y = allBlankLevelGlassCount; y > allBlankLevelGlassCount * -1; y--)
+                for (int y = _allBlankLevelGlassCount; y     > _allBlankLevelGlassCount * -1; y--)
                 {
                     MarketDepthLevel level = new MarketDepthLevel();
                     currentPriceLevel = currentPriceLevel - ScaleList[i] * security.PriceStep;
@@ -318,10 +462,15 @@ namespace ConnectorService
                 insideQuotes.BlankScaledQuotes[ScaleList[i]] = (List<MarketDepthLevel>)sc.Clone();
             }
             
+            AllInsideQuotes[securityId] = insideQuotes;
 
-            AllInsideQuotes[md.SecurityId] = insideQuotes;
+       
         }
 
+        /// <summary>
+        /// Force get Aggregate Glass
+        /// </summary>
+        /// <param name="securityId"></param>
         public void NeedUpDateGlass(string? securityId)
         {
             if (!string.IsNullOrWhiteSpace(securityId) && AllInsideQuotes.ContainsKey(securityId))
@@ -330,7 +479,42 @@ namespace ConnectorService
             }
         }
 
-       
+        /// <summary>
+        /// Get a large blanc for price levels
+        /// </summary>
+        /// <param name="SecId"></param>
+        /// <param name="scale"></param>
+        /// <returns></returns>
+        public List<MarketDepthLevel> GetBlankScaledPriceLevel(string securityId, int scale, decimal priceCentre)
+        {
+            if (! AllInsideQuotes.ContainsKey(securityId) ||  !AllInsideQuotes[securityId].BlankScaledQuotes.ContainsKey(scale))
+            {
+                CreateBlankInsideQuotes(securityId, priceCentre);
+            }
+            
+            var res = (List<MarketDepthLevel>?)AllInsideQuotes[securityId].BlankScaledQuotes[scale].Clone();
+            return res;
+        }
+
+        public (MarketDepthLevel BestBid, MarketDepthLevel BestAsk) GetBestBidAskPrice(string securityId)
+        {
+            try
+            {
+                if (!AllInsideQuotes.ContainsKey(securityId) || !AllInsideQuotes[securityId].BestLevels.ContainsKey(ScaleList[0]))
+                {
+                    return (null, null);
+                }
+                var r = AllInsideQuotes[securityId].BestLevels[ScaleList[0]];
+                return r;
+            }
+            catch (Exception ex)
+            {
+                return (null, null);
+            }
+
+        }
+
+
         /// <summary>
         /// Получить все аггрегированные  стаканы по одному инструменту 
         /// </summary>
